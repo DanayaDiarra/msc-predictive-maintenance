@@ -1,0 +1,24 @@
+# Python
+venv/
+.env
+*.pyc
+__pycache__/
+
+# Data
+data/raw/  # (except keep directory structure)
+*.csv
+*.pkl
+*.h5
+
+# Models
+models_artifacts/*
+!models_artifacts/.gitkeep
+
+# IDE
+.vscode/
+.jupyter/
+.idea/
+*.swp
+
+# System
+.DS_Store
