@@ -66,6 +66,8 @@ section[data-testid="stSidebar"] *{color:var(--text-primary)!important;}
 .ep-eng{font-size:.65rem;color:#39c5cf;font-family:var(--font-mono);float:right;}
 .stButton>button{background:var(--bg-card2)!important;border:1px solid var(--teal)!important;color:var(--teal)!important;font-family:var(--font-mono)!important;font-size:.82rem!important;border-radius:4px!important;padding:.4rem 1.2rem!important;}
 .stButton>button:hover{background:var(--teal)!important;color:var(--bg-base)!important;}
+/* pill buttons in chatbot — full width, wrap text */
+div[data-testid="stColumn"] .stButton>button{width:100%!important;height:auto!important;min-height:2.2rem!important;white-space:normal!important;text-align:left!important;font-size:.72rem!important;padding:.35rem .6rem!important;line-height:1.3!important;}
 .streamlit-expanderHeader{font-family:var(--font-mono)!important;font-size:.82rem!important;color:var(--text-muted)!important;background:var(--bg-card)!important;}
 </style>""", unsafe_allow_html=True)
 
@@ -245,13 +247,13 @@ ABLATION = {
         "D: v2 + LLM + RAG",
         "E: Full agentic",
     ],
-    "rmse":   [15.90, 12.77, 12.77, 12.77, 12.77],
+    "rmse":   [15.90, 14.60, 14.60, 14.60, 14.60],
     "ground": [0.00,  0.00,  0.00,  1.00,  1.00],
     "halluc": [1.00,  1.00,  0.65,  0.00,  0.00],
     "actions":[0,     0,     0,     0,     12],
     "desc": {
         "A: XGBoost v1":         "ML baseline only -- RMSE 15.90, no reasoning layer",
-        "B: XGBoost v2 Final":   "Improved ML (15k trees, exp weights) -- RMSE 12.77, R2=0.904",
+        "B: XGBoost v2 Final":   "Improved ML (15k trees, exp weights) -- RMSE 14.60 (all subsets) / 12.77 (FD001+FD003)",
         "C: v2 + LLM (no RAG)": "LLM reasoning added, no knowledge grounding -- hallucination 65%",
         "D: v2 + LLM + RAG":    "RAG knowledge grounding added -- hallucination drops to 0%",
         "E: Full agentic":       "Full pipeline -- 12 autonomous actions executed, 33ms end-to-end",
@@ -334,41 +336,25 @@ st.markdown(_sidebar_css, unsafe_allow_html=True)
 _icon = "◀" if st.session_state.sidebar_open else "▶"
 _tip  = "Hide panel" if st.session_state.sidebar_open else "Show panel"
 
-st.markdown("""
-<style>
-/* Override ALL stButton instances to be compact */
-div[data-testid="stButton"] > button {
-    background: #1c2333 !important;
-    border: 1px solid #39c5cf !important;
-    color: #39c5cf !important;
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: .78rem !important;
-    padding: 2px 8px !important;
-    border-radius: 4px !important;
-    line-height: 1.4 !important;
-    min-height: 0 !important;
-    height: 26px !important;
-    width: 32px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-div[data-testid="stButton"] > button:hover {
-    background: #39c5cf !important;
-    color: #0d1117 !important;
-}
-/* Keep toggle column tight */
-div[data-testid="stButton"] {
-    margin: 0 !important;
-    padding: 0 !important;
-}
-</style>""", unsafe_allow_html=True)
-
 _t1, _t2 = st.columns([1, 20])
 with _t1:
     if st.button(_icon, key="sidebar_toggle", help=_tip):
         st.session_state.sidebar_open = not st.session_state.sidebar_open
         st.rerun()
+
+# Scope toggle button CSS to ONLY the sidebar_toggle key via attribute selector
+st.markdown("""
+<style>
+button[data-testid="baseButton-secondary"][title="Hide panel"],
+button[data-testid="baseButton-secondary"][title="Show panel"] {
+    width: 32px !important;
+    height: 26px !important;
+    min-height: 0 !important;
+    padding: 2px 6px !important;
+    font-size: .82rem !important;
+    line-height: 1 !important;
+}
+</style>""", unsafe_allow_html=True)
 
 # TOP NAV
 st.markdown(f"""
@@ -473,7 +459,7 @@ with st.sidebar:
   <img src="{_LOGO_32}" width="32" height="32" style="display:inline-block;margin-bottom:6px"/>
   <div style="font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:#7d8590">Danaya Diarra</div>
   <div style="font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:#30363d">MSc Thesis 2026</div>
-  <div style="font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:#30363d">XGBoost v2 RMSE=12.77</div>
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:#30363d">XGBoost v2 RMSE=14.60 (all) / 12.77 (FD001+3)</div>
 </div>""", unsafe_allow_html=True)
 
 pk = page
@@ -866,7 +852,7 @@ elif pk == "Ablation Study":
     <div class="ac monitor" style="margin-top:1rem">
       <div style="color:#3fb950;font-weight:600;margin-bottom:.4rem">KEY EMPIRICAL FINDINGS</div>
       <div style="font-size:.8rem;color:#e6edf3;line-height:1.7">
-        <b>B vs A:</b> XGBoost v2 Final (15k trees, exp weights) improves RMSE 15.90 to 12.77 (minus 19.7%) and R2 from 0.853 to 0.904.
+        <b>B vs A:</b> XGBoost v2 Final (15k trees, exp weights) improves RMSE 15.90 to 14.60 all-subsets (8.2%) and to 12.77 on FD001+FD003 (19.7%). R2 rises from 0.853 to 0.874 (all) / 0.904 (best subset).
         <br><b>C vs B:</b> LLM reasoning adds diagnostic language but without knowledge grounding hallucination rate is 0.65.
         <br><b>D vs C:</b> RAG reduces hallucination from 0.65 to 0.00 and raises grounding from 0.0 to 1.00.
         <br><b>E vs D:</b> Tool execution converts 12 recommendations into autonomous actions in 33ms total pipeline latency.
@@ -1124,7 +1110,7 @@ elif pk == "Engineer Chatbot":
                         "2. AUTO — Open Critical ticket<br>"
                         "3. TIMEOUT — Dispatch engineer within 4h<br><br>"
                         "Do not wait for alarm to trigger.<br><br>"
-                        "<em>XGBoost v2 Final · RMSE=12.77 · R2=0.904</em>"
+                        "<em>XGBoost v2 Final · RMSE=14.60 (all subsets) · best subset RMSE=12.77</em>"
                     )
                 else:
                     docs = " | ".join(
