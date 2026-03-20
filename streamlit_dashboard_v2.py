@@ -1085,72 +1085,75 @@ Cite sources as [DOC-ID]. Be direct and practical."""
             engine_used = ""
 
             if _api_key:
-                # Strip HTML tags from previous assistant messages for API
+                # Strip HTML tags from history messages
                 def _strip_html(text):
-                    return _re.sub(r'<[^>]+>', '', text)
+                    return _re.sub(r'<[^>]+>', ' ', str(text)).strip()
 
-                # Try LangChain first
+                # Build clean message list for API
+                clean_msgs = []
+                for m in st.session_state.chat_history[:-1][-6:]:
+                    role = m["role"]
+                    content = _strip_html(m["content"])
+                    if content and role in ("user", "assistant"):
+                        clean_msgs.append({"role": role, "content": content})
+
+                # Current question with RAG context
+                clean_msgs.append({
+                    "role": "user",
+                    "content": (
+                        f"QUESTION: {last_q}\n\n"
+                        f"KNOWLEDGE BASE CONTEXT:\n{rag_context[:2000]}\n\n"
+                        "Answer using the context. Cite sources as [DOC-ID]. "
+                        "Be direct and practical."
+                    )
+                })
+
+                # ── Try anthropic SDK first (most reliable) ──────────────
                 try:
-                    from langchain_anthropic import ChatAnthropic
-                    from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-
-                    llm = ChatAnthropic(
-                        model="claude-sonnet-4-6",
-                        api_key=_api_key,
+                    import anthropic
+                    client = anthropic.Anthropic(api_key=_api_key)
+                    response = client.messages.create(
+                        model="claude-haiku-4-5-20251001",
                         max_tokens=1000,
-                        temperature=0.3)
-
-                    lc_msgs = [SystemMessage(content=sys_prompt)]
-                    for m in st.session_state.chat_history[:-1][-6:]:
-                        clean = _strip_html(m["content"])
-                        if m["role"] == "user":
-                            lc_msgs.append(HumanMessage(content=clean))
-                        else:
-                            lc_msgs.append(AIMessage(content=clean))
-                    lc_msgs.append(HumanMessage(content=user_content))
-
-                    resp        = llm.invoke(lc_msgs)
-                    answer      = resp.content
-                    engine_used = "LangChain · claude-sonnet-4-6"
+                        system=sys_prompt,
+                        messages=clean_msgs
+                    )
+                    answer      = response.content[0].text
+                    engine_used = "Anthropic SDK · claude-haiku-4-5"
                 except ImportError:
-                    pass  # langchain not installed — try direct API
-                except Exception:
-                    pass  # any other error — try direct API
+                    pass
+                except Exception as e:
+                    answer      = f"SDK error: {str(e)[:150]}"
+                    engine_used = "Error"
 
-                # Direct Anthropic API fallback
-                if not answer:
+                # ── Try LangChain fallback ───────────────────────────────
+                if not answer or answer.startswith("SDK error"):
                     try:
-                        import urllib.request
-                        # Build clean message history
-                        clean_history = []
-                        for m in st.session_state.chat_history[:-1][-6:]:
-                            clean_history.append({
-                                "role": m["role"],
-                                "content": _strip_html(m["content"])
-                            })
-                        clean_history.append({"role": "user", "content": user_content})
+                        from langchain_anthropic import ChatAnthropic
+                        from langchain_core.messages import (
+                            SystemMessage, HumanMessage, AIMessage)
 
-                        payload = _json.dumps({
-                            "model": "claude-sonnet-4-6",
-                            "max_tokens": 1000,
-                            "system": sys_prompt,
-                            "messages": clean_history
-                        }).encode()
-                        req = urllib.request.Request(
-                            "https://api.anthropic.com/v1/messages",
-                            data=payload,
-                            headers={
-                                "x-api-key": _api_key,
-                                "anthropic-version": "2023-06-01",
-                                "content-type": "application/json"
-                            })
-                        with urllib.request.urlopen(req, timeout=30) as r:
-                            data        = _json.loads(r.read())
-                            answer      = data["content"][0]["text"]
-                            engine_used = "Anthropic API · claude-sonnet-4-6"
+                        llm = ChatAnthropic(
+                            model="claude-haiku-4-5-20251001",
+                            api_key=_api_key,
+                            max_tokens=1000,
+                            temperature=0.3)
+
+                        lc_msgs = [SystemMessage(content=sys_prompt)]
+                        for m in clean_msgs[:-1]:
+                            if m["role"] == "user":
+                                lc_msgs.append(HumanMessage(content=m["content"]))
+                            else:
+                                lc_msgs.append(AIMessage(content=m["content"]))
+                        lc_msgs.append(HumanMessage(content=clean_msgs[-1]["content"]))
+
+                        resp        = llm.invoke(lc_msgs)
+                        answer      = resp.content
+                        engine_used = "LangChain · claude-haiku-4-5"
                     except Exception as e:
-                        answer      = f"API error ({type(e).__name__}): {str(e)[:200]}"
-                        engine_used = "Error — check Streamlit logs"
+                        if not answer or answer.startswith("SDK error"):
+                            answer      = f"Error: {str(e)[:150]}"
+                            engine_used = "Error"
 
             # ── Rule-based fallback ──────────────────────────────────────
             if not answer:
