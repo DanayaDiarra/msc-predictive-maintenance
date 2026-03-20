@@ -886,8 +886,15 @@ elif pk == "Engineer Chatbot":
     # ── Page header ──────────────────────────────────────────────────────
     sh("ENGINEER CHATBOT — ASK MAINTENANCE QUESTIONS")
 
-    _api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    _use_llm  = os.environ.get("USE_LLM", "false").lower() == "true"
+    # Read secrets — st.secrets for Streamlit Cloud, os.environ for local/Colab
+    def _get_secret(key, default=""):
+        try:
+            return st.secrets[key]
+        except Exception:
+            return os.environ.get(key, default)
+
+    _api_key = _get_secret("ANTHROPIC_API_KEY")
+    _use_llm  = _get_secret("USE_LLM", "false").lower() == "true"
 
     if _api_key:
         st.markdown(f"""
@@ -1039,13 +1046,6 @@ RULES:
 5. Keep answers concise — engineers are in the field, not reading essays
 6. If you don't know something, say so clearly"""
 
-            history_msgs = []
-            for m in st.session_state.chat_history[:-1][-6:]:  # last 6 turns
-                history_msgs.append({
-                    "role": m["role"],
-                    "content": m["content"]
-                })
-
             user_content = f"""QUESTION: {last_q}
 
 RELEVANT KNOWLEDGE BASE CONTEXT:
@@ -1053,8 +1053,6 @@ RELEVANT KNOWLEDGE BASE CONTEXT:
 
 Answer the question using the context above where relevant.
 Cite sources as [DOC-ID]. Be direct and practical."""
-
-            history_msgs.append({"role": "user", "content": user_content})
 
             # ── Try LangChain first ──────────────────────────────────────
             answer = None
