@@ -465,6 +465,7 @@ with st.sidebar:
         "Fleet Overview", "Station Detail", "Plain English",
         "RAG Evidence",   "Agent Reasoning",
         "Model Benchmark","Ablation Study",
+        "Engineer Chatbot",
     ], label_visibility="collapsed")
     st.markdown("---")
     st.markdown(f"""
@@ -871,6 +872,444 @@ elif pk == "Ablation Study":
         <br><b>E vs D:</b> Tool execution converts 12 recommendations into autonomous actions in 33ms total pipeline latency.
       </div>
     </div>""", unsafe_allow_html=True)
+
+# ENGINEER CHATBOT
+elif pk == "Engineer Chatbot":
+    import os, json as _json, re as _re
+
+    # ── Session state for chat history ──────────────────────────────────
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    if "chat_thinking" not in st.session_state:
+        st.session_state.chat_thinking = False
+
+    # ── Page header ──────────────────────────────────────────────────────
+    sh("ENGINEER CHATBOT — ASK MAINTENANCE QUESTIONS")
+
+    _api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    _use_llm  = os.environ.get("USE_LLM", "false").lower() == "true"
+
+    if _api_key:
+        st.markdown(f"""
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:.8rem;
+             font-family:'IBM Plex Mono',monospace;font-size:.72rem">
+          <span style="width:8px;height:8px;background:#3fb950;border-radius:50%;
+                display:inline-block"></span>
+          <span style="color:#3fb950">Claude API connected</span>
+          <span style="color:#30363d;margin-left:.5rem">·</span>
+          <span style="color:#7d8590">Ask anything about maintenance, alarms, procedures, RUL scores</span>
+        </div>""", unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="background:#1c2333;border:1px solid #f0b42944;border-radius:6px;
+             padding:.7rem 1rem;margin-bottom:.8rem;font-size:.78rem;color:#f0b429;
+             font-family:'IBM Plex Mono',monospace">
+          Rule-based mode active &nbsp;·&nbsp;
+          Set ANTHROPIC_API_KEY in Streamlit secrets for full Claude responses
+        </div>""", unsafe_allow_html=True)
+
+    # ── Quick question pills ─────────────────────────────────────────────
+    st.markdown('<div class="sh">QUICK QUESTIONS — CLICK TO ASK</div>',
+                unsafe_allow_html=True)
+
+    QUICK_QS = [
+        "What does alarm PWR-001 mean and what should I do?",
+        "How do I test for PIM on an antenna connector?",
+        "Station FD002_47 has RUL 14.7 cycles. Is this urgent?",
+        "What spare parts do I need for a cooling fan replacement?",
+        "Explain the difference between COOL-001 and COOL-003.",
+        "What is the ITU-T G.826 ESR threshold for backhaul?",
+        "How long does a BBU software upgrade take?",
+        "What causes gradual VSWR increase over 18 days?",
+    ]
+
+    # Render pills in 2 rows of 4
+    row1, row2 = QUICK_QS[:4], QUICK_QS[4:]
+    cols1 = st.columns(4)
+    for col, q in zip(cols1, row1):
+        if col.button(q[:38]+"…" if len(q)>38 else q,
+                      key=f"pill_{q[:20]}", use_container_width=True):
+            st.session_state.chat_history.append({"role":"user","content":q})
+            st.session_state.chat_thinking = True
+            st.rerun()
+    cols2 = st.columns(4)
+    for col, q in zip(cols2, row2):
+        if col.button(q[:38]+"…" if len(q)>38 else q,
+                      key=f"pill_{q[:20]}", use_container_width=True):
+            st.session_state.chat_history.append({"role":"user","content":q})
+            st.session_state.chat_thinking = True
+            st.rerun()
+
+    st.markdown("""
+    <style>
+    /* Quick pill buttons */
+    div[data-testid="stButton"] > button {
+        font-size: .70rem !important;
+        padding: 4px 8px !important;
+        height: auto !important;
+        width: 100% !important;
+        white-space: normal !important;
+        text-align: left !important;
+        line-height: 1.3 !important;
+    }
+    </style>""", unsafe_allow_html=True)
+
+    # ── Chat history display ─────────────────────────────────────────────
+    sh("CONVERSATION")
+
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            st.markdown(f"""
+            <div style="display:flex;justify-content:flex-end;margin:.5rem 0">
+              <div style="background:#1c2333;border:1px solid #39c5cf44;border-radius:10px
+                   10px 2px 10px;padding:.6rem 1rem;max-width:75%;font-size:.82rem;
+                   color:#e6edf3;font-family:'IBM Plex Sans',sans-serif">
+                {msg['content']}
+              </div>
+            </div>""", unsafe_allow_html=True)
+        else:
+            # Parse structured response if JSON
+            content = msg["content"]
+            engine  = msg.get("engine","")
+            eng_col = "#39c5cf" if "langchain" in engine or "claude" in engine else "#7d8590"
+
+            st.markdown(f"""
+            <div style="display:flex;justify-content:flex-start;margin:.5rem 0;gap:.6rem">
+              <img src="{_LOGO_32}" width="24" height="24"
+                   style="margin-top:4px;flex-shrink:0"/>
+              <div style="background:#161b22;border:1px solid #30363d;border-radius:2px
+                   10px 10px 10px;padding:.8rem 1rem;max-width:82%;font-size:.82rem;
+                   color:#c9d1d9;font-family:'IBM Plex Sans',sans-serif;line-height:1.65">
+                {content}
+                <div style="margin-top:.5rem;font-family:'IBM Plex Mono',monospace;
+                     font-size:.64rem;color:{eng_col}">{engine}</div>
+              </div>
+            </div>""", unsafe_allow_html=True)
+
+    # ── Generate response if needed ──────────────────────────────────────
+    if st.session_state.chat_thinking and st.session_state.chat_history:
+        last_q = st.session_state.chat_history[-1]["content"]
+
+        with st.spinner("Thinking..."):
+
+            # Build RAG context from corpus
+            rag_context = ""
+            try:
+                from rag_pipeline import RAGIndex, RAGPipeline, INDEX_DIR
+                from dataclasses import asdict as _asdict
+                _idx = RAGIndex(); _idx.load(INDEX_DIR)
+                _pipe = RAGPipeline(_idx)
+                _alert = {
+                    "alert_id": "CHAT", "station_id": "CHAT",
+                    "urgency": "Warning",
+                    "primary_subsystem": "general",
+                    "fault_hypothesis": last_q,
+                    "rag_query_primary": last_q,
+                    "rag_query_equipment": last_q,
+                    "rag_query_keywords": ["maintenance","telecom","BTS"],
+                }
+                _bundle = _asdict(_pipe.retrieve(_alert))
+                rag_context = "\n\n".join([
+                    f"[{c['citation_ref']}] {c['title']}\n{c['text'][:400]}"
+                    for c in _bundle["chunks"]
+                ])
+            except Exception:
+                rag_context = "No RAG context available."
+
+            # Build conversation messages for API
+            sys_prompt = """You are an expert telecom base station maintenance engineer
+and AI assistant integrated into a predictive maintenance NOC dashboard.
+
+Your role: answer questions from field engineers and NOC operators about:
+- Alarm codes, their causes and remediation steps
+- Maintenance procedures (SOPs, tools, spare parts, durations)
+- Interpretation of RUL (Remaining Useful Life) predictions
+- Equipment specifications and thresholds
+- Troubleshooting guidance for BTS power, thermal, RF, backhaul, baseband
+
+RULES:
+1. Be specific and actionable — give exact alarm codes, thresholds, part names
+2. Cite your sources in [brackets] when evidence comes from the knowledge base
+3. If the question refers to a specific station RUL, interpret it:
+   RUL <= 20 cycles = Critical (act within 4h)
+   RUL 20-50 cycles = Warning (act within 48h)
+   RUL > 50 cycles = Monitor (routine maintenance)
+4. Structure longer answers with clear sections
+5. Keep answers concise — engineers are in the field, not reading essays
+6. If you don't know something, say so clearly"""
+
+            history_msgs = []
+            for m in st.session_state.chat_history[:-1][-6:]:  # last 6 turns
+                history_msgs.append({
+                    "role": m["role"],
+                    "content": m["content"]
+                })
+
+            user_content = f"""QUESTION: {last_q}
+
+RELEVANT KNOWLEDGE BASE CONTEXT:
+{rag_context}
+
+Answer the question using the context above where relevant.
+Cite sources as [DOC-ID]. Be direct and practical."""
+
+            history_msgs.append({"role": "user", "content": user_content})
+
+            # ── Try LangChain first ──────────────────────────────────────
+            answer = None
+            engine_used = ""
+
+            if _api_key:
+                try:
+                    from langchain_anthropic import ChatAnthropic
+                    from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+
+                    llm = ChatAnthropic(
+                        model="claude-sonnet-4-6",
+                        api_key=_api_key,
+                        max_tokens=800,
+                        temperature=0.3)
+
+                    lc_msgs = [SystemMessage(content=sys_prompt)]
+                    for m in st.session_state.chat_history[:-1][-6:]:
+                        if m["role"] == "user":
+                            lc_msgs.append(HumanMessage(content=m["content"]))
+                        else:
+                            lc_msgs.append(AIMessage(content=m["content"]))
+                    lc_msgs.append(HumanMessage(content=user_content))
+
+                    resp   = llm.invoke(lc_msgs)
+                    answer = resp.content
+                    engine_used = "LangChain · claude-sonnet-4-6"
+                except ImportError:
+                    pass
+                except Exception as e:
+                    pass
+
+                if not answer:
+                    try:
+                        import urllib.request
+                        payload = _json.dumps({
+                            "model": "claude-sonnet-4-6",
+                            "max_tokens": 800,
+                            "system": sys_prompt,
+                            "messages": history_msgs
+                        }).encode()
+                        req = urllib.request.Request(
+                            "https://api.anthropic.com/v1/messages",
+                            data=payload,
+                            headers={"x-api-key": _api_key,
+                                     "anthropic-version": "2023-06-01",
+                                     "content-type": "application/json"})
+                        with urllib.request.urlopen(req, timeout=30) as r:
+                            data = _json.loads(r.read())
+                            answer = data["content"][0]["text"]
+                            engine_used = "Anthropic API · claude-sonnet-4-6"
+                    except Exception as e:
+                        answer = None
+
+            # ── Rule-based fallback ──────────────────────────────────────
+            if not answer:
+                q_lower = last_q.lower()
+
+                # Route to specific knowledge areas
+                if any(x in q_lower for x in ["pwr-001","pwr001","undervoltage","rectifier"]):
+                    answer = """**PWR-001 — Rectifier Undervoltage**
+
+**Cause:** Mains input failure, rectifier module fault, or MCB tripped.
+
+**Immediate actions:**
+1. Check OMC telemetry — verify AC input voltage
+2. If AC nominal → attempt remote rectifier reset via OMC
+3. If AC fault → contact grid operator, activate generator
+
+**Threshold:** Triggers when rectifier output drops below 44V DC.
+**Correlated alarm:** PWR-004 (mains failure) is often co-active.
+**SLA:** Dispatch within 4h if remote reset unsuccessful.
+
+*Source: [ALM-DICT-001], [SOP-PWR-001]*"""
+
+                elif any(x in q_lower for x in ["cool-001","fan","cooling fan","bearing"]):
+                    answer = """**COOL-001 — Fan Failure**
+
+**Threshold:** Fan speed drops below 2,000 RPM (nominal 3,200 RPM).
+**Cause:** Bearing wear, motor failure, blade obstruction.
+
+**Immediate action (do this first):**
+Reduce TX power by 50% via OMC to cut heat generation by ~1.2 kW.
+
+**Then:**
+1. Confirm with fan tachometer reading in OMC diagnostics
+2. Dispatch field engineer within 4 hours
+3. Bring spares: 2x cooling fans, 1x air filter
+
+**Bearing replacement interval:** 40,000 operating hours.
+*Source: [ALM-DICT-003], [MAN-THM-001], [SOP-THM-001]*"""
+
+                elif any(x in q_lower for x in ["vswr","pim","connector","rf-001"]):
+                    answer = """**VSWR / PIM Investigation**
+
+**VSWR alarm RF-001 threshold:** VSWR > 2.0:1
+
+**Gradual increase (>7 days):** Connector corrosion — schedule inspection within 48h.
+**Sudden step change:** Mechanical damage — dispatch within 4h.
+
+**PIM test procedure:**
+1. Connect PIM analyser to antenna port
+2. Apply 2×43W test signal
+3. Pass threshold: **below -150 dBc**
+4. If fail: inspect and replace connectors, apply self-amalgamating tape
+
+**Tools needed:** Torque wrench (25 Nm for 7/16 DIN), PIM analyser, IPA spray.
+**Time per sector:** 45–90 minutes.
+
+*Source: [SOP-RF-001], [SOP-RF-002], [FMEA-002]*"""
+
+                elif "rul" in q_lower and any(x in q_lower for x in ["14","14.7","urgent","critical"]):
+                    answer = """**RUL 14.7 cycles — CRITICAL**
+
+This is a **Tier 3 alert** requiring immediate action.
+
+**Interpretation:**
+- 14.7 cycles remaining ≈ 14.7 operational hours
+- Confidence interval: [11.7 – 17.7] cycles
+- Urgency: **CRITICAL** — SLA 4 hours
+
+**Required actions (in order):**
+1. ✅ AUTO — Query CMDB for current alarm status
+2. ✅ AUTO — Open Critical monitoring ticket
+3. ⏱ TIMEOUT — Dispatch field engineer within 4h
+
+**Do not wait for the alarm to trigger.** The predictive model has
+identified degradation 14 cycles before expected failure.
+
+*Model: XGBoost v2 Final · RMSE=12.77 · R²=0.904*"""
+
+                elif any(x in q_lower for x in ["g.826","esr","backhaul","bkh-001","latency"]):
+                    answer = """**ITU-T G.826 Backhaul Performance**
+
+**ESR (Errored Second Ratio) objective:** < 0.04 (4%) per month
+**SESR (Severely Errored Second Ratio):** < 0.002 (0.2%) per month
+**BBER (Background Block Error Ratio):** < 3×10⁻⁴ per month
+
+**BKH-001 triggers when:** Latency exceeds 10ms.
+
+**Investigation path:**
+- Fibre site → OTDR test, locate splice event > 0.3 dB loss
+- Microwave site → RSL trend check, alignment verification
+
+**ESR trending toward 1%** = degraded link requiring investigation.
+*Source: [SPEC-ITU-001], [SOP-BKH-001], [SOP-BKH-002]*"""
+
+                elif any(x in q_lower for x in ["bbu","software upgrade","upgrade"]):
+                    answer = """**BBU Software Upgrade Procedure**
+
+**Duration:** 15–20 minutes (plus 30 min KPI recovery verification)
+**Best time:** 02:00–04:00 local (lowest traffic)
+**Pre-condition:** Traffic below 20% of peak
+
+**Steps:**
+1. Export configuration backup via OMC
+2. Check compatibility matrix in vendor portal
+3. Download package to OMC staging server
+4. Schedule upgrade in OMC maintenance scheduler
+5. Monitor progress (~15–20 min)
+6. Verify all processes nominal
+7. Confirm KPI recovery within 30 minutes
+
+**Rollback:** Available in 10 minutes if KPIs don't recover.
+*Source: [SOP-BBU-003]*"""
+
+                else:
+                    # Generic answer using RAG context titles
+                    docs = [c["citation_ref"] + " — " + c["title"]
+                            for c in _bundle.get("chunks",[])]
+                    doc_list = "\n".join(f"- {d}" for d in docs[:3])
+                    answer = f"""Based on the knowledge base, here is what I found relevant to your question:
+
+{doc_list if doc_list else "No specific documents matched."}
+
+For a full answer with Claude AI, add your **ANTHROPIC_API_KEY** in:
+Streamlit Cloud → App Settings → Secrets:
+```
+ANTHROPIC_API_KEY = "sk-ant-..."
+USE_LLM = "true"
+```
+This enables real-time responses from Claude with full context reasoning."""
+
+                engine_used = "Rule-based · Add API key for Claude"
+
+        # Store response
+        # Format markdown-style bold for HTML
+        html_answer = answer.replace("\n", "<br>")
+        html_answer = _re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html_answer)
+        html_answer = _re.sub(r'`(.*?)`', r'<code style="background:#21262d;padding:1px 4px;border-radius:3px;font-family:IBM Plex Mono">\1</code>', html_answer)
+
+        st.session_state.chat_history.append({
+            "role": "assistant",
+            "content": html_answer,
+            "engine": engine_used
+        })
+        st.session_state.chat_thinking = False
+        st.rerun()
+
+    # ── Chat input ───────────────────────────────────────────────────────
+    st.markdown('<div class="sh">YOUR QUESTION</div>', unsafe_allow_html=True)
+
+    with st.form("chat_form", clear_on_submit=True):
+        col_inp, col_btn = st.columns([5, 1])
+        with col_inp:
+            user_input = st.text_input(
+                "Ask a maintenance question",
+                placeholder="e.g. What does COOL-003 mean? | What spare parts for fan replacement? | Is RUL 18 cycles urgent?",
+                label_visibility="collapsed")
+        with col_btn:
+            submitted = st.form_submit_button("Send", use_container_width=True)
+
+        if submitted and user_input.strip():
+            st.session_state.chat_history.append({
+                "role": "user", "content": user_input.strip()})
+            st.session_state.chat_thinking = True
+            st.rerun()
+
+    # ── Clear chat button ────────────────────────────────────────────────
+    if st.session_state.chat_history:
+        if st.button("Clear conversation", key="clear_chat"):
+            st.session_state.chat_history = []
+            st.session_state.chat_thinking = False
+            st.rerun()
+
+    # ── Suggested follow-up topics ───────────────────────────────────────
+    if not st.session_state.chat_history:
+        sh("WHAT CAN I HELP WITH")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown("""
+            <div class="ec">
+              <div style="color:#58a6ff;font-weight:600;margin-bottom:.4rem">Alarm Codes</div>
+              <div style="color:#7d8590;font-size:.75rem;line-height:1.6">
+                PWR-001 · PWR-004<br>COOL-001 · COOL-003<br>
+                RF-001 · RF-002<br>BKH-001 · BBU-CPU-001
+              </div>
+            </div>""", unsafe_allow_html=True)
+        with c2:
+            st.markdown("""
+            <div class="ec">
+              <div style="color:#39c5cf;font-weight:600;margin-bottom:.4rem">Procedures</div>
+              <div style="color:#7d8590;font-size:.75rem;line-height:1.6">
+                Fan replacement<br>Connector inspection<br>
+                OTDR testing<br>BBU software upgrade
+              </div>
+            </div>""", unsafe_allow_html=True)
+        with c3:
+            st.markdown("""
+            <div class="ec">
+              <div style="color:#bc8cff;font-weight:600;margin-bottom:.4rem">RUL Interpretation</div>
+              <div style="color:#7d8590;font-size:.75rem;line-height:1.6">
+                Critical: RUL &le; 20 cycles<br>Warning: RUL 20–50<br>
+                Monitor: RUL &gt; 50<br>Confidence intervals
+              </div>
+            </div>""", unsafe_allow_html=True)
 
 # FOOTER
 st.markdown(f"""
