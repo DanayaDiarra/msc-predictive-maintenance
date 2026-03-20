@@ -898,18 +898,38 @@ elif pk == "Engineer Chatbot":
         # Fallback to environment variable (local/Colab)
         return os.environ.get(key, default)
 
-    _api_key = _get_secret("ANTHROPIC_API_KEY")
+    # Try multiple API key formats (prioritize free options)
+    _api_key = _get_secret("DEEPSEEK_API_KEY", "")
+    _api_key = _get_secret("OPENROUTER_API_KEY", "") if not _api_key else _api_key
+    _api_key = _get_secret("ANTHROPIC_API_KEY", "") if not _api_key else _api_key  # fallback
     _use_llm  = _get_secret("USE_LLM", "false").lower() == "true"
 
-    # Debug status — shows key detection result
+    # Determine which provider and model to use
     if _api_key:
+        if _get_secret("DEEPSEEK_API_KEY", ""):
+            provider = "DeepSeek (free)"
+            model = "deepseek-chat"
+            base_url = "https://api.deepseek.com"
+            key_type = "DeepSeek"
+        elif _get_secret("OPENROUTER_API_KEY", ""):
+            provider = "OpenRouter (free)"
+            model = "deepseek/deepseek-chat-v3-0324:free"
+            base_url = "https://openrouter.ai/api/v1"
+            key_type = "OpenRouter"
+        else:
+            provider = "Anthropic (paid)"
+            model = "claude-sonnet-4-6"
+            base_url = None
+            key_type = "Anthropic"
+        
         key_preview = _api_key[:12] + "..." + _api_key[-4:]
         st.markdown(f"""
         <div style="background:#0d1117;border:1px solid #3fb95055;border-radius:6px;
              padding:.5rem 1rem;margin-bottom:.8rem;font-family:'IBM Plex Mono',monospace;
              font-size:.70rem;color:#3fb950">
           API key detected: <span style="color:#7d8590">{key_preview}</span>
-          &nbsp;·&nbsp; Model: claude-sonnet-4-6
+          &nbsp;·&nbsp; Provider: <span style="color:#7d8590">{provider}</span>
+          &nbsp;·&nbsp; Model: <span style="color:#7d8590">{model}</span>
           &nbsp;·&nbsp; <span style="color:#3fb950">Ready</span>
         </div>""", unsafe_allow_html=True)
     else:
@@ -919,7 +939,11 @@ elif pk == "Engineer Chatbot":
              font-family:'IBM Plex Mono',monospace">
           No API key found in st.secrets or os.environ &nbsp;·&nbsp;
           Rule-based answers active &nbsp;·&nbsp;
-          Add ANTHROPIC_API_KEY in Streamlit Cloud → Settings → Secrets
+          Add DEEPSEEK_API_KEY or OPENROUTER_API_KEY in Streamlit Cloud → Settings → Secrets
+          <br><br>
+          <b>🔑 Get FREE API keys:</b><br>
+          • <a href="https://platform.deepseek.com/" style="color:#f0b429">DeepSeek</a> — 5M free tokens<br>
+          • <a href="https://openrouter.ai/" style="color:#f0b429">OpenRouter</a> — Completely free DeepSeek model
         </div>""", unsafe_allow_html=True)
 
     if _api_key:
@@ -928,7 +952,7 @@ elif pk == "Engineer Chatbot":
              font-family:'IBM Plex Mono',monospace;font-size:.72rem">
           <span style="width:8px;height:8px;background:#3fb950;border-radius:50%;
                 display:inline-block"></span>
-          <span style="color:#3fb950">Claude API connected</span>
+          <span style="color:#3fb950">{provider} connected</span>
           <span style="color:#30363d;margin-left:.5rem">·</span>
           <span style="color:#7d8590">Ask anything about maintenance, alarms, procedures, RUL scores</span>
         </div>""", unsafe_allow_html=True)
@@ -938,7 +962,7 @@ elif pk == "Engineer Chatbot":
              padding:.7rem 1rem;margin-bottom:.8rem;font-size:.78rem;color:#f0b429;
              font-family:'IBM Plex Mono',monospace">
           Rule-based mode active &nbsp;·&nbsp;
-          Set ANTHROPIC_API_KEY in Streamlit secrets for full Claude responses
+          Set DEEPSEEK_API_KEY or OPENROUTER_API_KEY in Streamlit secrets for full AI responses
         </div>""", unsafe_allow_html=True)
 
     # ── Quick question pills ─────────────────────────────────────────────
@@ -1004,7 +1028,7 @@ elif pk == "Engineer Chatbot":
             # Parse structured response if JSON
             content = msg["content"]
             engine  = msg.get("engine","")
-            eng_col = "#39c5cf" if "langchain" in engine or "claude" in engine else "#7d8590"
+            eng_col = "#39c5cf" if "deepseek" in engine.lower() or "openrouter" in engine.lower() else "#7d8590"
 
             st.markdown(f"""
             <div style="display:flex;justify-content:flex-start;margin:.5rem 0;gap:.6rem">
@@ -1080,11 +1104,11 @@ RELEVANT KNOWLEDGE BASE CONTEXT:
 Answer the question using the context above where relevant.
 Cite sources as [DOC-ID]. Be direct and practical."""
 
-            # ── Try LangChain first ──────────────────────────────────────
+            # ── Try API call ──────────────────────────────────────
             answer = None
             engine_used = ""
 
-            if _api_key:
+            if _api_key and _use_llm:
                 # Strip HTML tags from history messages
                 def _strip_html(text):
                     return _re.sub(r'<[^>]+>', ' ', str(text)).strip()
@@ -1108,52 +1132,55 @@ Cite sources as [DOC-ID]. Be direct and practical."""
                     )
                 })
 
-                # ── Try anthropic SDK first (most reliable) ──────────────
+                # ── Try OpenAI-compatible APIs (DeepSeek/OpenRouter) ──
                 try:
-                    import anthropic
-                    client = anthropic.Anthropic(api_key=_api_key)
-                    response = client.messages.create(
-                        model="claude-haiku-4-5-20251001",
-                        max_tokens=1000,
-                        system=sys_prompt,
-                        messages=clean_msgs
-                    )
-                    answer      = response.content[0].text
-                    engine_used = "Anthropic SDK · claude-haiku-4-5"
-                except ImportError:
-                    pass
-                except Exception as e:
-                    answer      = f"SDK error: {str(e)[:150]}"
-                    engine_used = "Error"
-
-                # ── Try LangChain fallback ───────────────────────────────
-                if not answer or answer.startswith("SDK error"):
-                    try:
-                        from langchain_anthropic import ChatAnthropic
-                        from langchain_core.messages import (
-                            SystemMessage, HumanMessage, AIMessage)
-
-                        llm = ChatAnthropic(
-                            model="claude-haiku-4-5-20251001",
+                    from openai import OpenAI
+                    
+                    if key_type == "DeepSeek":
+                        client = OpenAI(
                             api_key=_api_key,
+                            base_url="https://api.deepseek.com"
+                        )
+                        model_name = "deepseek-chat"
+                    elif key_type == "OpenRouter":
+                        client = OpenAI(
+                            base_url="https://openrouter.ai/api/v1",
+                            api_key=_api_key,
+                        )
+                        model_name = "deepseek/deepseek-chat-v3-0324:free"
+                    else:
+                        # Fallback to Anthropic
+                        import anthropic
+                        anthro_client = anthropic.Anthropic(api_key=_api_key)
+                        response = anthro_client.messages.create(
+                            model="claude-3-haiku-20240307",
                             max_tokens=1000,
-                            temperature=0.3)
-
-                        lc_msgs = [SystemMessage(content=sys_prompt)]
-                        for m in clean_msgs[:-1]:
-                            if m["role"] == "user":
-                                lc_msgs.append(HumanMessage(content=m["content"]))
-                            else:
-                                lc_msgs.append(AIMessage(content=m["content"]))
-                        lc_msgs.append(HumanMessage(content=clean_msgs[-1]["content"]))
-
-                        resp        = llm.invoke(lc_msgs)
-                        answer      = resp.content
-                        engine_used = "LangChain · claude-haiku-4-5"
-                    except Exception as e:
-                        if not answer or answer.startswith("SDK error"):
-                            answer      = f"Error: {str(e)[:150]}"
-                            engine_used = "Error"
+                            system=sys_prompt,
+                            messages=clean_msgs
+                        )
+                        answer = response.content[0].text
+                        engine_used = "Anthropic Claude 3 Haiku"
+                    
+                    # If using OpenAI-compatible client
+                    if key_type in ["DeepSeek", "OpenRouter"]:
+                        response = client.chat.completions.create(
+                            model=model_name,
+                            messages=[
+                                {"role": "system", "content": sys_prompt},
+                                *clean_msgs
+                            ],
+                            temperature=0.3,
+                            max_tokens=1000
+                        )
+                        answer = response.choices[0].message.content
+                        engine_used = f"{key_type} · {model_name}"
+                        
+                except ImportError:
+                    answer = "OpenAI library not installed. Run: pip install openai"
+                    engine_used = "Error"
+                except Exception as e:
+                    answer = f"API error: {str(e)[:150]}"
+                    engine_used = "Error"
 
             # ── Rule-based fallback ──────────────────────────────────────
             if not answer:
@@ -1276,55 +1303,8 @@ identified degradation 14 cycles before expected failure.
 
 {doc_list if doc_list else "No specific documents matched."}
 
-For a full answer with Claude AI, add your **ANTHROPIC_API_KEY** in:
+For a full answer with AI, add your **DEEPSEEK_API_KEY** or **OPENROUTER_API_KEY** in:
 Streamlit Cloud → App Settings → Secrets:
-```
-ANTHROPIC_API_KEY = "sk-ant-..."
-USE_LLM = "true"
-```
-This enables real-time responses from Claude with full context reasoning."""
-
-                engine_used = "Rule-based · Add API key for Claude"
-
-        # Store response
-        # Format markdown-style bold for HTML
-        html_answer = answer.replace("\n", "<br>")
-        html_answer = _re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html_answer)
-        html_answer = _re.sub(r'`(.*?)`', r'<code style="background:#21262d;padding:1px 4px;border-radius:3px;font-family:IBM Plex Mono">\1</code>', html_answer)
-
-        st.session_state.chat_history.append({
-            "role": "assistant",
-            "content": html_answer,
-            "engine": engine_used
-        })
-        st.session_state.chat_thinking = False
-        st.rerun()
-
-    # ── Chat input ───────────────────────────────────────────────────────
-    st.markdown('<div class="sh">YOUR QUESTION</div>', unsafe_allow_html=True)
-
-    with st.form("chat_form", clear_on_submit=True):
-        col_inp, col_btn = st.columns([5, 1])
-        with col_inp:
-            user_input = st.text_input(
-                "Ask a maintenance question",
-                placeholder="e.g. What does COOL-003 mean? | What spare parts for fan replacement? | Is RUL 18 cycles urgent?",
-                label_visibility="collapsed")
-        with col_btn:
-            submitted = st.form_submit_button("Send", use_container_width=True)
-
-        if submitted and user_input.strip():
-            st.session_state.chat_history.append({
-                "role": "user", "content": user_input.strip()})
-            st.session_state.chat_thinking = True
-            st.rerun()
-
-    # ── Clear chat button ────────────────────────────────────────────────
-    if st.session_state.chat_history:
-        if st.button("Clear conversation", key="clear_chat"):
-            st.session_state.chat_history = []
-            st.session_state.chat_thinking = False
-            st.rerun()
 
     # ── Suggested follow-up topics ───────────────────────────────────────
     if not st.session_state.chat_history:
