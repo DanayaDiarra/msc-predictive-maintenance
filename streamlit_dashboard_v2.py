@@ -875,469 +875,315 @@ elif pk == "Ablation Study":
 
 # ENGINEER CHATBOT
 elif pk == "Engineer Chatbot":
-    import os, json as _json, re as _re
+    import os as _os, json as _json, re as _re
 
-    # ── Session state for chat history ──────────────────────────────────
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-    if "chat_thinking" not in st.session_state:
-        st.session_state.chat_thinking = False
+    if "chat_history"  not in st.session_state: st.session_state.chat_history  = []
+    if "chat_thinking" not in st.session_state: st.session_state.chat_thinking = False
 
-    # ── Page header ──────────────────────────────────────────────────────
     sh("ENGINEER CHATBOT — ASK MAINTENANCE QUESTIONS")
 
-    # Read secrets — st.secrets for Streamlit Cloud, os.environ for local/Colab
-    def _get_secret(key, default=""):
-        # Try st.secrets first (Streamlit Cloud)
+    def _gsec(key, default=""):
         try:
-            val = st.secrets.get(key, "")
-            if val:
-                return val
+            v = st.secrets.get(key, "")
+            if v: return v
         except Exception:
             pass
-        # Fallback to environment variable (local/Colab)
-        return os.environ.get(key, default)
+        return _os.environ.get(key, default)
 
-    # Try multiple API key formats (prioritize free options)
-    _api_key = _get_secret("DEEPSEEK_API_KEY", "")
-    _api_key = _get_secret("OPENROUTER_API_KEY", "") if not _api_key else _api_key
-    _api_key = _get_secret("ANTHROPIC_API_KEY", "") if not _api_key else _api_key  # fallback
-    _use_llm  = _get_secret("USE_LLM", "false").lower() == "true"
+    _or_key  = _gsec("OPENROUTER_API_KEY")
+    _ds_key  = _gsec("DEEPSEEK_API_KEY")
+    _ant_key = _gsec("ANTHROPIC_API_KEY")
 
-    # Determine which provider and model to use
-    if _api_key:
-        if _get_secret("DEEPSEEK_API_KEY", ""):
-            provider = "DeepSeek (free)"
-            model = "deepseek-chat"
-            base_url = "https://api.deepseek.com"
-            key_type = "DeepSeek"
-        elif _get_secret("OPENROUTER_API_KEY", ""):
-            provider = "OpenRouter (free)"
-            model = "deepseek/deepseek-chat-v3-0324:free"
-            base_url = "https://openrouter.ai/api/v1"
-            key_type = "OpenRouter"
-        else:
-            provider = "Anthropic (paid)"
-            model = "claude-sonnet-4-6"
-            base_url = None
-            key_type = "Anthropic"
-        
-        key_preview = _api_key[:12] + "..." + _api_key[-4:]
+    if _or_key:
+        _provider = "OpenRouter (free DeepSeek)"
+        _model    = "deepseek/deepseek-chat-v3-0324:free"
+        _key      = _or_key
+        _base_url = "https://openrouter.ai/api/v1"
+        _sdk      = "openai"
+    elif _ds_key:
+        _provider = "DeepSeek"
+        _model    = "deepseek-chat"
+        _key      = _ds_key
+        _base_url = "https://api.deepseek.com"
+        _sdk      = "openai"
+    elif _ant_key:
+        _provider = "Anthropic"
+        _model    = "claude-haiku-4-5-20251001"
+        _key      = _ant_key
+        _base_url = None
+        _sdk      = "anthropic"
+    else:
+        _key = None
+        _provider = _model = _sdk = ""
+
+    if _key:
+        _kp = _key[:10] + "..." + _key[-4:]
         st.markdown(f"""
         <div style="background:#0d1117;border:1px solid #3fb95055;border-radius:6px;
-             padding:.5rem 1rem;margin-bottom:.8rem;font-family:'IBM Plex Mono',monospace;
-             font-size:.70rem;color:#3fb950">
-          API key detected: <span style="color:#7d8590">{key_preview}</span>
-          &nbsp;·&nbsp; Provider: <span style="color:#7d8590">{provider}</span>
-          &nbsp;·&nbsp; Model: <span style="color:#7d8590">{model}</span>
-          &nbsp;·&nbsp; <span style="color:#3fb950">Ready</span>
+             padding:.5rem 1rem;margin-bottom:.8rem;font-family:'IBM Plex Mono',monospace;font-size:.70rem">
+          <span style="color:#3fb950">API key detected</span>
+          &nbsp;·&nbsp; <span style="color:#7d8590">{_provider}</span>
+          &nbsp;·&nbsp; <span style="color:#7d8590">{_model}</span>
+          &nbsp;·&nbsp; <span style="color:#30363d">{_kp}</span>
         </div>""", unsafe_allow_html=True)
     else:
         st.markdown("""
         <div style="background:#1c2333;border:1px solid #f0b42944;border-radius:6px;
              padding:.7rem 1rem;margin-bottom:.8rem;font-size:.78rem;color:#f0b429;
              font-family:'IBM Plex Mono',monospace">
-          No API key found in st.secrets or os.environ &nbsp;·&nbsp;
-          Rule-based answers active &nbsp;·&nbsp;
-          Add DEEPSEEK_API_KEY or OPENROUTER_API_KEY in Streamlit Cloud → Settings → Secrets
-          <br><br>
-          <b>🔑 Get FREE API keys:</b><br>
-          • <a href="https://platform.deepseek.com/" style="color:#f0b429">DeepSeek</a> — 5M free tokens<br>
-          • <a href="https://openrouter.ai/" style="color:#f0b429">OpenRouter</a> — Completely free DeepSeek model
+          No API key found — rule-based answers active<br><br>
+          Add a FREE key in Streamlit Cloud settings → Secrets:<br>
+          OPENROUTER_API_KEY = "sk-or-..."  (openrouter.ai — 100% free DeepSeek)<br>
+          DEEPSEEK_API_KEY = "sk-..."  (platform.deepseek.com — 5M free tokens)
         </div>""", unsafe_allow_html=True)
-
-    if _api_key:
-        st.markdown(f"""
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:.8rem;
-             font-family:'IBM Plex Mono',monospace;font-size:.72rem">
-          <span style="width:8px;height:8px;background:#3fb950;border-radius:50%;
-                display:inline-block"></span>
-          <span style="color:#3fb950">{provider} connected</span>
-          <span style="color:#30363d;margin-left:.5rem">·</span>
-          <span style="color:#7d8590">Ask anything about maintenance, alarms, procedures, RUL scores</span>
-        </div>""", unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div style="background:#1c2333;border:1px solid #f0b42944;border-radius:6px;
-             padding:.7rem 1rem;margin-bottom:.8rem;font-size:.78rem;color:#f0b429;
-             font-family:'IBM Plex Mono',monospace">
-          Rule-based mode active &nbsp;·&nbsp;
-          Set DEEPSEEK_API_KEY or OPENROUTER_API_KEY in Streamlit secrets for full AI responses
-        </div>""", unsafe_allow_html=True)
-
-    # ── Quick question pills ─────────────────────────────────────────────
-    st.markdown('<div class="sh">QUICK QUESTIONS — CLICK TO ASK</div>',
-                unsafe_allow_html=True)
 
     QUICK_QS = [
         "What does alarm PWR-001 mean and what should I do?",
         "How do I test for PIM on an antenna connector?",
         "Station FD002_47 has RUL 14.7 cycles. Is this urgent?",
-        "What spare parts do I need for a cooling fan replacement?",
+        "What spare parts for a cooling fan replacement?",
         "Explain the difference between COOL-001 and COOL-003.",
         "What is the ITU-T G.826 ESR threshold for backhaul?",
         "How long does a BBU software upgrade take?",
         "What causes gradual VSWR increase over 18 days?",
     ]
+    sh("QUICK QUESTIONS")
+    for row in [QUICK_QS[:4], QUICK_QS[4:]]:
+        for col, q in zip(st.columns(4), row):
+            lbl = (q[:38] + "…") if len(q) > 38 else q
+            if col.button(lbl, key="pill_" + q[:16], use_container_width=True):
+                st.session_state.chat_history.append({"role": "user", "content": q})
+                st.session_state.chat_thinking = True
+                st.rerun()
 
-    # Render pills in 2 rows of 4
-    row1, row2 = QUICK_QS[:4], QUICK_QS[4:]
-    cols1 = st.columns(4)
-    for col, q in zip(cols1, row1):
-        if col.button(q[:38]+"…" if len(q)>38 else q,
-                      key=f"pill_{q[:20]}", use_container_width=True):
-            st.session_state.chat_history.append({"role":"user","content":q})
-            st.session_state.chat_thinking = True
-            st.rerun()
-    cols2 = st.columns(4)
-    for col, q in zip(cols2, row2):
-        if col.button(q[:38]+"…" if len(q)>38 else q,
-                      key=f"pill_{q[:20]}", use_container_width=True):
-            st.session_state.chat_history.append({"role":"user","content":q})
-            st.session_state.chat_thinking = True
-            st.rerun()
-
-    st.markdown("""
-    <style>
-    /* Quick pill buttons */
-    div[data-testid="stButton"] > button {
-        font-size: .70rem !important;
-        padding: 4px 8px !important;
-        height: auto !important;
-        width: 100% !important;
-        white-space: normal !important;
-        text-align: left !important;
-        line-height: 1.3 !important;
-    }
-    </style>""", unsafe_allow_html=True)
-
-    # ── Chat history display ─────────────────────────────────────────────
     sh("CONVERSATION")
-
     for msg in st.session_state.chat_history:
         if msg["role"] == "user":
-            st.markdown(f"""
-            <div style="display:flex;justify-content:flex-end;margin:.5rem 0">
-              <div style="background:#1c2333;border:1px solid #39c5cf44;border-radius:10px
-                   10px 2px 10px;padding:.6rem 1rem;max-width:75%;font-size:.82rem;
-                   color:#e6edf3;font-family:'IBM Plex Sans',sans-serif">
-                {msg['content']}
-              </div>
-            </div>""", unsafe_allow_html=True)
+            st.markdown(
+                "<div style='display:flex;justify-content:flex-end;margin:.5rem 0'>"
+                "<div style='background:#1c2333;border:1px solid #39c5cf44;border-radius:10px 10px 2px 10px;"
+                "padding:.6rem 1rem;max-width:75%;font-size:.82rem;color:#e6edf3'>"
+                + msg["content"] + "</div></div>", unsafe_allow_html=True)
         else:
-            # Parse structured response if JSON
-            content = msg["content"]
-            engine  = msg.get("engine","")
-            eng_col = "#39c5cf" if "deepseek" in engine.lower() or "openrouter" in engine.lower() else "#7d8590"
+            ec = "#39c5cf" if any(
+                x in msg.get("engine", "").lower()
+                for x in ["deepseek", "openrouter", "claude", "haiku"]
+            ) else "#7d8590"
+            st.markdown(
+                f"<div style='display:flex;gap:.6rem;margin:.5rem 0'>"
+                f"<img src='{_LOGO_32}' width='24' height='24' style='margin-top:4px;flex-shrink:0'/>"
+                "<div style='background:#161b22;border:1px solid #30363d;border-radius:2px 10px 10px 10px;"
+                "padding:.8rem 1rem;max-width:82%;font-size:.82rem;color:#c9d1d9;line-height:1.65'>"
+                + msg["content"]
+                + f"<div style='margin-top:.4rem;font-family:IBM Plex Mono,monospace;"
+                  f"font-size:.64rem;color:{ec}'>{msg.get('engine','')}</div>"
+                + "</div></div>", unsafe_allow_html=True)
 
-            st.markdown(f"""
-            <div style="display:flex;justify-content:flex-start;margin:.5rem 0;gap:.6rem">
-              <img src="{_LOGO_32}" width="24" height="24"
-                   style="margin-top:4px;flex-shrink:0"/>
-              <div style="background:#161b22;border:1px solid #30363d;border-radius:2px
-                   10px 10px 10px;padding:.8rem 1rem;max-width:82%;font-size:.82rem;
-                   color:#c9d1d9;font-family:'IBM Plex Sans',sans-serif;line-height:1.65">
-                {content}
-                <div style="margin-top:.5rem;font-family:'IBM Plex Mono',monospace;
-                     font-size:.64rem;color:{eng_col}">{engine}</div>
-              </div>
-            </div>""", unsafe_allow_html=True)
-
-    # ── Generate response if needed ──────────────────────────────────────
     if st.session_state.chat_thinking and st.session_state.chat_history:
         last_q = st.session_state.chat_history[-1]["content"]
-
         with st.spinner("Thinking..."):
-
-            # Build RAG context from corpus
-            rag_context = ""
-            _bundle = {"chunks": []}   # safe default — prevents NameError
+            rag_ctx = ""
+            _bundle = {"chunks": []}
             try:
                 from rag_pipeline import RAGIndex, RAGPipeline, INDEX_DIR
-                from dataclasses import asdict as _asdict
-                _idx = RAGIndex(); _idx.load(INDEX_DIR)
-                _pipe = RAGPipeline(_idx)
-                _alert = {
-                    "alert_id": "CHAT", "station_id": "CHAT",
-                    "urgency": "Warning",
-                    "primary_subsystem": "general",
-                    "fault_hypothesis": last_q,
-                    "rag_query_primary": last_q,
-                    "rag_query_equipment": last_q,
-                    "rag_query_keywords": ["maintenance","telecom","BTS"],
-                }
-                _bundle = _asdict(_pipe.retrieve(_alert))
-                rag_context = "\n\n".join([
-                    f"[{c['citation_ref']}] {c['title']}\n{c['text'][:400]}"
+                from dataclasses import asdict as _da
+                _idx = RAGIndex()
+                _idx.load(INDEX_DIR)
+                _bundle = _da(RAGPipeline(_idx).retrieve({
+                    "alert_id": "CHAT", "station_id": "CHAT", "urgency": "Warning",
+                    "primary_subsystem": "general", "fault_hypothesis": last_q,
+                    "rag_query_primary": last_q, "rag_query_equipment": last_q,
+                    "rag_query_keywords": ["maintenance", "telecom", "BTS"],
+                }))
+                rag_ctx = "\n\n".join(
+                    "[" + c["citation_ref"] + "] " + c["title"] + "\n" + c["text"][:400]
                     for c in _bundle["chunks"]
-                ])
+                )
             except Exception:
-                rag_context = "No RAG context available."
+                rag_ctx = "No RAG context available."
 
-            # Build conversation messages for API
-            sys_prompt = """You are an expert telecom base station maintenance engineer
-and AI assistant integrated into a predictive maintenance NOC dashboard.
+            sys_p = (
+                "You are an expert telecom base station maintenance engineer. "
+                "Answer questions from field engineers about alarm codes, maintenance procedures, "
+                "RUL interpretation, equipment specs, and troubleshooting. "
+                "Be specific, cite sources as [DOC-ID], keep it concise."
+            )
+            user_msg = (
+                "QUESTION: " + last_q + "\n\n"
+                "KNOWLEDGE BASE:\n" + rag_ctx[:2000] + "\n\n"
+                "Answer using the context. Cite [DOC-ID]. Be direct."
+            )
 
-Your role: answer questions from field engineers and NOC operators about:
-- Alarm codes, their causes and remediation steps
-- Maintenance procedures (SOPs, tools, spare parts, durations)
-- Interpretation of RUL (Remaining Useful Life) predictions
-- Equipment specifications and thresholds
-- Troubleshooting guidance for BTS power, thermal, RF, backhaul, baseband
+            def _clean(text):
+                return _re.sub(r"<[^>]+>", " ", str(text)).strip()
 
-RULES:
-1. Be specific and actionable — give exact alarm codes, thresholds, part names
-2. Cite your sources in [brackets] when evidence comes from the knowledge base
-3. If the question refers to a specific station RUL, interpret it:
-   RUL <= 20 cycles = Critical (act within 4h)
-   RUL 20-50 cycles = Warning (act within 48h)
-   RUL > 50 cycles = Monitor (routine maintenance)
-4. Structure longer answers with clear sections
-5. Keep answers concise — engineers are in the field, not reading essays
-6. If you don't know something, say so clearly"""
+            prev = []
+            for m in st.session_state.chat_history[:-1][-6:]:
+                r = m["role"]
+                c = _clean(m["content"])
+                if c and r in ("user", "assistant"):
+                    prev.append({"role": r, "content": c})
+            prev.append({"role": "user", "content": user_msg})
 
-            user_content = f"""QUESTION: {last_q}
-
-RELEVANT KNOWLEDGE BASE CONTEXT:
-{rag_context}
-
-Answer the question using the context above where relevant.
-Cite sources as [DOC-ID]. Be direct and practical."""
-
-            # ── Try API call ──────────────────────────────────────
             answer = None
-            engine_used = ""
+            engine_used = "Rule-based"
 
-            if _api_key and _use_llm:
-                # Strip HTML tags from history messages
-                def _strip_html(text):
-                    return _re.sub(r'<[^>]+>', ' ', str(text)).strip()
-
-                # Build clean message list for API
-                clean_msgs = []
-                for m in st.session_state.chat_history[:-1][-6:]:
-                    role = m["role"]
-                    content = _strip_html(m["content"])
-                    if content and role in ("user", "assistant"):
-                        clean_msgs.append({"role": role, "content": content})
-
-                # Current question with RAG context
-                clean_msgs.append({
-                    "role": "user",
-                    "content": (
-                        f"QUESTION: {last_q}\n\n"
-                        f"KNOWLEDGE BASE CONTEXT:\n{rag_context[:2000]}\n\n"
-                        "Answer using the context. Cite sources as [DOC-ID]. "
-                        "Be direct and practical."
-                    )
-                })
-
-                # ── Try OpenAI-compatible APIs (DeepSeek/OpenRouter) ──
+            if _key and _sdk == "openai":
                 try:
                     from openai import OpenAI
-                    
-                    if key_type == "DeepSeek":
-                        client = OpenAI(
-                            api_key=_api_key,
-                            base_url="https://api.deepseek.com"
-                        )
-                        model_name = "deepseek-chat"
-                    elif key_type == "OpenRouter":
-                        client = OpenAI(
-                            base_url="https://openrouter.ai/api/v1",
-                            api_key=_api_key,
-                        )
-                        model_name = "deepseek/deepseek-chat-v3-0324:free"
-                    else:
-                        # Fallback to Anthropic
-                        import anthropic
-                        anthro_client = anthropic.Anthropic(api_key=_api_key)
-                        response = anthro_client.messages.create(
-                            model="claude-3-haiku-20240307",
-                            max_tokens=1000,
-                            system=sys_prompt,
-                            messages=clean_msgs
-                        )
-                        answer = response.content[0].text
-                        engine_used = "Anthropic Claude 3 Haiku"
-                    
-                    # If using OpenAI-compatible client
-                    if key_type in ["DeepSeek", "OpenRouter"]:
-                        response = client.chat.completions.create(
-                            model=model_name,
-                            messages=[
-                                {"role": "system", "content": sys_prompt},
-                                *clean_msgs
-                            ],
-                            temperature=0.3,
-                            max_tokens=1000
-                        )
-                        answer = response.choices[0].message.content
-                        engine_used = f"{key_type} · {model_name}"
-                        
-                except ImportError:
-                    answer = "OpenAI library not installed. Run: pip install openai"
-                    engine_used = "Error"
+                    client = OpenAI(api_key=_key, base_url=_base_url)
+                    resp = client.chat.completions.create(
+                        model=_model, max_tokens=800, temperature=0.3,
+                        messages=[{"role": "system", "content": sys_p}] + prev,
+                    )
+                    answer = resp.choices[0].message.content
+                    engine_used = _provider + " · " + _model
                 except Exception as e:
-                    answer = f"API error: {str(e)[:150]}"
+                    answer = "API error: " + str(e)[:200]
+                    engine_used = "Error"
+            elif _key and _sdk == "anthropic":
+                try:
+                    import anthropic
+                    client = anthropic.Anthropic(api_key=_key)
+                    resp = client.messages.create(
+                        model=_model, max_tokens=800, system=sys_p, messages=prev
+                    )
+                    answer = resp.content[0].text
+                    engine_used = "Anthropic · " + _model
+                except Exception as e:
+                    answer = "API error: " + str(e)[:200]
                     engine_used = "Error"
 
-            # ── Rule-based fallback ──────────────────────────────────────
-            if not answer:
-                q_lower = last_q.lower()
-
-                # Route to specific knowledge areas
-                if any(x in q_lower for x in ["pwr-001","pwr001","undervoltage","rectifier"]):
-                    answer = """**PWR-001 — Rectifier Undervoltage**
-
-**Cause:** Mains input failure, rectifier module fault, or MCB tripped.
-
-**Immediate actions:**
-1. Check OMC telemetry — verify AC input voltage
-2. If AC nominal → attempt remote rectifier reset via OMC
-3. If AC fault → contact grid operator, activate generator
-
-**Threshold:** Triggers when rectifier output drops below 44V DC.
-**Correlated alarm:** PWR-004 (mains failure) is often co-active.
-**SLA:** Dispatch within 4h if remote reset unsuccessful.
-
-*Source: [ALM-DICT-001], [SOP-PWR-001]*"""
-
-                elif any(x in q_lower for x in ["cool-001","fan","cooling fan","bearing"]):
-                    answer = """**COOL-001 — Fan Failure**
-
-**Threshold:** Fan speed drops below 2,000 RPM (nominal 3,200 RPM).
-**Cause:** Bearing wear, motor failure, blade obstruction.
-
-**Immediate action (do this first):**
-Reduce TX power by 50% via OMC to cut heat generation by ~1.2 kW.
-
-**Then:**
-1. Confirm with fan tachometer reading in OMC diagnostics
-2. Dispatch field engineer within 4 hours
-3. Bring spares: 2x cooling fans, 1x air filter
-
-**Bearing replacement interval:** 40,000 operating hours.
-*Source: [ALM-DICT-003], [MAN-THM-001], [SOP-THM-001]*"""
-
-                elif any(x in q_lower for x in ["vswr","pim","connector","rf-001"]):
-                    answer = """**VSWR / PIM Investigation**
-
-**VSWR alarm RF-001 threshold:** VSWR > 2.0:1
-
-**Gradual increase (>7 days):** Connector corrosion — schedule inspection within 48h.
-**Sudden step change:** Mechanical damage — dispatch within 4h.
-
-**PIM test procedure:**
-1. Connect PIM analyser to antenna port
-2. Apply 2×43W test signal
-3. Pass threshold: **below -150 dBc**
-4. If fail: inspect and replace connectors, apply self-amalgamating tape
-
-**Tools needed:** Torque wrench (25 Nm for 7/16 DIN), PIM analyser, IPA spray.
-**Time per sector:** 45–90 minutes.
-
-*Source: [SOP-RF-001], [SOP-RF-002], [FMEA-002]*"""
-
-                elif "rul" in q_lower and any(x in q_lower for x in ["14","14.7","urgent","critical"]):
-                    answer = """**RUL 14.7 cycles — CRITICAL**
-
-This is a **Tier 3 alert** requiring immediate action.
-
-**Interpretation:**
-- 14.7 cycles remaining ≈ 14.7 operational hours
-- Confidence interval: [11.7 – 17.7] cycles
-- Urgency: **CRITICAL** — SLA 4 hours
-
-**Required actions (in order):**
-1. ✅ AUTO — Query CMDB for current alarm status
-2. ✅ AUTO — Open Critical monitoring ticket
-3. ⏱ TIMEOUT — Dispatch field engineer within 4h
-
-**Do not wait for the alarm to trigger.** The predictive model has
-identified degradation 14 cycles before expected failure.
-
-*Model: XGBoost v2 Final · RMSE=12.77 · R²=0.904*"""
-
-                elif any(x in q_lower for x in ["g.826","esr","backhaul","bkh-001","latency"]):
-                    answer = """**ITU-T G.826 Backhaul Performance**
-
-**ESR (Errored Second Ratio) objective:** < 0.04 (4%) per month
-**SESR (Severely Errored Second Ratio):** < 0.002 (0.2%) per month
-**BBER (Background Block Error Ratio):** < 3×10⁻⁴ per month
-
-**BKH-001 triggers when:** Latency exceeds 10ms.
-
-**Investigation path:**
-- Fibre site → OTDR test, locate splice event > 0.3 dB loss
-- Microwave site → RSL trend check, alignment verification
-
-**ESR trending toward 1%** = degraded link requiring investigation.
-*Source: [SPEC-ITU-001], [SOP-BKH-001], [SOP-BKH-002]*"""
-
-                elif any(x in q_lower for x in ["bbu","software upgrade","upgrade"]):
-                    answer = """**BBU Software Upgrade Procedure**
-
-**Duration:** 15–20 minutes (plus 30 min KPI recovery verification)
-**Best time:** 02:00–04:00 local (lowest traffic)
-**Pre-condition:** Traffic below 20% of peak
-
-**Steps:**
-1. Export configuration backup via OMC
-2. Check compatibility matrix in vendor portal
-3. Download package to OMC staging server
-4. Schedule upgrade in OMC maintenance scheduler
-5. Monitor progress (~15–20 min)
-6. Verify all processes nominal
-7. Confirm KPI recovery within 30 minutes
-
-**Rollback:** Available in 10 minutes if KPIs don't recover.
-*Source: [SOP-BBU-003]*"""
-
+            if not answer or answer.startswith("API error"):
+                q_lo = last_q.lower()
+                if any(x in q_lo for x in ["pwr-001", "undervoltage", "rectifier"]):
+                    answer = (
+                        "<strong>PWR-001 — Rectifier Undervoltage</strong><br><br>"
+                        "<strong>Cause:</strong> Mains failure, rectifier fault, or MCB tripped.<br><br>"
+                        "<strong>Actions:</strong><br>"
+                        "1. Verify AC input voltage via OMC telemetry<br>"
+                        "2. Attempt remote rectifier reset via OMC<br>"
+                        "3. Contact grid operator / activate generator if AC fault<br><br>"
+                        "<strong>Threshold:</strong> Below 44V DC.<br>"
+                        "<strong>SLA:</strong> Dispatch within 4h if reset fails.<br><br>"
+                        "<em>Source: [ALM-DICT-001], [SOP-PWR-001]</em>"
+                    )
+                elif any(x in q_lo for x in ["cool-001", "fan", "cooling", "bearing"]):
+                    answer = (
+                        "<strong>COOL-001 — Cooling Fan Failure</strong><br><br>"
+                        "<strong>Threshold:</strong> Fan speed &lt; 2,000 RPM (nominal 3,200 RPM).<br>"
+                        "<strong>Cause:</strong> Bearing wear, motor failure, blade obstruction.<br><br>"
+                        "<strong>Immediate:</strong> Reduce TX power 50% via OMC.<br>"
+                        "<strong>Spares:</strong> 2x cooling fans, 1x air filter.<br>"
+                        "<strong>Bearing interval:</strong> 40,000 operating hours.<br><br>"
+                        "<em>Source: [ALM-DICT-003], [MAN-THM-001], [SOP-THM-001]</em>"
+                    )
+                elif any(x in q_lo for x in ["vswr", "pim", "connector", "rf-001"]):
+                    answer = (
+                        "<strong>VSWR / PIM Investigation</strong><br><br>"
+                        "<strong>RF-001 threshold:</strong> VSWR &gt; 2.0:1<br><br>"
+                        "<strong>PIM test steps:</strong><br>"
+                        "1. Connect PIM analyser to antenna port<br>"
+                        "2. Apply 2x43W test signal<br>"
+                        "3. Pass: below &minus;150 dBc<br>"
+                        "4. Fail: replace connectors, torque to 25 Nm<br><br>"
+                        "<strong>Tools:</strong> Torque wrench, PIM analyser, IPA spray.<br><br>"
+                        "<em>Source: [SOP-RF-001], [SOP-RF-002]</em>"
+                    )
+                elif any(x in q_lo for x in ["g.826", "esr", "backhaul", "bkh"]):
+                    answer = (
+                        "<strong>ITU-T G.826 Backhaul Thresholds</strong><br><br>"
+                        "<strong>ESR:</strong> &lt;0.04 (4%) per month<br>"
+                        "<strong>SESR:</strong> &lt;0.002 (0.2%) per month<br>"
+                        "<strong>BBER:</strong> &lt;3x10&#8315;&#8308; per month<br><br>"
+                        "<strong>BKH-001:</strong> Latency &gt;10ms.<br>"
+                        "ESR trending toward 1% = investigate immediately.<br><br>"
+                        "<em>Source: [SPEC-ITU-001], [SOP-BKH-001]</em>"
+                    )
+                elif any(x in q_lo for x in ["bbu", "upgrade", "software"]):
+                    answer = (
+                        "<strong>BBU Software Upgrade</strong><br><br>"
+                        "<strong>Duration:</strong> 15-20 min + 30 min KPI recovery<br>"
+                        "<strong>Window:</strong> 02:00-04:00 local, &lt;20% traffic<br><br>"
+                        "<strong>Steps:</strong><br>"
+                        "1. Backup config via OMC<br>"
+                        "2. Check compatibility matrix<br>"
+                        "3. Download to OMC staging<br>"
+                        "4. Schedule upgrade task<br>"
+                        "5. Monitor 15-20 min<br>"
+                        "6. Verify KPI recovery 30 min<br><br>"
+                        "<strong>Rollback:</strong> 10 min via OMC.<br><br>"
+                        "<em>Source: [SOP-BBU-003]</em>"
+                    )
+                elif "14.7" in q_lo or ("rul" in q_lo and any(x in q_lo for x in ["critical", "urgent"])):
+                    answer = (
+                        "<strong>RUL 14.7 cycles — CRITICAL</strong><br><br>"
+                        "14.7 cycles remaining. CI: [11.7-17.7]. SLA: 4 hours.<br><br>"
+                        "<strong>Actions:</strong><br>"
+                        "1. AUTO — Query CMDB for alarm status<br>"
+                        "2. AUTO — Open Critical ticket<br>"
+                        "3. TIMEOUT — Dispatch engineer within 4h<br><br>"
+                        "Do not wait for alarm to trigger.<br><br>"
+                        "<em>XGBoost v2 Final · RMSE=12.77 · R2=0.904</em>"
+                    )
                 else:
-                    # Generic answer using RAG context titles
-                    docs = [c["citation_ref"] + " — " + c["title"]
-                            for c in _bundle.get("chunks",[])]
-                    doc_list = "\n".join(f"- {d}" for d in docs[:3])
-                    answer = f"""Based on the knowledge base, here is what I found relevant to your question:
+                    docs = " | ".join(
+                        c["citation_ref"] for c in _bundle.get("chunks", [])[:3]
+                    )
+                    answer = (
+                        "Related knowledge base: <em>" + (docs or "none matched") + "</em><br><br>"
+                        "For AI answers, add a free key in Streamlit Cloud settings:<br>"
+                        "<code>OPENROUTER_API_KEY = sk-or-...</code> (openrouter.ai — free)<br>"
+                        "<code>DEEPSEEK_API_KEY = sk-...</code> (platform.deepseek.com — free)"
+                    )
+                engine_used = "Rule-based"
 
-{doc_list if doc_list else "No specific documents matched."}
+            st.session_state.chat_history.append({
+                "role": "assistant",
+                "content": answer,
+                "engine": engine_used,
+            })
+            st.session_state.chat_thinking = False
+            st.rerun()
 
-For a full answer with AI, add your **DEEPSEEK_API_KEY** or **OPENROUTER_API_KEY** in:
-Streamlit Cloud → App Settings → Secrets:
+    sh("YOUR QUESTION")
+    with st.form("chat_form", clear_on_submit=True):
+        ci, cb = st.columns([5, 1])
+        with ci:
+            user_input = st.text_input(
+                "Ask", placeholder="e.g. What does COOL-003 mean?",
+                label_visibility="collapsed")
+        with cb:
+            submitted = st.form_submit_button("Send", use_container_width=True)
+        if submitted and user_input.strip():
+            st.session_state.chat_history.append({"role": "user", "content": user_input.strip()})
+            st.session_state.chat_thinking = True
+            st.rerun()
 
-    # ── Suggested follow-up topics ───────────────────────────────────────
+    if st.session_state.chat_history:
+        if st.button("Clear conversation", key="clear_chat"):
+            st.session_state.chat_history = []
+            st.session_state.chat_thinking = False
+            st.rerun()
+
     if not st.session_state.chat_history:
         sh("WHAT CAN I HELP WITH")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.markdown("""
-            <div class="ec">
-              <div style="color:#58a6ff;font-weight:600;margin-bottom:.4rem">Alarm Codes</div>
-              <div style="color:#7d8590;font-size:.75rem;line-height:1.6">
-                PWR-001 · PWR-004<br>COOL-001 · COOL-003<br>
-                RF-001 · RF-002<br>BKH-001 · BBU-CPU-001
-              </div>
-            </div>""", unsafe_allow_html=True)
-        with c2:
-            st.markdown("""
-            <div class="ec">
-              <div style="color:#39c5cf;font-weight:600;margin-bottom:.4rem">Procedures</div>
-              <div style="color:#7d8590;font-size:.75rem;line-height:1.6">
-                Fan replacement<br>Connector inspection<br>
-                OTDR testing<br>BBU software upgrade
-              </div>
-            </div>""", unsafe_allow_html=True)
-        with c3:
-            st.markdown("""
-            <div class="ec">
-              <div style="color:#bc8cff;font-weight:600;margin-bottom:.4rem">RUL Interpretation</div>
-              <div style="color:#7d8590;font-size:.75rem;line-height:1.6">
-                Critical: RUL &le; 20 cycles<br>Warning: RUL 20–50<br>
-                Monitor: RUL &gt; 50<br>Confidence intervals
-              </div>
-            </div>""", unsafe_allow_html=True)
-
+        for col, title, color, items in zip(
+            st.columns(3),
+            ["Alarm Codes", "Procedures", "RUL Interpretation"],
+            ["#58a6ff", "#39c5cf", "#bc8cff"],
+            [
+                ["PWR-001 · PWR-004", "COOL-001 · COOL-003", "RF-001 · RF-002", "BKH-001 · BBU-CPU-001"],
+                ["Fan replacement", "Connector inspection", "OTDR testing", "BBU software upgrade"],
+                ["Critical: RUL ≤ 20 cycles", "Warning: RUL 20-50", "Monitor: RUL > 50", "Confidence intervals"],
+            ],
+        ):
+            col.markdown(
+                f"<div class='ec'><div style='color:{color};font-weight:600;margin-bottom:.4rem'>"
+                f"{title}</div><div style='color:#7d8590;font-size:.75rem;line-height:1.7'>"
+                + "<br>".join(items) + "</div></div>",
+                unsafe_allow_html=True,
+            )
 # FOOTER
 st.markdown(f"""
 <div style="margin-top:2rem;padding-top:.8rem;border-top:1px solid #30363d;
