@@ -869,16 +869,29 @@ elif pk == "Engineer Chatbot":
     sh("ENGINEER CHATBOT — ASK MAINTENANCE QUESTIONS")
 
     def _gsec(key, default=""):
+        # Method 1: direct st.secrets key access (works in all Streamlit versions)
         try:
-            v = st.secrets.get(key, "")
-            if v: return v
+            val = st.secrets[key]
+            if val:
+                return str(val).strip()
         except Exception:
             pass
-        return _os.environ.get(key, default)
+        # Method 2: os.environ fallback (Colab/local)
+        val = _os.environ.get(key, default)
+        return str(val).strip() if val else default
 
     _or_key  = _gsec("OPENROUTER_API_KEY")
     _ds_key  = _gsec("DEEPSEEK_API_KEY")
     _ant_key = _gsec("ANTHROPIC_API_KEY")
+
+    # Debug — show what was found (remove after confirming it works)
+    with st.expander("Debug: secret detection", expanded=False):
+        st.code(
+            f"OPENROUTER_API_KEY: {'SET (' + _or_key[:8] + '...)' if _or_key else 'NOT FOUND'}\n"
+            f"DEEPSEEK_API_KEY:   {'SET (' + _ds_key[:8] + '...)' if _ds_key else 'NOT FOUND'}\n"
+            f"ANTHROPIC_API_KEY:  {'SET (' + _ant_key[:8] + '...)' if _ant_key else 'NOT FOUND'}\n"
+            f"st.secrets keys:    {list(st.secrets.keys()) if hasattr(st, 'secrets') else 'N/A'}"
+        )
 
     if _or_key:
         _provider = "OpenRouter (free DeepSeek)"
