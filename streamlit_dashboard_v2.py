@@ -994,6 +994,7 @@ elif pk == "Engineer Chatbot":
 
             # Build RAG context from corpus
             rag_context = ""
+            _bundle = {"chunks": []}   # safe default — prevents NameError
             try:
                 from rag_pipeline import RAGIndex, RAGPipeline, INDEX_DIR
                 from dataclasses import asdict as _asdict
@@ -1060,53 +1061,72 @@ Cite sources as [DOC-ID]. Be direct and practical."""
             engine_used = ""
 
             if _api_key:
+                # Strip HTML tags from previous assistant messages for API
+                def _strip_html(text):
+                    return _re.sub(r'<[^>]+>', '', text)
+
+                # Try LangChain first
                 try:
                     from langchain_anthropic import ChatAnthropic
                     from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
                     llm = ChatAnthropic(
-                        model="claude-sonnet-4-6",
+                        model="claude-sonnet-4-5",
                         api_key=_api_key,
-                        max_tokens=800,
+                        max_tokens=1000,
                         temperature=0.3)
 
                     lc_msgs = [SystemMessage(content=sys_prompt)]
                     for m in st.session_state.chat_history[:-1][-6:]:
+                        clean = _strip_html(m["content"])
                         if m["role"] == "user":
-                            lc_msgs.append(HumanMessage(content=m["content"]))
+                            lc_msgs.append(HumanMessage(content=clean))
                         else:
-                            lc_msgs.append(AIMessage(content=m["content"]))
+                            lc_msgs.append(AIMessage(content=clean))
                     lc_msgs.append(HumanMessage(content=user_content))
 
-                    resp   = llm.invoke(lc_msgs)
-                    answer = resp.content
-                    engine_used = "LangChain · claude-sonnet-4-6"
+                    resp        = llm.invoke(lc_msgs)
+                    answer      = resp.content
+                    engine_used = "LangChain · claude-sonnet-4-5"
                 except ImportError:
-                    pass
-                except Exception as e:
-                    pass
+                    pass  # langchain not installed — try direct API
+                except Exception:
+                    pass  # any other error — try direct API
 
+                # Direct Anthropic API fallback
                 if not answer:
                     try:
                         import urllib.request
+                        # Build clean message history
+                        clean_history = []
+                        for m in st.session_state.chat_history[:-1][-6:]:
+                            clean_history.append({
+                                "role": m["role"],
+                                "content": _strip_html(m["content"])
+                            })
+                        clean_history.append({"role": "user", "content": user_content})
+
                         payload = _json.dumps({
-                            "model": "claude-sonnet-4-6",
-                            "max_tokens": 800,
+                            "model": "claude-sonnet-4-5",
+                            "max_tokens": 1000,
                             "system": sys_prompt,
-                            "messages": history_msgs
+                            "messages": clean_history
                         }).encode()
                         req = urllib.request.Request(
                             "https://api.anthropic.com/v1/messages",
                             data=payload,
-                            headers={"x-api-key": _api_key,
-                                     "anthropic-version": "2023-06-01",
-                                     "content-type": "application/json"})
+                            headers={
+                                "x-api-key": _api_key,
+                                "anthropic-version": "2023-06-01",
+                                "content-type": "application/json"
+                            })
                         with urllib.request.urlopen(req, timeout=30) as r:
-                            data = _json.loads(r.read())
-                            answer = data["content"][0]["text"]
-                            engine_used = "Anthropic API · claude-sonnet-4-6"
+                            data        = _json.loads(r.read())
+                            answer      = data["content"][0]["text"]
+                            engine_used = "Anthropic API · claude-sonnet-4-5"
                     except Exception as e:
-                        answer = None
+                        answer      = f"API error: {str(e)[:120]}. Check your API key in Streamlit secrets."
+                        engine_used = "Error"
 
             # ── Rule-based fallback ──────────────────────────────────────
             if not answer:
