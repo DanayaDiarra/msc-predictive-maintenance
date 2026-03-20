@@ -292,6 +292,32 @@ _LOGO_32  = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZ
 _LOGO_20  = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBvbHlnb24gcG9pbnRzPSIyNCwzIDQzLDEzLjUgNDMsMzQuNSAyNCw0NSA1LDM0LjUgNSwxMy41IiBmaWxsPSJub25lIiBzdHJva2U9IiMzOWM1Y2YiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjQiLz4KPHBvbHlnb24gcG9pbnRzPSIyNCwxMCAzNywxNy41IDM3LDMwLjUgMjQsMzggMTEsMzAuNSAxMSwxNy41IiBmaWxsPSIjMWMyMzMzIiBzdHJva2U9IiMzOWM1Y2YiIHN0cm9rZS13aWR0aD0iMS4yIi8+CjxsaW5lIHgxPSIyNCIgeTE9IjEwIiB4Mj0iMjQiIHkyPSI2IiBzdHJva2U9IiMzOWM1Y2YiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC42Ii8+CjxsaW5lIHgxPSIzNyIgeTE9IjE3LjUiIHgyPSI0MSIgeTI9IjE1IiBzdHJva2U9IiMzOWM1Y2YiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC42Ii8+CjxsaW5lIHgxPSIzNyIgeTE9IjMwLjUiIHgyPSI0MSIgeTI9IjMzIiBzdHJva2U9IiMzOWM1Y2YiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC42Ii8+CjxsaW5lIHgxPSIyNCIgeTE9IjM4IiB4Mj0iMjQiIHkyPSI0MiIgc3Ryb2tlPSIjMzljNWNmIiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNiIvPgo8bGluZSB4MT0iMTEiIHkxPSIzMC41IiB4Mj0iNyIgeTI9IjMzIiBzdHJva2U9IiMzOWM1Y2YiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC42Ii8+CjxsaW5lIHgxPSIxMSIgeTE9IjE3LjUiIHgyPSI3IiB5Mj0iMTUiIHN0cm9rZT0iIzM5YzVjZiIgc3Ryb2tlLXdpZHRoPSIxIiBvcGFjaXR5PSIwLjYiLz4KPHBvbHlsaW5lIHBvaW50cz0iMTUsMjQgMTcuNSwxOSAyMCwyNCAyMi41LDI5IDI1LDI0IDI3LjUsMTkgMzAsMjQgMzIuNSwyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNThhNmZmIiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIuMiIgZmlsbD0iIzM5YzVjZiIvPgo8Y2lyY2xlIGN4PSIyNCIgY3k9IjYiICByPSIxLjgiIGZpbGw9IiM1OGE2ZmYiLz4KPGNpcmNsZSBjeD0iNDEiIGN5PSIxNSIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+CjxjaXJjbGUgY3g9IjQxIiBjeT0iMzMiIHI9IjEuOCIgZmlsbD0iIzU4YTZmZiIvPgo8Y2lyY2xlIGN4PSIyNCIgY3k9IjQyIiByPSIxLjgiIGZpbGw9IiM1OGE2ZmYiLz4KPGNpcmNsZSBjeD0iNyIgIGN5PSIzMyIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+CjxjaXJjbGUgY3g9IjciICBjeT0iMTUiIHI9IjEuOCIgZmlsbD0iIzU4YTZmZiIvPgo8L3N2Zz4="
 _ARCH_B64 = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDIiIGhlaWdodD0iNDIiIHZpZXdCb3g9IjAgMCA0MiA0MiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBvcGFjaXR5PSIwLjgiPgo8cmVjdCB4PSIzIiB5PSI2IiB3aWR0aD0iMzYiIGhlaWdodD0iOSIgcng9IjIiIGZpbGw9IiMxYzIzMzMiIHN0cm9rZT0iIzU4YTZmZiIgc3Ryb2tlLXdpZHRoPSIxIi8+CjxyZWN0IHg9IjMiIHk9IjE3IiB3aWR0aD0iMzYiIGhlaWdodD0iOSIgcng9IjIiIGZpbGw9IiMxYzIzMzMiIHN0cm9rZT0iIzM5YzVjZiIgc3Ryb2tlLXdpZHRoPSIxIi8+CjxyZWN0IHg9IjMiIHk9IjI4IiB3aWR0aD0iMzYiIGhlaWdodD0iOSIgcng9IjIiIGZpbGw9IiMxYzIzMzMiIHN0cm9rZT0iI2JjOGNmZiIgc3Ryb2tlLXdpZHRoPSIxIi8+Cjx0ZXh0IHg9IjIxIiB5PSIxMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSI0LjUiIGZpbGw9IiM1OGE2ZmYiPlBFUkNFUFRJT048L3RleHQ+Cjx0ZXh0IHg9IjIxIiB5PSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSI0LjUiIGZpbGw9IiMzOWM1Y2YiPkdST1VORElORzwvdGV4dD4KPHRleHQgeD0iMjEiIHk9IjM1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ibW9ub3NwYWNlIiBmb250LXNpemU9IjQuNSIgZmlsbD0iI2JjOGNmZiI+QUNUSU9OPC90ZXh0Pgo8bGluZSB4MT0iMjEiIHkxPSIxNSIgeDI9IjIxIiB5Mj0iMTciIHN0cm9rZT0iIzdkODU5MCIgc3Ryb2tlLXdpZHRoPSIuOCIvPgo8bGluZSB4MT0iMjEiIHkxPSIyNiIgeDI9IjIxIiB5Mj0iMjgiIHN0cm9rZT0iIzdkODU5MCIgc3Ryb2tlLXdpZHRoPSIuOCIvPgo8L3N2Zz4="
 
+# Sidebar toggle state
+if "sidebar_open" not in st.session_state:
+    st.session_state.sidebar_open = True
+
+# Sidebar toggle CSS — injects dynamic hide/show
+_sidebar_css = """
+<style>
+section[data-testid="stSidebar"] {
+    transition: transform 0.3s ease, width 0.3s ease !important;
+}
+</style>
+""" if st.session_state.sidebar_open else """
+<style>
+section[data-testid="stSidebar"] {
+    transform: translateX(-110%) !important;
+    width: 0px !important;
+    min-width: 0px !important;
+    overflow: hidden !important;
+}
+section[data-testid="stSidebar"] + div {
+    margin-left: 0 !important;
+}
+</style>
+"""
+st.markdown(_sidebar_css, unsafe_allow_html=True)
+
 # TOP NAV
 st.markdown(f"""
 <style>
@@ -329,6 +355,34 @@ st.markdown(f"""
     <img src="{_ARCH_B64}" width="42" height="42" style="opacity:.75;display:block"/>
   </div>
 </div>""", unsafe_allow_html=True)
+
+# ── Sidebar toggle button ────────────────────────────────────────────────
+_icon  = "◀  Hide Panel" if st.session_state.sidebar_open else "▶  Show Panel"
+_col_l, _col_r = st.columns([11, 1])
+with _col_r:
+    if st.button(_icon, key="sidebar_toggle",
+                 help="Show / hide the control panel"):
+        st.session_state.sidebar_open = not st.session_state.sidebar_open
+        st.rerun()
+
+# ── Extra CSS: style the toggle button ──────────────────────────────────
+st.markdown("""
+<style>
+div[data-testid="stButton"] button[kind="secondary"] {
+    background: #161b22 !important;
+    border: 1px solid #30363d !important;
+    color: #7d8590 !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: .70rem !important;
+    padding: 3px 10px !important;
+    border-radius: 4px !important;
+    white-space: nowrap !important;
+}
+div[data-testid="stButton"] button[kind="secondary"]:hover {
+    border-color: #39c5cf !important;
+    color: #39c5cf !important;
+}
+</style>""", unsafe_allow_html=True)
 
 # SIDEBAR
 with st.sidebar:
