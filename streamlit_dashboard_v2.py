@@ -885,26 +885,32 @@ elif pk == "Engineer Chatbot":
     _ds_key  = _gsec("DEEPSEEK_API_KEY")
     _ant_key = _gsec("ANTHROPIC_API_KEY")
 
+    # Validate key lengths — reject keys that are clearly broken (too short after stripping)
+    if _or_key and len(_or_key) < 20: _or_key = ""
+    if _ds_key and len(_ds_key) < 20: _ds_key = ""
+    if _ant_key and len(_ant_key) < 20: _ant_key = ""
+
     # Debug expander — shows what keys are detected
     with st.expander("🔍 Debug: secret detection (expand to check)", expanded=True):
         st.code(
-            f"OPENROUTER_API_KEY : {'✓ SET — ' + _or_key[:12] + '...' + _or_key[-4:] + '  len=' + str(len(_or_key)) if _or_key else '✗ NOT FOUND'}\n"
             f"DEEPSEEK_API_KEY   : {'✓ SET — ' + _ds_key[:12] + '...' + _ds_key[-4:]  + '  len=' + str(len(_ds_key))  if _ds_key  else '✗ NOT FOUND'}\n"
+            f"OPENROUTER_API_KEY : {'✓ SET — ' + _or_key[:12] + '...' + _or_key[-4:] + '  len=' + str(len(_or_key)) if _or_key else '✗ NOT FOUND'}\n"
             f"ANTHROPIC_API_KEY  : {'✓ SET — ' + _ant_key[:12] + '...' + _ant_key[-4:] + '  len=' + str(len(_ant_key)) if _ant_key else '✗ NOT FOUND'}\n"
             f"st.secrets keys    : {list(st.secrets.keys()) if hasattr(st, 'secrets') else 'N/A'}"
         )
 
-    if _or_key:
-        _provider = "OpenRouter (free DeepSeek)"
-        _model    = "deepseek/deepseek-chat-v3-0324:free"
-        _key      = _or_key
-        _base_url = "https://openrouter.ai/api/v1"
-        _sdk      = "openai"
-    elif _ds_key:
+    # Priority: DeepSeek → OpenRouter → Anthropic
+    if _ds_key:
         _provider = "DeepSeek"
         _model    = "deepseek-chat"
         _key      = _ds_key
         _base_url = "https://api.deepseek.com"
+        _sdk      = "openai"
+    elif _or_key:
+        _provider = "OpenRouter (free DeepSeek)"
+        _model    = "deepseek/deepseek-chat-v3-0324:free"
+        _key      = _or_key
+        _base_url = "https://openrouter.ai/api/v1"
         _sdk      = "openai"
     elif _ant_key:
         _provider = "Anthropic"
