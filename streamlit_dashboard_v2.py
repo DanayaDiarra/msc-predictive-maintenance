@@ -296,27 +296,66 @@ _ARCH_B64 = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDIiIGhlaWdodD0iNDIiIHZpZ
 if "sidebar_open" not in st.session_state:
     st.session_state.sidebar_open = True
 
-# Sidebar toggle CSS — injects dynamic hide/show
-_sidebar_css = """
+# Sidebar toggle CSS — explicitly sets both open AND closed states
+if st.session_state.sidebar_open:
+    _sidebar_css = """
 <style>
 section[data-testid="stSidebar"] {
+    transform: translateX(0%) !important;
+    width: 21rem !important;
+    min-width: 21rem !important;
+    visibility: visible !important;
+    display: block !important;
     transition: transform 0.3s ease, width 0.3s ease !important;
 }
-</style>
-""" if st.session_state.sidebar_open else """
+section[data-testid="stSidebar"] > div {
+    width: 21rem !important;
+}
+</style>"""
+else:
+    _sidebar_css = """
 <style>
 section[data-testid="stSidebar"] {
-    transform: translateX(-110%) !important;
+    transform: translateX(-120%) !important;
     width: 0px !important;
     min-width: 0px !important;
+    max-width: 0px !important;
     overflow: hidden !important;
+    visibility: hidden !important;
+    transition: transform 0.3s ease, width 0.3s ease !important;
 }
-section[data-testid="stSidebar"] + div {
-    margin-left: 0 !important;
+div[data-testid="stSidebarCollapsedControl"] {
+    display: none !important;
 }
-</style>
-"""
+</style>"""
 st.markdown(_sidebar_css, unsafe_allow_html=True)
+
+# ── Sidebar toggle button — top left, always visible ────────────────────
+_icon = "◀  Hide Panel" if st.session_state.sidebar_open else "▶  Show Panel"
+_t1, _t2 = st.columns([1, 11])
+with _t1:
+    if st.button(_icon, key="sidebar_toggle"):
+        st.session_state.sidebar_open = not st.session_state.sidebar_open
+        st.rerun()
+
+st.markdown("""
+<style>
+div[data-testid="stButton"] > button {
+    background: #1c2333 !important;
+    border: 1px solid #39c5cf !important;
+    color: #39c5cf !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: .72rem !important;
+    padding: 4px 12px !important;
+    border-radius: 4px !important;
+    white-space: nowrap !important;
+    margin-bottom: .3rem !important;
+}
+div[data-testid="stButton"] > button:hover {
+    background: #39c5cf !important;
+    color: #0d1117 !important;
+}
+</style>""", unsafe_allow_html=True)
 
 # TOP NAV
 st.markdown(f"""
@@ -355,34 +394,6 @@ st.markdown(f"""
     <img src="{_ARCH_B64}" width="42" height="42" style="opacity:.75;display:block"/>
   </div>
 </div>""", unsafe_allow_html=True)
-
-# ── Sidebar toggle button ────────────────────────────────────────────────
-_icon  = "◀  Hide Panel" if st.session_state.sidebar_open else "▶  Show Panel"
-_col_l, _col_r = st.columns([11, 1])
-with _col_r:
-    if st.button(_icon, key="sidebar_toggle",
-                 help="Show / hide the control panel"):
-        st.session_state.sidebar_open = not st.session_state.sidebar_open
-        st.rerun()
-
-# ── Extra CSS: style the toggle button ──────────────────────────────────
-st.markdown("""
-<style>
-div[data-testid="stButton"] button[kind="secondary"] {
-    background: #161b22 !important;
-    border: 1px solid #30363d !important;
-    color: #7d8590 !important;
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: .70rem !important;
-    padding: 3px 10px !important;
-    border-radius: 4px !important;
-    white-space: nowrap !important;
-}
-div[data-testid="stButton"] button[kind="secondary"]:hover {
-    border-color: #39c5cf !important;
-    color: #39c5cf !important;
-}
-</style>""", unsafe_allow_html=True)
 
 # SIDEBAR
 with st.sidebar:
