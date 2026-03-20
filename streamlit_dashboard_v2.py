@@ -330,32 +330,45 @@ div[data-testid="stSidebarCollapsedControl"] {
 </style>"""
 st.markdown(_sidebar_css, unsafe_allow_html=True)
 
-# ── Sidebar toggle button — top left, always visible ────────────────────
-_icon = "◀  Hide Panel" if st.session_state.sidebar_open else "▶  Show Panel"
-_t1, _t2 = st.columns([1, 11])
-with _t1:
-    if st.button(_icon, key="sidebar_toggle"):
-        st.session_state.sidebar_open = not st.session_state.sidebar_open
-        st.rerun()
+# ── Sidebar toggle button — compact icon only ────────────────────────────
+_icon = "◀" if st.session_state.sidebar_open else "▶"
+_tip  = "Hide panel" if st.session_state.sidebar_open else "Show panel"
 
 st.markdown("""
 <style>
+/* Override ALL stButton instances to be compact */
 div[data-testid="stButton"] > button {
     background: #1c2333 !important;
     border: 1px solid #39c5cf !important;
     color: #39c5cf !important;
     font-family: 'IBM Plex Mono', monospace !important;
-    font-size: .72rem !important;
-    padding: 4px 12px !important;
+    font-size: .78rem !important;
+    padding: 2px 8px !important;
     border-radius: 4px !important;
-    white-space: nowrap !important;
-    margin-bottom: .3rem !important;
+    line-height: 1.4 !important;
+    min-height: 0 !important;
+    height: 26px !important;
+    width: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 div[data-testid="stButton"] > button:hover {
     background: #39c5cf !important;
     color: #0d1117 !important;
 }
+/* Keep toggle column tight */
+div[data-testid="stButton"] {
+    margin: 0 !important;
+    padding: 0 !important;
+}
 </style>""", unsafe_allow_html=True)
+
+_t1, _t2 = st.columns([1, 20])
+with _t1:
+    if st.button(_icon, key="sidebar_toggle", help=_tip):
+        st.session_state.sidebar_open = not st.session_state.sidebar_open
+        st.rerun()
 
 # TOP NAV
 st.markdown(f"""
