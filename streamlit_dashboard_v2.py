@@ -869,11 +869,12 @@ elif pk == "Engineer Chatbot":
     sh("ENGINEER CHATBOT — ASK MAINTENANCE QUESTIONS")
 
     def _gsec(key, default=""):
-        # Method 1: direct st.secrets key access (works in all Streamlit versions)
+        # Method 1: direct st.secrets key access
         try:
             val = st.secrets[key]
             if val:
-                return str(val).strip()
+                # Strip ALL whitespace/newlines — key may have been pasted with line breaks
+                return str(val).replace("\n","").replace("\r","").replace(" ","").strip()
         except Exception:
             pass
         # Method 2: os.environ fallback (Colab/local)
@@ -884,13 +885,13 @@ elif pk == "Engineer Chatbot":
     _ds_key  = _gsec("DEEPSEEK_API_KEY")
     _ant_key = _gsec("ANTHROPIC_API_KEY")
 
-    # Debug — show what was found (remove after confirming it works)
-    with st.expander("Debug: secret detection", expanded=False):
+    # Debug expander — shows what keys are detected
+    with st.expander("🔍 Debug: secret detection (expand to check)", expanded=True):
         st.code(
-            f"OPENROUTER_API_KEY: {'SET (' + _or_key[:8] + '...)' if _or_key else 'NOT FOUND'}\n"
-            f"DEEPSEEK_API_KEY:   {'SET (' + _ds_key[:8] + '...)' if _ds_key else 'NOT FOUND'}\n"
-            f"ANTHROPIC_API_KEY:  {'SET (' + _ant_key[:8] + '...)' if _ant_key else 'NOT FOUND'}\n"
-            f"st.secrets keys:    {list(st.secrets.keys()) if hasattr(st, 'secrets') else 'N/A'}"
+            f"OPENROUTER_API_KEY : {'✓ SET — ' + _or_key[:12] + '...' + _or_key[-4:] + '  len=' + str(len(_or_key)) if _or_key else '✗ NOT FOUND'}\n"
+            f"DEEPSEEK_API_KEY   : {'✓ SET — ' + _ds_key[:12] + '...' + _ds_key[-4:]  + '  len=' + str(len(_ds_key))  if _ds_key  else '✗ NOT FOUND'}\n"
+            f"ANTHROPIC_API_KEY  : {'✓ SET — ' + _ant_key[:12] + '...' + _ant_key[-4:] + '  len=' + str(len(_ant_key)) if _ant_key else '✗ NOT FOUND'}\n"
+            f"st.secrets keys    : {list(st.secrets.keys()) if hasattr(st, 'secrets') else 'N/A'}"
         )
 
     if _or_key:
