@@ -888,13 +888,39 @@ elif pk == "Engineer Chatbot":
 
     # Read secrets — st.secrets for Streamlit Cloud, os.environ for local/Colab
     def _get_secret(key, default=""):
+        # Try st.secrets first (Streamlit Cloud)
         try:
-            return st.secrets[key]
+            val = st.secrets.get(key, "")
+            if val:
+                return val
         except Exception:
-            return os.environ.get(key, default)
+            pass
+        # Fallback to environment variable (local/Colab)
+        return os.environ.get(key, default)
 
     _api_key = _get_secret("ANTHROPIC_API_KEY")
     _use_llm  = _get_secret("USE_LLM", "false").lower() == "true"
+
+    # Debug status — shows key detection result
+    if _api_key:
+        key_preview = _api_key[:12] + "..." + _api_key[-4:]
+        st.markdown(f"""
+        <div style="background:#0d1117;border:1px solid #3fb95055;border-radius:6px;
+             padding:.5rem 1rem;margin-bottom:.8rem;font-family:'IBM Plex Mono',monospace;
+             font-size:.70rem;color:#3fb950">
+          API key detected: <span style="color:#7d8590">{key_preview}</span>
+          &nbsp;·&nbsp; Model: claude-sonnet-4-6
+          &nbsp;·&nbsp; <span style="color:#3fb950">Ready</span>
+        </div>""", unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="background:#1c2333;border:1px solid #f0b42944;border-radius:6px;
+             padding:.7rem 1rem;margin-bottom:.8rem;font-size:.78rem;color:#f0b429;
+             font-family:'IBM Plex Mono',monospace">
+          No API key found in st.secrets or os.environ &nbsp;·&nbsp;
+          Rule-based answers active &nbsp;·&nbsp;
+          Add ANTHROPIC_API_KEY in Streamlit Cloud → Settings → Secrets
+        </div>""", unsafe_allow_html=True)
 
     if _api_key:
         st.markdown(f"""
@@ -1069,7 +1095,7 @@ Cite sources as [DOC-ID]. Be direct and practical."""
                     from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
                     llm = ChatAnthropic(
-                        model="claude-sonnet-4-5",
+                        model="claude-sonnet-4-6",
                         api_key=_api_key,
                         max_tokens=1000,
                         temperature=0.3)
@@ -1085,7 +1111,7 @@ Cite sources as [DOC-ID]. Be direct and practical."""
 
                     resp        = llm.invoke(lc_msgs)
                     answer      = resp.content
-                    engine_used = "LangChain · claude-sonnet-4-5"
+                    engine_used = "LangChain · claude-sonnet-4-6"
                 except ImportError:
                     pass  # langchain not installed — try direct API
                 except Exception:
@@ -1105,7 +1131,7 @@ Cite sources as [DOC-ID]. Be direct and practical."""
                         clean_history.append({"role": "user", "content": user_content})
 
                         payload = _json.dumps({
-                            "model": "claude-sonnet-4-5",
+                            "model": "claude-sonnet-4-6",
                             "max_tokens": 1000,
                             "system": sys_prompt,
                             "messages": clean_history
@@ -1121,10 +1147,10 @@ Cite sources as [DOC-ID]. Be direct and practical."""
                         with urllib.request.urlopen(req, timeout=30) as r:
                             data        = _json.loads(r.read())
                             answer      = data["content"][0]["text"]
-                            engine_used = "Anthropic API · claude-sonnet-4-5"
+                            engine_used = "Anthropic API · claude-sonnet-4-6"
                     except Exception as e:
-                        answer      = f"API error: {str(e)[:120]}. Check your API key in Streamlit secrets."
-                        engine_used = "Error"
+                        answer      = f"API error ({type(e).__name__}): {str(e)[:200]}"
+                        engine_used = "Error — check Streamlit logs"
 
             # ── Rule-based fallback ──────────────────────────────────────
             if not answer:
