@@ -44,7 +44,6 @@ if str(_HERE) not in sys.path:
 os.chdir(_HERE)
 
 import streamlit as st
-import streamlit.components.v1 as _stc
 
 
 # Logo (inline SVG base64)
@@ -139,15 +138,22 @@ if "authenticated" not in st.session_state:
     st.session_state.role = ""
 
 def login_page():
-    # Logo rendered via st.image so it works regardless of f-string scope
-    _col = st.columns([1, 0.6, 1])[1]
-    with _col:
-        st.image(_LOGO, width=72)
-    st.markdown("""
-    <div style="text-align:center;padding:.4rem 0 1.2rem 0">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf;letter-spacing:.06em">AGENTIC&nbsp;&nbsp;PdM</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:#7d8590;margin-top:.3rem;letter-spacing:.08em">NOC Monitor &nbsp;·&nbsp; Secure Login</div>
-    </div>""", unsafe_allow_html=True)
+    # Logo + title — pure HTML, centered reliably without column left-pad quirk
+    # _LOGO is defined at module level so it's always in scope here
+    st.markdown(
+        f'''<div style="text-align:center;padding:2.2rem 0 1rem 0">
+          <img src="{_LOGO}" width="72" height="72"
+               style="display:block;margin:0 auto .9rem auto;"/>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;
+                      font-weight:700;color:#39c5cf;letter-spacing:.06em">
+            AGENTIC&nbsp;&nbsp;PdM
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:.75rem;
+                      color:#7d8590;margin-top:.35rem;letter-spacing:.08em">
+            NOC Monitor &nbsp;&middot;&nbsp; Secure Login
+          </div>
+        </div>''',
+        unsafe_allow_html=True)
 
     col = st.columns([1,1.4,1])[1]
     with col:
@@ -553,47 +559,49 @@ def rule_answer(q):
 role_col = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}.get(ROLE,"#7d8590")
 role_css = {"admin":"role-admin","engineer":"role-engineer","viewer":"role-viewer"}.get(ROLE,"")
 
-# ── Exact v2 sidebar toggle button ───────────────────────────────────────────
-# Renders as a dark rounded square with ◀/▶ symbol, matching v2 screenshot exactly.
-# Uses an HTML iframe component — clicks call window.parent.postMessage to set
-# a query param, which Streamlit picks up via st.query_params.
-_sb_icon = "&#9664;" if st.session_state.sidebar_open else "&#9654;"
-_stc.html(f"""
+# ── Sidebar toggle button — styled st.button (only working approach in Streamlit) ─
+# CSS targets the button by its data-testid + aria-label so ONLY this button is restyled.
+# The icon updates each render based on sidebar_open state.
+_sb_icon = "◀" if st.session_state.sidebar_open else "▶"
+st.markdown(f"""
 <style>
-  body{{margin:0;padding:0;background:transparent;}}
-  .sb-btn{{
-    display:flex;align-items:center;justify-content:center;
-    width:36px;height:32px;
-    background:#1c2333;
-    border:1px solid #30363d;
-    border-radius:6px;
-    cursor:pointer;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    color:#7d8590;
-    user-select:none;
-    transition:background 0.15s,color 0.15s,border-color 0.15s;
-  }}
-  .sb-btn:hover{{background:#21262d;color:#39c5cf;border-color:#39c5cf;}}
-  .sb-btn:active{{background:#30363d;}}
-</style>
-<div class="sb-btn" id="btn" title="Hide/show sidebar">{_sb_icon}</div>
-<script>
-  document.getElementById("btn").onclick = function(){{
-    const url = new URL(window.parent.location.href);
-    url.searchParams.set("_sb_toggle", Date.now());
-    window.parent.history.replaceState({{}}, "", url);
-    window.parent.postMessage({{type:"streamlit:setComponentValue", value:true}}, "*");
-  }};
-</script>
-""", height=40, scrolling=False)
+/* Target only the sidebar toggle button via its label */
+button[aria-label="sidebar_toggle_btn"] {{
+    background: #1c2333 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+    color: #7d8590 !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    width: 38px !important;
+    height: 34px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background 0.15s, color 0.15s, border-color 0.15s !important;
+    margin-bottom: 6px !important;
+}}
+button[aria-label="sidebar_toggle_btn"]:hover {{
+    background: #21262d !important;
+    border-color: #39c5cf !important;
+    color: #39c5cf !important;
+}}
+button[aria-label="sidebar_toggle_btn"]:active {{
+    background: #30363d !important;
+}}
+button[aria-label="sidebar_toggle_btn"] p {{
+    font-size: 13px !important;
+    color: inherit !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}}
+</style>""", unsafe_allow_html=True)
 
-# Handle toggle via query params (set by the HTML button above)
-if "sb_toggle" not in st.session_state:
-    st.session_state["sb_toggle_prev"] = ""
-_cur_qp = st.query_params.get("_sb_toggle", "")
-if _cur_qp != st.session_state.get("sb_toggle_prev",""):
-    st.session_state["sb_toggle_prev"] = _cur_qp
+if st.button(_sb_icon, key="sidebar_toggle_btn", help="Hide/show sidebar"):
     st.session_state.sidebar_open = not st.session_state.sidebar_open
     st.rerun()
 
