@@ -559,20 +559,20 @@ def rule_answer(q):
 role_col = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}.get(ROLE,"#7d8590")
 role_css = {"admin":"role-admin","engineer":"role-engineer","viewer":"role-viewer"}.get(ROLE,"")
 
-# ── Sidebar toggle — working st.button with safe minimal CSS ─────────────────
-# Rules: never set width/height/padding to 0 (breaks click hitbox).
-# Style the container div, not just the inner button element.
-# No help= tooltip (tooltip div can intercept clicks on small buttons).
+# ── Sidebar toggle — cross-browser (Chrome, Edge, Safari, Firefox) ───────────
+# Method: inject a named marker div immediately before the button,
+# then use #sb-marker + div button CSS selector — works in all browsers,
+# no aria-label or :has() dependency.
 _sb_icon = "◀" if st.session_state.sidebar_open else "▶"
 
+# Marker + styles injected as a single block
 st.markdown("""
+<div id="sb-marker"></div>
 <style>
-/* Scope to the toggle container only — use the key as the id anchor */
-div[data-testid="stButton"]:has(button[data-testid="baseButton-secondary"][kind="secondary"]:first-of-type) {
-    margin-bottom: 4px;
-}
-/* The toggle button itself — keep padding intact so hitbox is not broken */
-[data-testid="stButton"] button[aria-label="sb_tog"] {
+/* Adjacent sibling selector — 100% cross-browser, no aria-label needed */
+#sb-marker + div[data-testid="stHorizontalBlock"] > div:first-child > div[data-testid="stButton"] > button,
+#sb-marker + div[data-testid="stButton"] > button,
+#sb-marker + div > div[data-testid="stButton"] > button {
     background: #1c2333 !important;
     border: 1px solid #30363d !important;
     border-radius: 6px !important;
@@ -580,29 +580,41 @@ div[data-testid="stButton"]:has(button[data-testid="baseButton-secondary"][kind=
     font-family: 'IBM Plex Mono', monospace !important;
     font-size: 14px !important;
     font-weight: 500 !important;
-    min-width: 38px !important;
-    min-height: 32px !important;
-    padding: 4px 10px !important;
+    padding: 5px 11px !important;
     line-height: 1 !important;
+    min-height: 34px !important;
     transition: background 0.15s, border-color 0.15s, color 0.15s !important;
+    cursor: pointer !important;
 }
-[data-testid="stButton"] button[aria-label="sb_tog"]:hover {
+#sb-marker + div[data-testid="stHorizontalBlock"] > div:first-child > div[data-testid="stButton"] > button:hover,
+#sb-marker + div[data-testid="stButton"] > button:hover,
+#sb-marker + div > div[data-testid="stButton"] > button:hover {
     background: #21262d !important;
     border-color: #39c5cf !important;
     color: #39c5cf !important;
 }
-[data-testid="stButton"] button[aria-label="sb_tog"] p {
+#sb-marker + div[data-testid="stHorizontalBlock"] > div:first-child > div[data-testid="stButton"] > button p,
+#sb-marker + div[data-testid="stButton"] > button p,
+#sb-marker + div > div[data-testid="stButton"] > button p {
     color: inherit !important;
     font-size: 14px !important;
-    font-weight: 500 !important;
     margin: 0 !important;
 }
-</style>""", unsafe_allow_html=True)
+/* Constrain the button column width so button stays compact */
+#sb-marker + div[data-testid="stHorizontalBlock"] > div:first-child {
+    max-width: 60px !important;
+    min-width: 50px !important;
+    flex: 0 0 60px !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
-# key becomes the aria-label — keep key short and unique
-if st.button(_sb_icon, key="sb_tog"):
-    st.session_state.sidebar_open = not st.session_state.sidebar_open
-    st.rerun()
+# Button inside a narrow column so it doesn't stretch to full page width
+_tc1, _tc2 = st.columns([1, 20])
+with _tc1:
+    if st.button(_sb_icon, key="sb_tog"):
+        st.session_state.sidebar_open = not st.session_state.sidebar_open
+        st.rerun()
 
 st.markdown(f"""
 <style>
