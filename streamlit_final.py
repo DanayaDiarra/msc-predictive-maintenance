@@ -44,6 +44,7 @@ if str(_HERE) not in sys.path:
 os.chdir(_HERE)
 
 import streamlit as st
+import streamlit.components.v1 as _stc
 
 
 # Logo (inline SVG base64)
@@ -138,11 +139,14 @@ if "authenticated" not in st.session_state:
     st.session_state.role = ""
 
 def login_page():
-    st.markdown(f"""
-    <div style="text-align:center;padding:2rem 0 1rem 0">
-      <img src="{{_LOGO}}" width="56" height="56" style="display:inline-block;margin-bottom:.8rem"/>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf">AGENTIC PdM</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:#7d8590;margin-top:.3rem">NOC Monitor · Secure Login</div>
+    # Logo rendered via st.image so it works regardless of f-string scope
+    _col = st.columns([1, 0.6, 1])[1]
+    with _col:
+        st.image(_LOGO, width=72)
+    st.markdown("""
+    <div style="text-align:center;padding:.4rem 0 1.2rem 0">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf;letter-spacing:.06em">AGENTIC&nbsp;&nbsp;PdM</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:#7d8590;margin-top:.3rem;letter-spacing:.08em">NOC Monitor &nbsp;·&nbsp; Secure Login</div>
     </div>""", unsafe_allow_html=True)
 
     col = st.columns([1,1.4,1])[1]
@@ -549,39 +553,89 @@ def rule_answer(q):
 role_col = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}.get(ROLE,"#7d8590")
 role_css = {"admin":"role-admin","engineer":"role-engineer","viewer":"role-viewer"}.get(ROLE,"")
 
-_t1, _t2 = st.columns([1, 30])
-with _t1:
-    _ico = "◀" if st.session_state.sidebar_open else "▶"
-    if st.button(_ico, key="sb_toggle", help="Hide/show sidebar"):
-        st.session_state.sidebar_open = not st.session_state.sidebar_open
-        st.rerun()
+# ── Exact v2 sidebar toggle button ───────────────────────────────────────────
+# Renders as a dark rounded square with ◀/▶ symbol, matching v2 screenshot exactly.
+# Uses an HTML iframe component — clicks call window.parent.postMessage to set
+# a query param, which Streamlit picks up via st.query_params.
+_sb_icon = "&#9664;" if st.session_state.sidebar_open else "&#9654;"
+_stc.html(f"""
+<style>
+  body{{margin:0;padding:0;background:transparent;}}
+  .sb-btn{{
+    display:flex;align-items:center;justify-content:center;
+    width:36px;height:32px;
+    background:#1c2333;
+    border:1px solid #30363d;
+    border-radius:6px;
+    cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:#7d8590;
+    user-select:none;
+    transition:background 0.15s,color 0.15s,border-color 0.15s;
+  }}
+  .sb-btn:hover{{background:#21262d;color:#39c5cf;border-color:#39c5cf;}}
+  .sb-btn:active{{background:#30363d;}}
+</style>
+<div class="sb-btn" id="btn" title="Hide/show sidebar">{_sb_icon}</div>
+<script>
+  document.getElementById("btn").onclick = function(){{
+    const url = new URL(window.parent.location.href);
+    url.searchParams.set("_sb_toggle", Date.now());
+    window.parent.history.replaceState({{}}, "", url);
+    window.parent.postMessage({{type:"streamlit:setComponentValue", value:true}}, "*");
+  }};
+</script>
+""", height=40, scrolling=False)
 
-role_css  = {"admin":"role-admin","engineer":"role-engineer","viewer":"role-viewer"}.get(ROLE,"")
+# Handle toggle via query params (set by the HTML button above)
+if "sb_toggle" not in st.session_state:
+    st.session_state["sb_toggle_prev"] = ""
+_cur_qp = st.query_params.get("_sb_toggle", "")
+if _cur_qp != st.session_state.get("sb_toggle_prev",""):
+    st.session_state["sb_toggle_prev"] = _cur_qp
+    st.session_state.sidebar_open = not st.session_state.sidebar_open
+    st.rerun()
 
 st.markdown(f"""
-<style>@keyframes blink{{0%,100%{{opacity:1;}}50%{{opacity:.35;}}}}.sd{{animation:blink 2.2s ease-in-out infinite;}}</style>
-<div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0 .9rem 0;margin-bottom:1rem;border-bottom:1px solid #30363d">
-  <div style="display:flex;align-items:center;gap:14px">
+<style>
+@keyframes blink{{0%,100%{{opacity:1;}}50%{{opacity:.35;}}}}
+.sd{{animation:blink 2.2s ease-in-out infinite;}}
+.nav-outer{{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  padding:.5rem 0 .9rem 0;
+  margin-bottom:1rem;
+  border-bottom:1px solid #30363d;
+  box-sizing:border-box;
+}}
+.nav-left{{display:flex;align-items:center;gap:14px;}}
+.nav-right{{display:flex;align-items:center;gap:10px;margin-left:auto;}}
+</style>
+<div class="nav-outer">
+  <div class="nav-left">
     <img src="{_LOGO}" width="44" height="44" style="display:block;flex-shrink:0"/>
     <div>
       <div style="display:flex;align-items:baseline;gap:6px">
-      <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.15rem;color:#e6edf3;letter-spacing:.04em">AGENTIC</span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-weight:300;font-size:1.1rem;color:#39c5cf"> PdM</span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:#7d8590;letter-spacing:.1em;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:6px">NOC</span>
-    </div>
-    <div style="font-family:'IBM Plex Sans',sans-serif;font-size:.68rem;color:#7d8590">
-      Agentic AI for Predictive Maintenance · Telecom Infrastructure · 10 Stations
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.15rem;color:#e6edf3;letter-spacing:.04em">AGENTIC</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:300;font-size:1.15rem;color:#39c5cf;letter-spacing:.04em">PdM</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:#7d8590;letter-spacing:.1em;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:6px">NOC</span>
+      </div>
+      <div style="font-family:'IBM Plex Sans',sans-serif;font-size:.69rem;color:#7d8590;margin-top:2px">
+        Agentic AI for Predictive Maintenance &nbsp;&middot;&nbsp; Telecom Infrastructure &nbsp;&middot;&nbsp; 10 Stations
+      </div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:10px">
-    <div style="background:#161b22;border:1px solid #21262d;border-radius:6px;padding:4px 12px;display:flex;align-items:center;gap:6px">
-      <span style="width:8px;height:8px;background:#3fb950;border-radius:50%;display:inline-block" class="sd"></span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:#3fb950">SYSTEM OPERATIONAL</span>
+  <div class="nav-right">
+    <div style="background:#161b22;border:1px solid #21262d;border-radius:6px;padding:5px 12px;display:flex;align-items:center;gap:6px">
+      <span style="width:8px;height:8px;background:#3fb950;border-radius:50%;display:inline-block;flex-shrink:0" class="sd"></span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:#3fb950;letter-spacing:.06em;white-space:nowrap">SYSTEM OPERATIONAL</span>
     </div>
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:4px 12px">
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:{role_col}">
-        {USER} &nbsp;<span class="role-badge {role_css}">{ROLE.upper()}</span>
-      </span>
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:5px 14px;display:flex;align-items:center;gap:8px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:{role_col};white-space:nowrap">{USER}</span>
+      <span class="role-badge {role_css}" style="font-family:'IBM Plex Mono',monospace;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:4px">{ROLE.upper()}</span>
     </div>
   </div>
 </div>""", unsafe_allow_html=True)
