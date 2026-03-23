@@ -45,6 +45,11 @@ os.chdir(_HERE)
 
 import streamlit as st
 
+
+# Logo (inline SVG base64)
+_LOGO = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBvbHlnb24gcG9pbnRzPSIyNCwzIDQzLDEzLjUgNDMsMzQuNSAyNCw0NSA1LDM0LjUgNSwxMy41IiBmaWxsPSJub25lIiBzdHJva2U9IiMzOWM1Y2YiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjQiLz4KPHBvbHlnb24gcG9pbnRzPSIyNCwxMCAzNywxNy41IDM3LDMwLjUgMjQsMzggMTEsMzAuNSAxMSwxNy41IiBmaWxsPSIjMWMyMzMzIiBzdHJva2U9IiMzOWM1Y2YiIHN0cm9rZS13aWR0aD0iMS4yIi8+Cjxwb2x5bGluZSBwb2ludHM9IjE1LDI0IDE3LjUsMTkgMjAsMjQgMjIuNSwyOSAyNSwyNCAyNy41LDE5IDMwLDI0IDMyLjUsMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzU4YTZmZiIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8Y2lyY2xlIGN4PSIyNCIgY3k9IjI0IiByPSIyLjIiIGZpbGw9IiMzOWM1Y2YiLz4KPGNpcmNsZSBjeD0iMjQiIGN5PSI2IiAgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+CjxjaXJjbGUgY3g9IjQxIiBjeT0iMTUiIHI9IjEuOCIgZmlsbD0iIzU4YTZmZiIvPgo8Y2lyY2xlIGN4PSI0MSIgY3k9IjMzIiByPSIxLjgiIGZpbGw9IiM1OGE2ZmYiLz4KPGNpcmNsZSBjeD0iMjQiIGN5PSI0MiIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+CjxjaXJjbGUgY3g9IjciICBjeT0iMzMiIHI9IjEuOCIgZmlsbD0iIzU4YTZmZiIvPgo8Y2lyY2xlIGN4PSI3IiAgY3k9IjE1IiByPSIxLjgiIGZpbGw9IiM1OGE2ZmYiLz4KPC9zdmc+"
+_LOGO_SM = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBvbHlnb24gcG9pbnRzPSIyNCwxMCAzNywxNy41IDM3LDMwLjUgMjQsMzggMTEsMzAuNSAxMSwxNy41IiBmaWxsPSIjMWMyMzMzIiBzdHJva2U9IiMzOWM1Y2YiIHN0cm9rZS13aWR0aD0iMS41Ii8+Cjxwb2x5bGluZSBwb2ludHM9IjE1LDI0IDE3LjUsMTkgMjAsMjQgMjIuNSwyOSAyNSwyNCAyNy41LDE5IDMwLDI0IDMyLjUsMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzU4YTZmZiIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8Y2lyY2xlIGN4PSIyNCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjMzljNWNmIi8+Cjwvc3ZnPg=="
+
 st.set_page_config(page_title="Agentic PdM NOC", page_icon="⚡",
                    layout="wide", initial_sidebar_state="expanded")
 
@@ -133,9 +138,10 @@ if "authenticated" not in st.session_state:
     st.session_state.role = ""
 
 def login_page():
-    st.markdown("""
+    st.markdown(f"""
     <div style="text-align:center;padding:2rem 0 1rem 0">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf">⚡ AGENTIC PdM</div>
+      <img src="{{_LOGO}}" width="56" height="56" style="display:inline-block;margin-bottom:.8rem"/>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf">AGENTIC PdM</div>
       <div style="font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:#7d8590;margin-top:.3rem">NOC Monitor · Secure Login</div>
     </div>""", unsafe_allow_html=True)
 
@@ -170,6 +176,11 @@ def login_page():
 if not st.session_state.authenticated:
     login_page()
     st.stop()
+
+if "sidebar_open" not in st.session_state:
+    st.session_state.sidebar_open = True
+if not st.session_state.sidebar_open:
+    st.markdown("<style>section[data-testid='stSidebar']{transform:translateX(-120%)!important;width:0!important;min-width:0!important;overflow:hidden!important;visibility:hidden!important;}</style>", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ROLE HELPERS
@@ -536,14 +547,25 @@ def rule_answer(q):
 # TOP NAV (shown after login)
 # ─────────────────────────────────────────────────────────────────────────────
 role_col = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}.get(ROLE,"#7d8590")
+role_css = {"admin":"role-admin","engineer":"role-engineer","viewer":"role-viewer"}.get(ROLE,"")
+
+_t1, _t2 = st.columns([1, 30])
+with _t1:
+    _ico = "◀" if st.session_state.sidebar_open else "▶"
+    if st.button(_ico, key="sb_toggle", help="Hide/show sidebar"):
+        st.session_state.sidebar_open = not st.session_state.sidebar_open
+        st.rerun()
+
 role_css  = {"admin":"role-admin","engineer":"role-engineer","viewer":"role-viewer"}.get(ROLE,"")
 
 st.markdown(f"""
 <style>@keyframes blink{{0%,100%{{opacity:1;}}50%{{opacity:.35;}}}}.sd{{animation:blink 2.2s ease-in-out infinite;}}</style>
 <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0 .9rem 0;margin-bottom:1rem;border-bottom:1px solid #30363d">
-  <div style="display:flex;align-items:center;gap:12px">
+  <div style="display:flex;align-items:center;gap:14px">
+    <img src="{_LOGO}" width="44" height="44" style="display:block;flex-shrink:0"/>
     <div>
-      <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.1rem;color:#e6edf3">⚡ AGENTIC</span>
+      <div style="display:flex;align-items:baseline;gap:6px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.15rem;color:#e6edf3;letter-spacing:.04em">AGENTIC</span>
       <span style="font-family:'IBM Plex Mono',monospace;font-weight:300;font-size:1.1rem;color:#39c5cf"> PdM</span>
       <span style="font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:#7d8590;letter-spacing:.1em;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:6px">NOC</span>
     </div>
@@ -594,9 +616,11 @@ with st.sidebar:
     # Pages — role-gated
     all_pages = ["Fleet Overview","Station Detail","Plain English",
                  "RAG Evidence","Agent Reasoning","Model Benchmark",
-                 "Ablation Study","Engineer Chatbot"]
+                 "Ablation Study","Engineer Chatbot","User Management"]
     if not IS_ENGINEER:
-        all_pages = [p for p in all_pages if p not in ["Engineer Chatbot"]]
+        all_pages = [p for p in all_pages if p not in ["Engineer Chatbot","User Management"]]
+    if not IS_ADMIN:
+        all_pages = [p for p in all_pages if p != "User Management"]
 
     page = st.radio("Navigation", all_pages, label_visibility="collapsed")
     st.markdown("---")
@@ -610,6 +634,7 @@ with st.sidebar:
 
     st.markdown(f"""
     <div style="text-align:center;padding:.5rem 0;font-family:'IBM Plex Mono',monospace">
+      <img src="{_LOGO_SM}" width="22" height="22" style="display:inline-block;margin-bottom:4px"/><br/>
       <div style="font-size:.65rem;color:#7d8590">Danaya Diarra · MSc Thesis 2026</div>
       <div style="font-size:.6rem;color:#30363d">XGBoost v2 RMSE=14.60 / 12.77 (best)</div>
     </div>""", unsafe_allow_html=True)
@@ -1227,6 +1252,84 @@ elif pk == "Engineer Chatbot":
             st.session_state.chat_history = []
             st.session_state.chat_thinking = False
             st.rerun()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PAGE: USER MANAGEMENT (Admin only)
+# ─────────────────────────────────────────────────────────────────────────────
+elif pk == "User Management":
+    if not IS_ADMIN:
+        st.error("Admin access required.")
+        st.stop()
+
+    sh("USER MANAGEMENT — CURRENT USERS")
+    users = get_users()
+    rows = [{"Username": u, "Role": r,
+             "Password": "(your session)" if u == USER else "●●●●●●●●",
+             "Chatbot": "Yes" if r in ("admin","engineer") else "No",
+             "Upload":  "Yes" if r in ("admin","engineer") else "No",
+             "Admin panel": "Yes" if r == "admin" else "No"}
+            for u, (pw, r) in users.items()]
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    st.markdown("""
+    <div class="ac monitor" style="margin:.8rem 0">
+      <div style="color:#3fb950;font-weight:600;margin-bottom:.4rem">How user management works</div>
+      <div style="font-size:.82rem;color:#e6edf3;line-height:1.7">
+        Users and passwords are stored in <code>st.secrets</code> — the <code>[users]</code> table
+        in your <code>secrets.toml</code> file (local) or Streamlit Cloud → App settings → Secrets (deployed).
+        No database required. Changes take effect on next login attempt.
+      </div>
+    </div>""", unsafe_allow_html=True)
+
+    sh("HOW TO ADD / REMOVE / CHANGE USERS")
+    st.code("""# .streamlit/secrets.toml  (or paste into Streamlit Cloud → Secrets)
+
+[users]
+# Format: username = "password"
+# Role is detected from username prefix:
+#   admin_*  →  Admin  (all pages, user management)
+#   eng_*    →  Engineer  (all pages, chatbot, upload)
+#   all others → Viewer (read-only)
+
+admin_danaya   = "your-secure-password"
+admin_ibrahim  = "another-password"
+eng_alice      = "alice-pw-2026"
+eng_bob        = "bob-pw-2026"
+viewer_noc1    = "noc-readonly"
+viewer_client  = "client-view-only"
+
+# API keys for chatbot (one is enough)
+DEEPSEEK_API_KEY   = "sk-..."    # platform.deepseek.com — free 5M tokens
+OPENROUTER_API_KEY = "sk-or-..." # openrouter.ai — free DeepSeek tier""", language="toml")
+
+    sh("GENERATE A NEW USER ENTRY")
+    with st.form("add_user_form"):
+        c1, c2, c3 = st.columns(3)
+        new_u = c1.text_input("Username", placeholder="eng_alice or viewer_noc1")
+        new_p = c2.text_input("Password", type="password", placeholder="secure password")
+        new_r = c3.selectbox("Role preview", ["engineer","viewer","admin"])
+        if st.form_submit_button("Generate secrets line"):
+            if new_u.strip() and new_p.strip():
+                st.code(f'{new_u.strip().lower()} = "{new_p.strip()}"', language="toml")
+                st.success(f"Copy this line into the [users] section of your secrets.toml. "
+                           f"Role '{new_r}' will apply based on username prefix.")
+            else:
+                st.warning("Enter both username and password.")
+
+    sh("FOR PRODUCTION — BCRYPT HASHING (optional)")
+    st.code("""# Run once to hash a password:
+import bcrypt
+hashed = bcrypt.hashpw("my-password".encode(), bcrypt.gensalt()).decode()
+print(hashed)   # store this hash in secrets instead of the plain password
+
+# In secrets.toml:
+# eng_alice = "$2b$12$..."    # bcrypt hash
+
+# In get_users() — update the password check line to:
+# import bcrypt
+# if u in users and bcrypt.checkpw(password.encode(), users[u][0].encode()):""",
+    language="python")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FOOTER
