@@ -189,8 +189,40 @@ if not st.session_state.authenticated:
 
 if "sidebar_open" not in st.session_state:
     st.session_state.sidebar_open = True
-if not st.session_state.sidebar_open:
-    st.markdown("<style>section[data-testid='stSidebar']{transform:translateX(-120%)!important;width:0!important;min-width:0!important;overflow:hidden!important;visibility:hidden!important;}</style>", unsafe_allow_html=True)
+
+# Sidebar CSS — exact v2 pattern: explicit open AND closed states
+if st.session_state.sidebar_open:
+    _sidebar_css = """
+<style>
+section[data-testid="stSidebar"] {
+    transform: translateX(0%) !important;
+    width: 21rem !important;
+    min-width: 21rem !important;
+    visibility: visible !important;
+    display: block !important;
+    transition: transform 0.3s ease, width 0.3s ease !important;
+}
+section[data-testid="stSidebar"] > div {
+    width: 21rem !important;
+}
+</style>"""
+else:
+    _sidebar_css = """
+<style>
+section[data-testid="stSidebar"] {
+    transform: translateX(-120%) !important;
+    width: 0px !important;
+    min-width: 0px !important;
+    max-width: 0px !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+    transition: transform 0.3s ease, width 0.3s ease !important;
+}
+div[data-testid="stSidebarCollapsedControl"] {
+    display: none !important;
+}
+</style>"""
+st.markdown(_sidebar_css, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ROLE HELPERS
@@ -559,62 +591,29 @@ def rule_answer(q):
 role_col = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}.get(ROLE,"#7d8590")
 role_css = {"admin":"role-admin","engineer":"role-engineer","viewer":"role-viewer"}.get(ROLE,"")
 
-# ── Sidebar toggle — cross-browser (Chrome, Edge, Safari, Firefox) ───────────
-# Method: inject a named marker div immediately before the button,
-# then use #sb-marker + div button CSS selector — works in all browsers,
-# no aria-label or :has() dependency.
-_sb_icon = "◀" if st.session_state.sidebar_open else "▶"
+# ── Sidebar toggle — EXACT v2 code (proven working in Chrome/Edge/Safari) ────
+_icon = "◀" if st.session_state.sidebar_open else "▶"
+_tip  = "Hide panel" if st.session_state.sidebar_open else "Show panel"
 
-# Marker + styles injected as a single block
-st.markdown("""
-<div id="sb-marker"></div>
-<style>
-/* Adjacent sibling selector — 100% cross-browser, no aria-label needed */
-#sb-marker + div[data-testid="stHorizontalBlock"] > div:first-child > div[data-testid="stButton"] > button,
-#sb-marker + div[data-testid="stButton"] > button,
-#sb-marker + div > div[data-testid="stButton"] > button {
-    background: #1c2333 !important;
-    border: 1px solid #30363d !important;
-    border-radius: 6px !important;
-    color: #7d8590 !important;
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    padding: 5px 11px !important;
-    line-height: 1 !important;
-    min-height: 34px !important;
-    transition: background 0.15s, border-color 0.15s, color 0.15s !important;
-    cursor: pointer !important;
-}
-#sb-marker + div[data-testid="stHorizontalBlock"] > div:first-child > div[data-testid="stButton"] > button:hover,
-#sb-marker + div[data-testid="stButton"] > button:hover,
-#sb-marker + div > div[data-testid="stButton"] > button:hover {
-    background: #21262d !important;
-    border-color: #39c5cf !important;
-    color: #39c5cf !important;
-}
-#sb-marker + div[data-testid="stHorizontalBlock"] > div:first-child > div[data-testid="stButton"] > button p,
-#sb-marker + div[data-testid="stButton"] > button p,
-#sb-marker + div > div[data-testid="stButton"] > button p {
-    color: inherit !important;
-    font-size: 14px !important;
-    margin: 0 !important;
-}
-/* Constrain the button column width so button stays compact */
-#sb-marker + div[data-testid="stHorizontalBlock"] > div:first-child {
-    max-width: 60px !important;
-    min-width: 50px !important;
-    flex: 0 0 60px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Button inside a narrow column so it doesn't stretch to full page width
-_tc1, _tc2 = st.columns([1, 20])
-with _tc1:
-    if st.button(_sb_icon, key="sb_tog"):
+_t1, _t2 = st.columns([1, 20])
+with _t1:
+    if st.button(_icon, key="sidebar_toggle", help=_tip):
         st.session_state.sidebar_open = not st.session_state.sidebar_open
         st.rerun()
+
+# CSS — scoped to the toggle button by title attribute (v2 exact pattern)
+st.markdown("""
+<style>
+button[data-testid="baseButton-secondary"][title="Hide panel"],
+button[data-testid="baseButton-secondary"][title="Show panel"] {
+    width: 32px !important;
+    height: 26px !important;
+    min-height: 0 !important;
+    padding: 2px 6px !important;
+    font-size: .82rem !important;
+    line-height: 1 !important;
+}
+</style>""", unsafe_allow_html=True)
 
 st.markdown(f"""
 <style>
