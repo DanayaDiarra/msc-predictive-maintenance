@@ -559,49 +559,48 @@ def rule_answer(q):
 role_col = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}.get(ROLE,"#7d8590")
 role_css = {"admin":"role-admin","engineer":"role-engineer","viewer":"role-viewer"}.get(ROLE,"")
 
-# ── Sidebar toggle button — styled st.button (only working approach in Streamlit) ─
-# CSS targets the button by its data-testid + aria-label so ONLY this button is restyled.
-# The icon updates each render based on sidebar_open state.
+# ── Sidebar toggle — working st.button with safe minimal CSS ─────────────────
+# Rules: never set width/height/padding to 0 (breaks click hitbox).
+# Style the container div, not just the inner button element.
+# No help= tooltip (tooltip div can intercept clicks on small buttons).
 _sb_icon = "◀" if st.session_state.sidebar_open else "▶"
-st.markdown(f"""
+
+st.markdown("""
 <style>
-/* Target only the sidebar toggle button via its label */
-button[aria-label="sidebar_toggle_btn"] {{
+/* Scope to the toggle container only — use the key as the id anchor */
+div[data-testid="stButton"]:has(button[data-testid="baseButton-secondary"][kind="secondary"]:first-of-type) {
+    margin-bottom: 4px;
+}
+/* The toggle button itself — keep padding intact so hitbox is not broken */
+[data-testid="stButton"] button[aria-label="sb_tog"] {
     background: #1c2333 !important;
     border: 1px solid #30363d !important;
     border-radius: 6px !important;
     color: #7d8590 !important;
     font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 13px !important;
-    font-weight: 400 !important;
-    width: 38px !important;
-    height: 34px !important;
-    min-height: 0 !important;
-    padding: 0 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    min-width: 38px !important;
+    min-height: 32px !important;
+    padding: 4px 10px !important;
     line-height: 1 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    transition: background 0.15s, color 0.15s, border-color 0.15s !important;
-    margin-bottom: 6px !important;
-}}
-button[aria-label="sidebar_toggle_btn"]:hover {{
+    transition: background 0.15s, border-color 0.15s, color 0.15s !important;
+}
+[data-testid="stButton"] button[aria-label="sb_tog"]:hover {
     background: #21262d !important;
     border-color: #39c5cf !important;
     color: #39c5cf !important;
-}}
-button[aria-label="sidebar_toggle_btn"]:active {{
-    background: #30363d !important;
-}}
-button[aria-label="sidebar_toggle_btn"] p {{
-    font-size: 13px !important;
+}
+[data-testid="stButton"] button[aria-label="sb_tog"] p {
     color: inherit !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
     margin: 0 !important;
-    line-height: 1 !important;
-}}
+}
 </style>""", unsafe_allow_html=True)
 
-if st.button(_sb_icon, key="sidebar_toggle_btn", help="Hide/show sidebar"):
+# key becomes the aria-label — keep key short and unique
+if st.button(_sb_icon, key="sb_tog"):
     st.session_state.sidebar_open = not st.session_state.sidebar_open
     st.rerun()
 
