@@ -1176,28 +1176,71 @@ elif pk == "Engineer Chatbot":
 
     sh("ENGINEER CHATBOT — ASK MAINTENANCE QUESTIONS")
 
-    # API status
-    ds_key  = gsec("DEEPSEEK_API_KEY")
-    or_key  = gsec("OPENROUTER_API_KEY")
-    ant_key = gsec("ANTHROPIC_API_KEY")
+    # ── Key detection — same robust logic as v2 ──────────────────────────────
+    def _gsec_chat(key):
+        # Try st.secrets first (Streamlit Cloud)
+        try:
+            val = st.secrets[key]
+            if val:
+                return str(val).replace("\n","").replace("\r","").replace(" ","").strip()
+        except Exception:
+            pass
+        # Try os.environ (Colab / local with export)
+        val = os.environ.get(key, "")
+        return str(val).strip() if val else ""
 
-    if ds_key and len(ds_key)>20:
-        api_info = f"DeepSeek · deepseek-chat · {ds_key[:8]}...{ds_key[-4:]}"
-        api_color = "#3fb950"
-    elif or_key and len(or_key)>20:
-        api_info = f"OpenRouter · DeepSeek free · {or_key[:8]}...{or_key[-4:]}"
-        api_color = "#3fb950"
-    elif ant_key and len(ant_key)>20:
-        api_info = f"Anthropic · claude-haiku · {ant_key[:8]}...{ant_key[-4:]}"
-        api_color = "#58a6ff"
+    _ds_key  = _gsec_chat("DEEPSEEK_API_KEY")
+    _or_key  = _gsec_chat("OPENROUTER_API_KEY")
+    _ant_key = _gsec_chat("ANTHROPIC_API_KEY")
+
+    # Reject clearly broken keys
+    if _ds_key  and len(_ds_key)  < 20: _ds_key  = ""
+    if _or_key  and len(_or_key)  < 20: _or_key  = ""
+    if _ant_key and len(_ant_key) < 20: _ant_key = ""
+
+    # Debug expander — v2 style, shows exactly what was found
+    with st.expander("🔍 Debug: secret detection (expand to check)", expanded=False):
+        try:
+            _sk_keys = list(st.secrets.keys())
+        except Exception:
+            _sk_keys = []
+        st.code(
+            f"DEEPSEEK_API_KEY   : {('✓ SET — ' + _ds_key[:12] + '...' + _ds_key[-4:] + '  len=' + str(len(_ds_key))) if _ds_key else '✗ NOT FOUND'}\n"
+            f"OPENROUTER_API_KEY : {('✓ SET — ' + _or_key[:12] + '...' + _or_key[-4:] + '  len=' + str(len(_or_key))) if _or_key else '✗ NOT FOUND'}\n"
+            f"ANTHROPIC_API_KEY  : {('✓ SET — ' + _ant_key[:8] + '...' + _ant_key[-4:] + '  len=' + str(len(_ant_key))) if _ant_key else '✗ NOT FOUND'}\n"
+            f"st.secrets keys    : {_sk_keys}"
+        )
+
+    # Priority: DeepSeek → OpenRouter → Anthropic
+    if _ds_key:
+        _chat_provider = "DeepSeek"; _chat_model = "deepseek-chat"
+        _chat_key = _ds_key; _chat_url = "https://api.deepseek.com/v1/chat/completions"
+        _api_color = "#3fb950"
+        _api_info = f"DeepSeek · deepseek-chat · {_ds_key[:8]}...{_ds_key[-4:]}"
+    elif _or_key:
+        _chat_provider = "OpenRouter"; _chat_model = "deepseek/deepseek-chat-v3-0324:free"
+        _chat_key = _or_key; _chat_url = "https://openrouter.ai/api/v1/chat/completions"
+        _api_color = "#3fb950"
+        _api_info = f"OpenRouter · DeepSeek free · {_or_key[:8]}...{_or_key[-4:]}"
+    elif _ant_key:
+        _chat_provider = "Anthropic"; _chat_model = "claude-haiku-4-5-20251001"
+        _chat_key = _ant_key; _chat_url = "https://api.anthropic.com/v1/messages"
+        _api_color = "#58a6ff"
+        _api_info = f"Anthropic · claude-haiku · {_ant_key[:8]}...{_ant_key[-4:]}"
     else:
-        api_info = "No API key — rule-based answers active · Add DEEPSEEK_API_KEY or OPENROUTER_API_KEY to secrets"
-        api_color = "#f0b429"
+        _chat_key = None; _chat_provider = _chat_model = _chat_url = ""
+        _api_color = "#f0b429"
+        _api_info = "No API key — rule-based answers active · Add DEEPSEEK_API_KEY or OPENROUTER_API_KEY to secrets"
 
-    st.markdown(f'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;'
-                f'padding:.5rem 1rem;margin-bottom:.8rem;font-family:\'IBM Plex Mono\',monospace;'
-                f'font-size:.70rem;color:{api_color}">🔌 {api_info}</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        f'''<div style="background:#0d1117;border:1px solid {"#3fb95055" if _chat_key else "#f0b42944"};
+        border-radius:6px;padding:.5rem 1rem;margin-bottom:.8rem;
+        font-family:'IBM Plex Mono',monospace;font-size:.70rem;color:{_api_color}">
+        {"🔌 API key detected &nbsp;·&nbsp;" if _chat_key else "⚠ "}
+        <span style="color:#7d8590">{_chat_provider + " &nbsp;·&nbsp; " + _chat_model if _chat_key else ""}</span>
+        <span style="color:#30363d">{" &nbsp;·&nbsp; " + (_chat_key[:10] + "..." + _chat_key[-4:]) if _chat_key else _api_info}</span>
+        </div>''',
+        unsafe_allow_html=True)
 
     # Quick questions
     QUICK_QS = [
@@ -1245,7 +1288,7 @@ elif pk == "Engineer Chatbot":
         last_q = st.session_state.chat_history[-1]["content"]
         with st.spinner("Thinking..."):
             # RAG context
-            rag_ctx = ""
+            rag_ctx = ""; _b = {"chunks": []}
             try:
                 from rag_pipeline import RAGIndex, RAGPipeline, INDEX_DIR
                 from dataclasses import asdict as _da
@@ -1272,7 +1315,7 @@ elif pk == "Engineer Chatbot":
                         f"KNOWLEDGE BASE:\n{rag_ctx[:2000]}\n\n"
                         f"Answer using the context. Cite [DOC-ID]. Be direct.")
 
-            # Build clean message history for API
+            # Build clean message history
             prev = []
             for m in st.session_state.chat_history[:-1][-6:]:
                 c = re.sub(r"<[^>]+>","",str(m["content"])).strip()
@@ -1280,23 +1323,58 @@ elif pk == "Engineer Chatbot":
                     prev.append({"role":m["role"],"content":c})
             prev.append({"role":"user","content":user_msg})
 
-            # Try LLM first
-            answer, engine_used = llm_call(prev, sys_p)
+            answer = None; engine_used = "Rule-based"
+
+            # ── LLM call using page-local key vars (avoids gsec re-read issues) ──
+            if _chat_key and _chat_provider != "Anthropic":
+                try:
+                    _headers = {
+                        "Authorization": f"Bearer {_chat_key}",
+                        "Content-Type": "application/json",
+                    }
+                    if _chat_provider == "OpenRouter":
+                        _headers["HTTP-Referer"] = "https://agentic-pdm.streamlit.app"
+                    _payload = {
+                        "model": _chat_model,
+                        "messages": [{"role":"system","content":sys_p}] + prev,
+                        "max_tokens": 800, "temperature": 0.3,
+                    }
+                    _r = requests.post(_chat_url, headers=_headers,
+                                       json=_payload, timeout=30)
+                    _r.raise_for_status()
+                    answer = _r.json()["choices"][0]["message"]["content"]
+                    engine_used = f"{_chat_provider} · {_chat_model}"
+                except Exception as _e:
+                    answer = None
+
+            elif _chat_key and _chat_provider == "Anthropic":
+                try:
+                    _ant_msgs = [m for m in prev if m["role"] in ("user","assistant")]
+                    _payload = {
+                        "model": _chat_model, "max_tokens": 800,
+                        "system": sys_p, "messages": _ant_msgs,
+                    }
+                    _r = requests.post(_chat_url,
+                        headers={"x-api-key": _chat_key,
+                                 "anthropic-version": "2023-06-01",
+                                 "Content-Type": "application/json"},
+                        json=_payload, timeout=30)
+                    _r.raise_for_status()
+                    answer = _r.json()["content"][0]["text"]
+                    engine_used = f"Anthropic · {_chat_model}"
+                except Exception as _e:
+                    answer = None
 
             # Fallback to rule-based
             if not answer:
                 answer = rule_answer(last_q)
                 if not answer:
-                    docs = ""
-                    try:
-                        docs = " · ".join(c["citation_ref"] for c in _b["chunks"][:3])
-                    except Exception:
-                        pass
+                    docs = " · ".join(c["citation_ref"] for c in _b.get("chunks",[])[:3])
                     answer = (
-                        f"Related knowledge base: <em>{docs or 'none matched'}</em><br><br>"
-                        "For AI-powered answers, add a free API key to Streamlit secrets:<br>"
-                        "<code>OPENROUTER_API_KEY = \"sk-or-...\"</code>  (openrouter.ai — free)<br>"
-                        "<code>DEEPSEEK_API_KEY = \"sk-...\"</code>  (platform.deepseek.com — free)"
+                        f"Related knowledge: <em>{docs or 'none matched'}</em><br><br>"
+                        "Add a free API key to Streamlit secrets:<br>"
+                        "<code>OPENROUTER_API_KEY = \"sk-or-...\"</code> (openrouter.ai)<br>"
+                        "<code>DEEPSEEK_API_KEY = \"sk-...\"</code> (deepseek.com)"
                     )
                 engine_used = "Rule-based"
 
