@@ -1176,40 +1176,51 @@ elif pk == "Engineer Chatbot":
 
     sh("ENGINEER CHATBOT — ASK MAINTENANCE QUESTIONS")
 
-    # ── Key detection — same robust logic as v2 ──────────────────────────────
-    def _gsec_chat(key):
-        # Try st.secrets first (Streamlit Cloud)
+    # ── Key detection: bulletproof multi-strategy reader ─────────────────────
+    # Streamlit Cloud stores top-level secrets accessible as st.secrets["KEY"].
+    # Keys inside TOML sections (e.g. [users]) are nested: st.secrets["users"]["key"].
+    # This function tries every known access pattern so nothing is missed.
+    def _read_key(key):
+        clean = lambda v: str(v).replace("\n","").replace("\r","").replace(" ","").strip()
+        # 1. Direct top-level access (most common)
         try:
             val = st.secrets[key]
-            if val:
-                return str(val).replace("\n","").replace("\r","").replace(" ","").strip()
-        except Exception:
-            pass
-        # Try os.environ (Colab / local with export)
-        val = os.environ.get(key, "")
-        return str(val).strip() if val else ""
+            if val: return clean(val)
+        except Exception: pass
+        # 2. Case-insensitive scan of all top-level keys
+        try:
+            for k, v in st.secrets.items():
+                if k.upper() == key.upper() and v:
+                    return clean(v)
+        except Exception: pass
+        # 3. Scan inside every TOML section (e.g. [users], [api], etc.)
+        try:
+            for section_key, section_val in st.secrets.items():
+                if hasattr(section_val, "items"):
+                    for k, v in section_val.items():
+                        if k.upper() == key.upper() and v:
+                            return clean(v)
+        except Exception: pass
+        # 4. os.environ fallback (Colab / local)
+        val = os.environ.get(key, "") or os.environ.get(key.upper(), "")
+        return clean(val) if val else ""
 
-    _ds_key  = _gsec_chat("DEEPSEEK_API_KEY")
-    _or_key  = _gsec_chat("OPENROUTER_API_KEY")
-    _ant_key = _gsec_chat("ANTHROPIC_API_KEY")
+    _ds_key  = _read_key("DEEPSEEK_API_KEY")
+    _or_key  = _read_key("OPENROUTER_API_KEY")
+    _ant_key = _read_key("ANTHROPIC_API_KEY")
 
-    # Reject clearly broken keys
+    # ── Hardcoded fallback keys (used when secrets.toml is not configured) ──
+    # Override by adding to Streamlit Cloud → App settings → Secrets
+    _DS_FALLBACK = "sk-2534530413294fcca933913474fd0fba"
+    _OR_FALLBACK = "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"
+
+    if not _ds_key and _DS_FALLBACK: _ds_key = _DS_FALLBACK
+    if not _or_key and _OR_FALLBACK: _or_key = _OR_FALLBACK
+
+    # Reject clearly invalid keys
     if _ds_key  and len(_ds_key)  < 20: _ds_key  = ""
     if _or_key  and len(_or_key)  < 20: _or_key  = ""
     if _ant_key and len(_ant_key) < 20: _ant_key = ""
-
-    # Debug expander — v2 style, shows exactly what was found
-    with st.expander("🔍 Debug: secret detection (expand to check)", expanded=False):
-        try:
-            _sk_keys = list(st.secrets.keys())
-        except Exception:
-            _sk_keys = []
-        st.code(
-            f"DEEPSEEK_API_KEY   : {('✓ SET — ' + _ds_key[:12] + '...' + _ds_key[-4:] + '  len=' + str(len(_ds_key))) if _ds_key else '✗ NOT FOUND'}\n"
-            f"OPENROUTER_API_KEY : {('✓ SET — ' + _or_key[:12] + '...' + _or_key[-4:] + '  len=' + str(len(_or_key))) if _or_key else '✗ NOT FOUND'}\n"
-            f"ANTHROPIC_API_KEY  : {('✓ SET — ' + _ant_key[:8] + '...' + _ant_key[-4:] + '  len=' + str(len(_ant_key))) if _ant_key else '✗ NOT FOUND'}\n"
-            f"st.secrets keys    : {_sk_keys}"
-        )
 
     # Priority: DeepSeek → OpenRouter → Anthropic
     if _ds_key:
