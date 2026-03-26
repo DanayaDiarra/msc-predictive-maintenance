@@ -1334,60 +1334,77 @@ elif pk == "Engineer Chatbot":
                     prev.append({"role":m["role"],"content":c})
             prev.append({"role":"user","content":user_msg})
 
-            answer = None; engine_used = "Rule-based"
+            answer = None; engine_used = "Rule-based"; _api_error = ""
 
-            # ── LLM call using page-local key vars (avoids gsec re-read issues) ──
-            if _chat_key and _chat_provider != "Anthropic":
+            # ── Strategy 1: DeepSeek direct ──────────────────────────────────
+            _ds_direct = "sk-2534530413294fcca933913474fd0fba"
+            _or_direct = "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"
+
+            def _try_openai_compat(url, key, model, msgs, sysp):
+                """Call any OpenAI-compatible endpoint. Returns (text, None) or (None, error_str)."""
                 try:
-                    _headers = {
-                        "Authorization": f"Bearer {_chat_key}",
-                        "Content-Type": "application/json",
-                    }
-                    if _chat_provider == "OpenRouter":
-                        _headers["HTTP-Referer"] = "https://agentic-pdm.streamlit.app"
-                    _payload = {
-                        "model": _chat_model,
-                        "messages": [{"role":"system","content":sys_p}] + prev,
-                        "max_tokens": 800, "temperature": 0.3,
-                    }
-                    _r = requests.post(_chat_url, headers=_headers,
-                                       json=_payload, timeout=30)
-                    _r.raise_for_status()
-                    answer = _r.json()["choices"][0]["message"]["content"]
-                    engine_used = f"{_chat_provider} · {_chat_model}"
-                except Exception as _e:
-                    answer = None
+                    _h = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+                    if "openrouter" in url:
+                        _h["HTTP-Referer"] = "https://agentic-pdm.streamlit.app"
+                        _h["X-Title"] = "Agentic PdM NOC"
+                    _p = {"model": model,
+                          "messages": [{"role":"system","content":sysp}] + msgs,
+                          "max_tokens": 800, "temperature": 0.3}
+                    _resp = requests.post(url, headers=_h, json=_p, timeout=35)
+                    if not _resp.ok:
+                        return None, f"HTTP {_resp.status_code}: {_resp.text[:300]}"
+                    _data = _resp.json()
+                    _txt = _data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    if _txt: return _txt, None
+                    return None, f"Empty response: {str(_data)[:200]}"
+                except Exception as _ex:
+                    return None, str(_ex)[:200]
 
-            elif _chat_key and _chat_provider == "Anthropic":
-                try:
-                    _ant_msgs = [m for m in prev if m["role"] in ("user","assistant")]
-                    _payload = {
-                        "model": _chat_model, "max_tokens": 800,
-                        "system": sys_p, "messages": _ant_msgs,
-                    }
-                    _r = requests.post(_chat_url,
-                        headers={"x-api-key": _chat_key,
-                                 "anthropic-version": "2023-06-01",
-                                 "Content-Type": "application/json"},
-                        json=_payload, timeout=30)
-                    _r.raise_for_status()
-                    answer = _r.json()["content"][0]["text"]
-                    engine_used = f"Anthropic · {_chat_model}"
-                except Exception as _e:
-                    answer = None
-
-            # Fallback to rule-based
+            # Try DeepSeek first (direct key)
             if not answer:
-                answer = rule_answer(last_q)
-                if not answer:
-                    docs = " · ".join(c["citation_ref"] for c in _b.get("chunks",[])[:3])
+                answer, _api_error = _try_openai_compat(
+                    "https://api.deepseek.com/v1/chat/completions",
+                    _ds_direct, "deepseek-chat", prev, sys_p)
+                if answer:
+                    engine_used = "DeepSeek · deepseek-chat"
+                    _api_error = ""
+
+            # Try OpenRouter as fallback (free tier)
+            if not answer:
+                answer, _or_error = _try_openai_compat(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    _or_direct, "deepseek/deepseek-chat-v3-0324:free", prev, sys_p)
+                if answer:
+                    engine_used = "OpenRouter · DeepSeek free"
+                    _api_error = ""
+                else:
+                    _api_error = f"DeepSeek: {_api_error} | OpenRouter: {_or_error}"
+
+            # Try OpenRouter with a different free model if above failed
+            if not answer:
+                answer, _or2_error = _try_openai_compat(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    _or_direct, "mistralai/mistral-7b-instruct:free", prev, sys_p)
+                if answer:
+                    engine_used = "OpenRouter · Mistral-7B free"
+                    _api_error = ""
+
+            # Rule-based fallback with error info shown
+            if not answer:
+                rb = rule_answer(last_q)
+                docs = " · ".join(c["citation_ref"] for c in _b.get("chunks",[])[:3])
+                if rb:
+                    answer = rb
+                    engine_used = "Rule-based (API unavailable)"
+                else:
+                    _err_display = (f"<br><br><small style='color:#7d8590'>API error: {_api_error}</small>" 
+                                    if _api_error else "")
                     answer = (
-                        f"Related knowledge: <em>{docs or 'none matched'}</em><br><br>"
-                        "Add a free API key to Streamlit secrets:<br>"
-                        "<code>OPENROUTER_API_KEY = \"sk-or-...\"</code> (openrouter.ai)<br>"
-                        "<code>DEEPSEEK_API_KEY = \"sk-...\"</code> (deepseek.com)"
+                        f"Related knowledge: <em>{docs or 'none matched'}</em>"
+                        f"{_err_display}<br><br>"
+                        "The AI API is currently unavailable. Rule-based answers are active."
                     )
-                engine_used = "Rule-based"
+                    engine_used = "Rule-based"
 
             st.session_state.chat_history.append({
                 "role":"assistant","content":answer,"engine":engine_used})
