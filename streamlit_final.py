@@ -697,6 +697,29 @@ with st.sidebar:
     page = st.radio("Navigation", all_pages, label_visibility="collapsed")
     st.markdown("---")
 
+    # ── API Key Configuration ────────────────────────────────────────────────
+    if IS_ENGINEER:
+        st.markdown("---")
+        st.markdown("### 🔑 Chatbot API Key")
+        st.caption("Paste any key — DeepSeek, OpenRouter, or Anthropic")
+        _rt_key = st.text_input(
+            "API Key", type="password",
+            value=st.session_state.get("runtime_api_key", ""),
+            placeholder="sk-... or sk-or-... or sk-ant-...",
+            label_visibility="collapsed",
+            key="api_key_input")
+        _rt_provider = st.selectbox(
+            "Provider",
+            ["Auto-detect", "DeepSeek", "OpenRouter", "Anthropic"],
+            index=0, key="api_provider_select",
+            label_visibility="collapsed")
+        if st.button("💾 Save Key", key="save_api_key", use_container_width=True):
+            st.session_state.runtime_api_key = _rt_key.strip()
+            st.session_state.runtime_provider = _rt_provider
+            st.success("Key saved for this session.")
+
+    st.markdown("---")
+
     # Logout
     if st.button("🔒 Sign Out"):
         st.session_state.authenticated = False
@@ -1209,21 +1232,34 @@ elif pk == "Engineer Chatbot":
     _or_key  = _read_key("OPENROUTER_API_KEY")
     _ant_key = _read_key("ANTHROPIC_API_KEY")
 
-    # ── Hardcoded fallback keys (used when secrets.toml is not configured) ──
-    # Override by adding to Streamlit Cloud → App settings → Secrets
-    _DS_FALLBACK = "sk-2534530413294fcca933913474fd0fba"
-    _OR_FALLBACK = "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"
-
-    if not _ds_key and _DS_FALLBACK: _ds_key = _DS_FALLBACK
-    if not _or_key and _OR_FALLBACK: _or_key = _OR_FALLBACK
+    # Also check runtime key from sidebar session state
+    _rt_key  = st.session_state.get("runtime_api_key", "").strip()
+    _rt_prov = st.session_state.get("runtime_provider", "Auto-detect")
 
     # Reject clearly invalid keys
     if _ds_key  and len(_ds_key)  < 20: _ds_key  = ""
     if _or_key  and len(_or_key)  < 20: _or_key  = ""
     if _ant_key and len(_ant_key) < 20: _ant_key = ""
+    if _rt_key  and len(_rt_key)  < 20: _rt_key  = ""
 
-    # Priority: DeepSeek → OpenRouter → Anthropic
-    if _ds_key:
+    # Priority: runtime sidebar → DeepSeek secrets → OpenRouter secrets → Anthropic secrets
+    if _rt_key:
+        if _rt_prov == "Anthropic" or _rt_key.startswith("sk-ant-"):
+            _chat_provider = "Anthropic"; _chat_model = "claude-haiku-4-5-20251001"
+            _chat_key = _rt_key; _chat_url = "https://api.anthropic.com/v1/messages"
+            _api_color = "#58a6ff"
+            _api_info  = f"Anthropic · claude-haiku (runtime) · {_rt_key[:8]}...{_rt_key[-4:]}"
+        elif _rt_prov == "OpenRouter" or _rt_key.startswith("sk-or-"):
+            _chat_provider = "OpenRouter"; _chat_model = "deepseek/deepseek-chat-v3-0324:free"
+            _chat_key = _rt_key; _chat_url = "https://openrouter.ai/api/v1/chat/completions"
+            _api_color = "#3fb950"
+            _api_info  = f"OpenRouter (runtime) · {_rt_key[:8]}...{_rt_key[-4:]}"
+        else:
+            _chat_provider = "DeepSeek"; _chat_model = "deepseek-chat"
+            _chat_key = _rt_key; _chat_url = "https://api.deepseek.com/v1/chat/completions"
+            _api_color = "#3fb950"
+            _api_info  = f"DeepSeek (runtime) · {_rt_key[:8]}...{_rt_key[-4:]}"
+    elif _ds_key:
         _chat_provider = "DeepSeek"; _chat_model = "deepseek-chat"
         _chat_key = _ds_key; _chat_url = "https://api.deepseek.com/v1/chat/completions"
         _api_color = "#3fb950"
@@ -1241,7 +1277,7 @@ elif pk == "Engineer Chatbot":
     else:
         _chat_key = None; _chat_provider = _chat_model = _chat_url = ""
         _api_color = "#f0b429"
-        _api_info = "No API key — rule-based answers active · Add DEEPSEEK_API_KEY or OPENROUTER_API_KEY to secrets"
+        _api_info = "⚠ No API key configured — Enter a key in the sidebar (🔑 Chatbot API Key) or add to secrets.toml"
 
     st.markdown(
         f'''<div style="background:#0d1117;border:1px solid {"#3fb95055" if _chat_key else "#f0b42944"};
@@ -1336,9 +1372,12 @@ elif pk == "Engineer Chatbot":
 
             answer = None; engine_used = "Rule-based"; _api_error = ""
 
-            # ── Strategy 1: DeepSeek direct ──────────────────────────────────
-            _ds_direct = "sk-2534530413294fcca933913474fd0fba"
-            _or_direct = "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"
+            # ── Resolve API keys — runtime input > st.secrets > env ──────────
+            _runtime_key      = st.session_state.get("runtime_api_key", "").strip()
+            _runtime_provider = st.session_state.get("runtime_provider", "Auto-detect")
+            _ds_key  = gsec("DEEPSEEK_API_KEY")
+            _or_key  = gsec("OPENROUTER_API_KEY")
+            _ant_key = gsec("ANTHROPIC_API_KEY")
 
             def _try_openai_compat(url, key, model, msgs, sysp):
                 """Call any OpenAI-compatible endpoint. Returns (text, None) or (None, error_str)."""
@@ -1360,34 +1399,79 @@ elif pk == "Engineer Chatbot":
                 except Exception as _ex:
                     return None, str(_ex)[:200]
 
-            # Try DeepSeek first (direct key)
-            if not answer:
+            def _try_anthropic(key, msgs, sysp):
+                """Call Anthropic Messages API directly. Returns (text, None) or (None, error_str)."""
+                try:
+                    _ant_msgs = [{"role": m["role"], "content": re.sub(r"<[^>]+>","",str(m["content"])).strip()}
+                                 for m in msgs if m["role"] in ("user","assistant")]
+                    _p = {"model": "claude-haiku-4-5-20251001", "max_tokens": 800,
+                          "system": sysp, "messages": _ant_msgs}
+                    _resp = requests.post(
+                        "https://api.anthropic.com/v1/messages",
+                        headers={"x-api-key": key,
+                                 "anthropic-version": "2023-06-01",
+                                 "Content-Type": "application/json"},
+                        json=_p, timeout=35)
+                    if not _resp.ok:
+                        return None, f"HTTP {_resp.status_code}: {_resp.text[:300]}"
+                    _txt = _resp.json().get("content", [{}])[0].get("text", "")
+                    return (_txt, None) if _txt else (None, "Empty response from Anthropic")
+                except Exception as _ex:
+                    return None, str(_ex)[:200]
+
+            # ── Runtime key entered by user in sidebar ────────────────────────
+            if _runtime_key and len(_runtime_key) > 20 and not answer:
+                _prov = _runtime_provider
+                if _prov == "Auto-detect":
+                    if _runtime_key.startswith("sk-ant-"):   _prov = "Anthropic"
+                    elif _runtime_key.startswith("sk-or-"):  _prov = "OpenRouter"
+                    else:                                     _prov = "DeepSeek"
+
+                if _prov == "DeepSeek":
+                    answer, _api_error = _try_openai_compat(
+                        "https://api.deepseek.com/v1/chat/completions",
+                        _runtime_key, "deepseek-chat", prev, sys_p)
+                    if answer: engine_used = "DeepSeek · deepseek-chat"; _api_error = ""
+                elif _prov == "OpenRouter":
+                    answer, _api_error = _try_openai_compat(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        _runtime_key, "deepseek/deepseek-chat-v3-0324:free", prev, sys_p)
+                    if answer: engine_used = "OpenRouter · DeepSeek free"; _api_error = ""
+                    if not answer:
+                        answer, _api_error = _try_openai_compat(
+                            "https://openrouter.ai/api/v1/chat/completions",
+                            _runtime_key, "mistralai/mistral-7b-instruct:free", prev, sys_p)
+                        if answer: engine_used = "OpenRouter · Mistral-7B"; _api_error = ""
+                elif _prov == "Anthropic":
+                    answer, _api_error = _try_anthropic(_runtime_key, prev, sys_p)
+                    if answer: engine_used = "Anthropic · Claude Haiku"; _api_error = ""
+
+            # ── Secrets / env DeepSeek ────────────────────────────────────────
+            if _ds_key and len(_ds_key) > 20 and not answer:
                 answer, _api_error = _try_openai_compat(
                     "https://api.deepseek.com/v1/chat/completions",
-                    _ds_direct, "deepseek-chat", prev, sys_p)
-                if answer:
-                    engine_used = "DeepSeek · deepseek-chat"
-                    _api_error = ""
+                    _ds_key, "deepseek-chat", prev, sys_p)
+                if answer: engine_used = "DeepSeek · deepseek-chat"; _api_error = ""
 
-            # Try OpenRouter as fallback (free tier)
-            if not answer:
+            # ── Secrets / env OpenRouter ──────────────────────────────────────
+            if _or_key and len(_or_key) > 20 and not answer:
                 answer, _or_error = _try_openai_compat(
                     "https://openrouter.ai/api/v1/chat/completions",
-                    _or_direct, "deepseek/deepseek-chat-v3-0324:free", prev, sys_p)
+                    _or_key, "deepseek/deepseek-chat-v3-0324:free", prev, sys_p)
                 if answer:
-                    engine_used = "OpenRouter · DeepSeek free"
-                    _api_error = ""
+                    engine_used = "OpenRouter · DeepSeek free"; _api_error = ""
                 else:
                     _api_error = f"DeepSeek: {_api_error} | OpenRouter: {_or_error}"
+                if not answer:
+                    answer, _or2_error = _try_openai_compat(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        _or_key, "mistralai/mistral-7b-instruct:free", prev, sys_p)
+                    if answer: engine_used = "OpenRouter · Mistral-7B"; _api_error = ""
 
-            # Try OpenRouter with a different free model if above failed
-            if not answer:
-                answer, _or2_error = _try_openai_compat(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    _or_direct, "mistralai/mistral-7b-instruct:free", prev, sys_p)
-                if answer:
-                    engine_used = "OpenRouter · Mistral-7B free"
-                    _api_error = ""
+            # ── Secrets / env Anthropic ───────────────────────────────────────
+            if _ant_key and len(_ant_key) > 20 and not answer:
+                answer, _api_error = _try_anthropic(_ant_key, prev, sys_p)
+                if answer: engine_used = "Anthropic · Claude Haiku"; _api_error = ""
 
             # Rule-based fallback with error info shown
             if not answer:
