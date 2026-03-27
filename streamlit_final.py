@@ -697,28 +697,35 @@ with st.sidebar:
     page = st.radio("Navigation", all_pages, label_visibility="collapsed")
     st.markdown("---")
 
-    # ── API Key Configuration ────────────────────────────────────────────────
+    # ── Chatbot API Key (runtime input — Engineer/Admin only) ───────────────
     if IS_ENGINEER:
         st.markdown("---")
-        st.markdown("### 🔑 Chatbot API Key")
-        st.caption("Paste any key — DeepSeek, OpenRouter, or Anthropic")
-        _rt_key = st.text_input(
-            "API Key", type="password",
-            value=st.session_state.get("runtime_api_key", ""),
+        st.markdown(
+            "<div style='font-size:.75rem;font-weight:700;color:#e6edf3;"
+            "font-family:IBM Plex Mono,monospace;margin-bottom:.3rem'>"
+            "🔑 Chatbot API Key</div>"
+            "<div style='font-size:.68rem;color:#7d8590;margin-bottom:.5rem'>"
+            "Paste any key — DeepSeek, OpenRouter, or Anthropic</div>",
+            unsafe_allow_html=True)
+        _runtime_key_input = st.text_input(
+            "API Key", value=st.session_state.runtime_api_key,
             placeholder="sk-... or sk-or-... or sk-ant-...",
-            label_visibility="collapsed",
-            key="api_key_input")
-        _rt_provider = st.selectbox(
-            "Provider",
-            ["Auto-detect", "DeepSeek", "OpenRouter", "Anthropic"],
-            index=0, key="api_provider_select",
-            label_visibility="collapsed")
-        if st.button("💾 Save Key", key="save_api_key", use_container_width=True):
-            st.session_state.runtime_api_key = _rt_key.strip()
-            st.session_state.runtime_provider = _rt_provider
-            st.success("Key saved for this session.")
-
-    st.markdown("---")
+            type="password", label_visibility="collapsed",
+            key="runtime_key_field")
+        _provider_choice = st.selectbox(
+            "Provider", ["Auto-detect","DeepSeek","OpenRouter","Anthropic"],
+            index=["Auto-detect","DeepSeek","OpenRouter","Anthropic"].index(
+                st.session_state.runtime_api_provider),
+            label_visibility="visible", key="provider_select")
+        if st.button("💾 Save Key", use_container_width=True):
+            st.session_state.runtime_api_key = _runtime_key_input.strip()
+            st.session_state.runtime_api_provider = _provider_choice
+            st.success("Key saved — send a message to test it")
+            st.rerun()
+        if st.session_state.runtime_api_key:
+            kp = st.session_state.runtime_api_key
+            st.caption(f"Active: {kp[:8]}...{kp[-4:]} ({st.session_state.runtime_api_provider})")
+        st.markdown("---")
 
     # Logout
     if st.button("🔒 Sign Out"):
@@ -1196,6 +1203,10 @@ elif pk == "Engineer Chatbot":
         st.session_state.chat_history = []
     if "chat_thinking" not in st.session_state:
         st.session_state.chat_thinking = False
+    if "runtime_api_key" not in st.session_state:
+        st.session_state.runtime_api_key = ""
+    if "runtime_api_provider" not in st.session_state:
+        st.session_state.runtime_api_provider = "Auto-detect"
 
     sh("ENGINEER CHATBOT — ASK MAINTENANCE QUESTIONS")
 
@@ -1232,34 +1243,21 @@ elif pk == "Engineer Chatbot":
     _or_key  = _read_key("OPENROUTER_API_KEY")
     _ant_key = _read_key("ANTHROPIC_API_KEY")
 
-    # Also check runtime key from sidebar session state
-    _rt_key  = st.session_state.get("runtime_api_key", "").strip()
-    _rt_prov = st.session_state.get("runtime_provider", "Auto-detect")
+    # ── Hardcoded fallback keys (used when secrets.toml is not configured) ──
+    # Override by adding to Streamlit Cloud → App settings → Secrets
+    _DS_FALLBACK = "sk-2534530413294fcca933913474fd0fba"
+    _OR_FALLBACK = "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"
+
+    if not _ds_key and _DS_FALLBACK: _ds_key = _DS_FALLBACK
+    if not _or_key and _OR_FALLBACK: _or_key = _OR_FALLBACK
 
     # Reject clearly invalid keys
     if _ds_key  and len(_ds_key)  < 20: _ds_key  = ""
     if _or_key  and len(_or_key)  < 20: _or_key  = ""
     if _ant_key and len(_ant_key) < 20: _ant_key = ""
-    if _rt_key  and len(_rt_key)  < 20: _rt_key  = ""
 
-    # Priority: runtime sidebar → DeepSeek secrets → OpenRouter secrets → Anthropic secrets
-    if _rt_key:
-        if _rt_prov == "Anthropic" or _rt_key.startswith("sk-ant-"):
-            _chat_provider = "Anthropic"; _chat_model = "claude-haiku-4-5-20251001"
-            _chat_key = _rt_key; _chat_url = "https://api.anthropic.com/v1/messages"
-            _api_color = "#58a6ff"
-            _api_info  = f"Anthropic · claude-haiku (runtime) · {_rt_key[:8]}...{_rt_key[-4:]}"
-        elif _rt_prov == "OpenRouter" or _rt_key.startswith("sk-or-"):
-            _chat_provider = "OpenRouter"; _chat_model = "deepseek/deepseek-chat-v3-0324:free"
-            _chat_key = _rt_key; _chat_url = "https://openrouter.ai/api/v1/chat/completions"
-            _api_color = "#3fb950"
-            _api_info  = f"OpenRouter (runtime) · {_rt_key[:8]}...{_rt_key[-4:]}"
-        else:
-            _chat_provider = "DeepSeek"; _chat_model = "deepseek-chat"
-            _chat_key = _rt_key; _chat_url = "https://api.deepseek.com/v1/chat/completions"
-            _api_color = "#3fb950"
-            _api_info  = f"DeepSeek (runtime) · {_rt_key[:8]}...{_rt_key[-4:]}"
-    elif _ds_key:
+    # Priority: DeepSeek → OpenRouter → Anthropic
+    if _ds_key:
         _chat_provider = "DeepSeek"; _chat_model = "deepseek-chat"
         _chat_key = _ds_key; _chat_url = "https://api.deepseek.com/v1/chat/completions"
         _api_color = "#3fb950"
@@ -1277,7 +1275,7 @@ elif pk == "Engineer Chatbot":
     else:
         _chat_key = None; _chat_provider = _chat_model = _chat_url = ""
         _api_color = "#f0b429"
-        _api_info = "⚠ No API key configured — Enter a key in the sidebar (🔑 Chatbot API Key) or add to secrets.toml"
+        _api_info = "No API key — rule-based answers active · Add DEEPSEEK_API_KEY or OPENROUTER_API_KEY to secrets"
 
     st.markdown(
         f'''<div style="background:#0d1117;border:1px solid {"#3fb95055" if _chat_key else "#f0b42944"};
@@ -1370,123 +1368,175 @@ elif pk == "Engineer Chatbot":
                     prev.append({"role":m["role"],"content":c})
             prev.append({"role":"user","content":user_msg})
 
-            answer = None; engine_used = "Rule-based"; _api_error = ""
+            answer = None; engine_used = "Rule-based"
+            _errors = []  # collect every error for debug display
 
-            # ── Resolve API keys — runtime input > st.secrets > env ──────────
-            _runtime_key      = st.session_state.get("runtime_api_key", "").strip()
-            _runtime_provider = st.session_state.get("runtime_provider", "Auto-detect")
-            _ds_key  = gsec("DEEPSEEK_API_KEY")
-            _or_key  = gsec("OPENROUTER_API_KEY")
-            _ant_key = gsec("ANTHROPIC_API_KEY")
+            # ─────────────────────────────────────────────────────────────────
+            # LLM call helper — uses urllib only (no requests pkg dependency)
+            # Returns (answer_str, None) on success or (None, error_str) on fail
+            # ─────────────────────────────────────────────────────────────────
+            import urllib.request, urllib.error, json as _json
 
-            def _try_openai_compat(url, key, model, msgs, sysp):
-                """Call any OpenAI-compatible endpoint. Returns (text, None) or (None, error_str)."""
+            def _call_openai_compat(url, key, model, messages, sysp):
+                payload = _json.dumps({
+                    "model": model,
+                    "messages": [{"role":"system","content":sysp}] + messages,
+                    "max_tokens": 800,
+                    "temperature": 0.3,
+                }).encode()
+                headers = {
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                }
+                if "openrouter" in url:
+                    headers["HTTP-Referer"] = "https://agentic-pdm.streamlit.app"
+                    headers["X-Title"] = "Agentic PdM NOC"
+                req = urllib.request.Request(url, data=payload, headers=headers)
                 try:
-                    _h = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-                    if "openrouter" in url:
-                        _h["HTTP-Referer"] = "https://agentic-pdm.streamlit.app"
-                        _h["X-Title"] = "Agentic PdM NOC"
-                    _p = {"model": model,
-                          "messages": [{"role":"system","content":sysp}] + msgs,
-                          "max_tokens": 800, "temperature": 0.3}
-                    _resp = requests.post(url, headers=_h, json=_p, timeout=35)
-                    if not _resp.ok:
-                        return None, f"HTTP {_resp.status_code}: {_resp.text[:300]}"
-                    _data = _resp.json()
-                    _txt = _data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    if _txt: return _txt, None
-                    return None, f"Empty response: {str(_data)[:200]}"
-                except Exception as _ex:
-                    return None, str(_ex)[:200]
+                    with urllib.request.urlopen(req, timeout=30) as resp:
+                        data = _json.loads(resp.read())
+                        txt = data.get("choices",[{}])[0].get("message",{}).get("content","")
+                        return (txt.strip(), None) if txt.strip() else (None, f"Empty response body: {str(data)[:150]}")
+                except urllib.error.HTTPError as e:
+                    body = ""
+                    try: body = e.read().decode()[:250]
+                    except: pass
+                    return None, f"HTTP {e.code} from {url.split('/')[2]}: {body}"
+                except urllib.error.URLError as e:
+                    return None, f"Network/URLError from {url.split('/')[2]}: {e.reason}"
+                except Exception as e:
+                    return None, f"Exception ({type(e).__name__}): {str(e)[:200]}"
 
-            def _try_anthropic(key, msgs, sysp):
-                """Call Anthropic Messages API directly. Returns (text, None) or (None, error_str)."""
+            def _call_anthropic(key, messages, sysp):
+                # Anthropic messages API — uses x-api-key header, different schema
+                # Strip system role from messages (Anthropic uses top-level system param)
+                ant_msgs = [m for m in messages if m["role"] in ("user","assistant")]
+                # Ensure alternating roles (Anthropic requirement)
+                clean = []
+                for m in ant_msgs:
+                    if clean and clean[-1]["role"] == m["role"]:
+                        clean[-1]["content"] += "\n" + m["content"]
+                    else:
+                        clean.append({"role": m["role"], "content": m["content"]})
+                if not clean or clean[0]["role"] != "user":
+                    clean.insert(0, {"role":"user","content":"Hello"})
+                payload = _json.dumps({
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 800,
+                    "system": sysp,
+                    "messages": clean,
+                }).encode()
+                req = urllib.request.Request(
+                    "https://api.anthropic.com/v1/messages",
+                    data=payload,
+                    headers={
+                        "x-api-key": key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    }
+                )
                 try:
-                    _ant_msgs = [{"role": m["role"], "content": re.sub(r"<[^>]+>","",str(m["content"])).strip()}
-                                 for m in msgs if m["role"] in ("user","assistant")]
-                    _p = {"model": "claude-haiku-4-5-20251001", "max_tokens": 800,
-                          "system": sysp, "messages": _ant_msgs}
-                    _resp = requests.post(
-                        "https://api.anthropic.com/v1/messages",
-                        headers={"x-api-key": key,
-                                 "anthropic-version": "2023-06-01",
-                                 "Content-Type": "application/json"},
-                        json=_p, timeout=35)
-                    if not _resp.ok:
-                        return None, f"HTTP {_resp.status_code}: {_resp.text[:300]}"
-                    _txt = _resp.json().get("content", [{}])[0].get("text", "")
-                    return (_txt, None) if _txt else (None, "Empty response from Anthropic")
-                except Exception as _ex:
-                    return None, str(_ex)[:200]
+                    with urllib.request.urlopen(req, timeout=30) as resp:
+                        data = _json.loads(resp.read())
+                        txt = data.get("content",[{}])[0].get("text","")
+                        return (txt.strip(), None) if txt.strip() else (None, f"Empty content: {str(data)[:150]}")
+                except urllib.error.HTTPError as e:
+                    body = ""
+                    try: body = e.read().decode()[:250]
+                    except: pass
+                    return None, f"Anthropic HTTP {e.code}: {body}"
+                except urllib.error.URLError as e:
+                    return None, f"Anthropic URLError: {e.reason}"
+                except Exception as e:
+                    return None, f"Anthropic Exception ({type(e).__name__}): {str(e)[:200]}"
 
-            # ── Runtime key entered by user in sidebar ────────────────────────
-            if _runtime_key and len(_runtime_key) > 20 and not answer:
-                _prov = _runtime_provider
-                if _prov == "Auto-detect":
-                    if _runtime_key.startswith("sk-ant-"):   _prov = "Anthropic"
-                    elif _runtime_key.startswith("sk-or-"):  _prov = "OpenRouter"
-                    else:                                     _prov = "DeepSeek"
+            # ── Read keys: runtime (sidebar) > secrets > env > hardcoded ────
+            _ds_k  = _ds_key
+            _or_k  = _or_key
+            _ant_k = _ant_key
 
-                if _prov == "DeepSeek":
-                    answer, _api_error = _try_openai_compat(
-                        "https://api.deepseek.com/v1/chat/completions",
-                        _runtime_key, "deepseek-chat", prev, sys_p)
-                    if answer: engine_used = "DeepSeek · deepseek-chat"; _api_error = ""
-                elif _prov == "OpenRouter":
-                    answer, _api_error = _try_openai_compat(
-                        "https://openrouter.ai/api/v1/chat/completions",
-                        _runtime_key, "deepseek/deepseek-chat-v3-0324:free", prev, sys_p)
-                    if answer: engine_used = "OpenRouter · DeepSeek free"; _api_error = ""
-                    if not answer:
-                        answer, _api_error = _try_openai_compat(
-                            "https://openrouter.ai/api/v1/chat/completions",
-                            _runtime_key, "mistralai/mistral-7b-instruct:free", prev, sys_p)
-                        if answer: engine_used = "OpenRouter · Mistral-7B"; _api_error = ""
-                elif _prov == "Anthropic":
-                    answer, _api_error = _try_anthropic(_runtime_key, prev, sys_p)
-                    if answer: engine_used = "Anthropic · Claude Haiku"; _api_error = ""
+            # Hardcoded last-resort fallbacks
+            if not _ds_k:  _ds_k  = "sk-2534530413294fcca933913474fd0fba"
+            if not _or_k:  _or_k  = "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"
 
-            # ── Secrets / env DeepSeek ────────────────────────────────────────
-            if _ds_key and len(_ds_key) > 20 and not answer:
-                answer, _api_error = _try_openai_compat(
+            # ── Runtime key entered in sidebar overrides everything ───────────
+            _rk = st.session_state.get("runtime_api_key","").strip()
+            _rp = st.session_state.get("runtime_api_provider","Auto-detect")
+            if _rk and len(_rk) > 20:
+                if _rp == "Anthropic" or _rk.startswith("sk-ant"):
+                    _ant_k = _rk; _ds_k = ""; _or_k = ""
+                elif _rp == "OpenRouter" or _rk.startswith("sk-or"):
+                    _or_k = _rk; _ds_k = ""; _ant_k = ""
+                elif _rp == "DeepSeek" or _rk.startswith("sk-") and not _rk.startswith("sk-or") and not _rk.startswith("sk-ant"):
+                    _ds_k = _rk; _or_k = ""; _ant_k = ""
+                else:  # Auto-detect: try all three slots
+                    if _rk.startswith("sk-ant"): _ant_k = _rk
+                    elif _rk.startswith("sk-or"): _or_k = _rk
+                    else: _ds_k = _rk
+
+            # ── Attempt 1: Anthropic Claude Haiku (most reliable on cloud) ───
+            if not answer and _ant_k:
+                _ans, _err = _call_anthropic(_ant_k, prev, sys_p)
+                if _ans: answer = _ans; engine_used = "Claude Haiku"
+                else: _errors.append(f"Anthropic: {_err}")
+
+            # ── Attempt 2: DeepSeek direct ───────────────────────────────────
+            if not answer and _ds_k:
+                _ans, _err = _call_openai_compat(
                     "https://api.deepseek.com/v1/chat/completions",
-                    _ds_key, "deepseek-chat", prev, sys_p)
-                if answer: engine_used = "DeepSeek · deepseek-chat"; _api_error = ""
+                    _ds_k, "deepseek-chat", prev, sys_p)
+                if _ans: answer = _ans; engine_used = "DeepSeek · deepseek-chat"
+                else: _errors.append(f"DeepSeek: {_err}")
 
-            # ── Secrets / env OpenRouter ──────────────────────────────────────
-            if _or_key and len(_or_key) > 20 and not answer:
-                answer, _or_error = _try_openai_compat(
+            # ── Attempt 3: OpenRouter — deepseek free ────────────────────────
+            if not answer and _or_k:
+                _ans, _err = _call_openai_compat(
                     "https://openrouter.ai/api/v1/chat/completions",
-                    _or_key, "deepseek/deepseek-chat-v3-0324:free", prev, sys_p)
-                if answer:
-                    engine_used = "OpenRouter · DeepSeek free"; _api_error = ""
-                else:
-                    _api_error = f"DeepSeek: {_api_error} | OpenRouter: {_or_error}"
-                if not answer:
-                    answer, _or2_error = _try_openai_compat(
-                        "https://openrouter.ai/api/v1/chat/completions",
-                        _or_key, "mistralai/mistral-7b-instruct:free", prev, sys_p)
-                    if answer: engine_used = "OpenRouter · Mistral-7B"; _api_error = ""
+                    _or_k, "deepseek/deepseek-chat-v3-0324:free", prev, sys_p)
+                if _ans: answer = _ans; engine_used = "OpenRouter · DeepSeek"
+                else: _errors.append(f"OR-DeepSeek: {_err}")
 
-            # ── Secrets / env Anthropic ───────────────────────────────────────
-            if _ant_key and len(_ant_key) > 20 and not answer:
-                answer, _api_error = _try_anthropic(_ant_key, prev, sys_p)
-                if answer: engine_used = "Anthropic · Claude Haiku"; _api_error = ""
+            # ── Attempt 4: OpenRouter — Mistral free ─────────────────────────
+            if not answer and _or_k:
+                _ans, _err = _call_openai_compat(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    _or_k, "mistralai/mistral-7b-instruct:free", prev, sys_p)
+                if _ans: answer = _ans; engine_used = "OpenRouter · Mistral-7B"
+                else: _errors.append(f"OR-Mistral: {_err}")
 
-            # Rule-based fallback with error info shown
+            # ── Attempt 5: OpenRouter — Llama free ───────────────────────────
+            if not answer and _or_k:
+                _ans, _err = _call_openai_compat(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    _or_k, "meta-llama/llama-3.1-8b-instruct:free", prev, sys_p)
+                if _ans: answer = _ans; engine_used = "OpenRouter · Llama-3.1-8B"
+                else: _errors.append(f"OR-Llama: {_err}")
+
+            # ── Rule-based fallback — always shows full error list ────────────
             if not answer:
                 rb = rule_answer(last_q)
                 docs = " · ".join(c["citation_ref"] for c in _b.get("chunks",[])[:3])
+                err_html = ""
+                if _errors:
+                    err_lines = "<br>".join(f"• {e}" for e in _errors)
+                    err_html = (
+                        f"<details style='margin-top:.5rem'>"
+                        f"<summary style='cursor:pointer;font-size:.7rem;color:#7d8590'>"
+                        f"▸ API error log ({len(_errors)} attempts failed)</summary>"
+                        f"<div style='font-family:IBM Plex Mono,monospace;font-size:.68rem;"
+                        f"color:#f0b429;margin-top:.3rem;line-height:1.6'>{err_lines}</div>"
+                        f"</details>"
+                    )
                 if rb:
-                    answer = rb
-                    engine_used = "Rule-based (API unavailable)"
+                    answer = rb + err_html
+                    engine_used = "Rule-based (all APIs failed)"
                 else:
-                    _err_display = (f"<br><br><small style='color:#7d8590'>API error: {_api_error}</small>" 
-                                    if _api_error else "")
+                    rag_hint = f"<br><em style='color:#7d8590'>Knowledge refs: {docs or 'none'}</em>" if docs else ""
                     answer = (
-                        f"Related knowledge: <em>{docs or 'none matched'}</em>"
-                        f"{_err_display}<br><br>"
-                        "The AI API is currently unavailable. Rule-based answers are active."
+                        "I don't have a specific rule for that query. "
+                        "The AI backend is currently unreachable — please ask about "
+                        "alarm codes (PWR-xxx, COOL-xxx, RF-xxx), maintenance procedures, "
+                        f"or RUL urgency levels.{rag_hint}{err_html}"
                     )
                     engine_used = "Rule-based"
 
