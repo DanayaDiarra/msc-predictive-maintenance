@@ -167,6 +167,9 @@ def _get_ant_key():
     return ""
 
 def _get_users():
+    # Always prefer runtime user store (allows in-session add/remove)
+    if "_runtime_users" in st.session_state and st.session_state._runtime_users:
+        return dict(st.session_state._runtime_users)
     try:
         u = st.secrets["users"]
         out = {}
@@ -385,9 +388,67 @@ EVIDENCE = {
          "COOL-001: <2000RPM Critical. Reduce TX 50%, dispatch 4h. COOL-003: >70°C shutdown."),
     ],
 }
+# ── 5 additional stations ─────────────────────────────────────────────────────
+STATIONS += [
+    dict(id="FD002_14",  urgency="Critical", sub="power_subsystem",       sla=4,
+         cl=8.2, ch=14.1, conf=0.920, gr=1.0, hal=0.0, cost=900, auto_n=2, to_n=1, hum_n=1, cov=1.00,
+         doc="SOP-PWR-001", subset="FD002", cycles=312,
+         hyp="Critical rectifier fault — DC bus voltage below 42V threshold",
+         fc="48V DC rectifier module B", mech="Module B failure — Module A running at 140% rated load",
+         alm="PWR-001 (undervoltage) + PWR-003 (rectifier failure)",
+         a1="Isolate rectifier B and activate bypass via OMC",  a1t="AUTO",    a1tool="remote_command",
+         a2="Emergency dispatch — dual rectifier replacement",   a2t="HUMAN",   a2tool="schedule_dispatch",
+         base_rul=11.2, top_feat="voltage_rolling_mean", top_imp=0.0798,
+         degrade=0.65, sensor_lbl="DC Voltage",   sensor_nom=42.8, sensor_unit="V",  sensor_dir="low"),
+    dict(id="FD001_44",  urgency="Warning",  sub="rf_antenna",            sla=48,
+         cl=28.1, ch=39.5, conf=0.780, gr=1.0, hal=0.0, cost=600, auto_n=1, to_n=2, hum_n=0, cov=1.00,
+         doc="MAN-RF-001", subset="FD001", cycles=203,
+         hyp="PA efficiency degradation — TX power anomaly detected on sector Alpha",
+         fc="Power amplifier PA-2 stage", mech="PA efficiency falling 25% below nominal threshold",
+         alm="RF-002 (PA power low) + RF-004 (efficiency alarm)",
+         a1="Reduce TX power 20% via OMC to protect PA stage",  a1t="AUTO",    a1tool="remote_command",
+         a2="Schedule PA module inspection within 48h",          a2t="TIMEOUT", a2tool="schedule_dispatch",
+         base_rul=33.8, top_feat="rssi_std_30",         top_imp=0.0755,
+         degrade=0.20, sensor_lbl="PA Efficiency", sensor_nom=78.5, sensor_unit="%", sensor_dir="low"),
+    dict(id="FD003_55",  urgency="Warning",  sub="thermal_management",    sla=48,
+         cl=22.0, ch=33.4, conf=0.840, gr=1.0, hal=0.0, cost=700, auto_n=1, to_n=1, hum_n=0, cov=1.00,
+         doc="MAN-THM-001", subset="FD003", cycles=244,
+         hyp="Heat exchanger fouling — reduced airflow causing thermal gradient",
+         fc="Cabinet heat exchanger unit", mech="Particulate buildup reducing airflow by 35%",
+         alm="COOL-002 (temp >60 C) + COOL-004 (fan deviation)",
+         a1="Increase fan speed to maximum via OMC",             a1t="AUTO",    a1tool="remote_command",
+         a2="Schedule heat exchanger cleaning within 48h",       a2t="TIMEOUT", a2tool="schedule_dispatch",
+         base_rul=27.7, top_feat="temp_sensor_slope",   top_imp=0.0831,
+         degrade=0.28, sensor_lbl="Inlet Temp",   sensor_nom=41.2, sensor_unit="C",  sensor_dir="high"),
+    dict(id="FD004_78",  urgency="Monitor",  sub="baseband_processing",   sla=168,
+         cl=61.0, ch=84.2, conf=0.700, gr=1.0, hal=0.0, cost=0, auto_n=2, to_n=0, hum_n=0, cov=1.00,
+         doc="MAN-BBU-002", subset="FD004", cycles=167,
+         hyp="BBU memory pressure — swap usage trending toward OOM threshold",
+         fc="BBU DDR4 memory subsystem", mech="Memory leak in L2 process — swap at 68% of 16GB",
+         alm="BBU-MEM-001 (swap >50%) trending toward BBU-MEM-002",
+         a1="Restart non-critical L2 processes via OMC",         a1t="AUTO",    a1tool="remote_command",
+         a2="Open monitoring — track swap/mem trend 7d",          a2t="AUTO",    a2tool="open_ticket",
+         base_rul=72.6, top_feat="cpu_utilization_mean", top_imp=0.0688,
+         degrade=0.06, sensor_lbl="Mem Swap",    sensor_nom=68.0, sensor_unit="%", sensor_dir="high"),
+    dict(id="FD002_33",  urgency="Monitor",  sub="backhaul_connectivity", sla=168,
+         cl=88.4, ch=122.0, conf=0.580, gr=1.0, hal=0.0, cost=0, auto_n=1, to_n=1, hum_n=0, cov=0.60,
+         doc="MAN-BKH-001", subset="FD002", cycles=131,
+         hyp="Microwave path anomaly — rain-fade increasing in frequency",
+         fc="Microwave dish alignment — azimuth drift detected", mech="0.3 deg azimuth drift causing 3.2dB fade margin reduction",
+         alm="BKH-003 (fade margin <10dB) anticipated",
+         a1="Open monitoring ticket — track fade margin trend",   a1t="AUTO",    a1tool="open_ticket",
+         a2="Schedule microwave alignment check within 14d",      a2t="TIMEOUT", a2tool="schedule_dispatch",
+         base_rul=105.2, top_feat="latency_slope",       top_imp=0.0601,
+         degrade=0.03, sensor_lbl="Fade Margin", sensor_nom=14.8, sensor_unit="dB", sensor_dir="low"),
+]
+
 for _s in STATIONS:
     if _s["id"] not in EVIDENCE:
         EVIDENCE[_s["id"]] = EVIDENCE["FD002_47"]
+
+# ── CRITICAL: add "rul" alias for backward-compat with all page code ──────────
+for _s in STATIONS:
+    _s["rul"] = _s["base_rul"]
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  LIVE PREDICTION ENGINE
@@ -575,28 +636,70 @@ crit_n = sum(1 for s in STATIONS if live_urgency(live_rul(s))=="Critical")
 sys_color = "#ff6b35" if crit_n > 0 else "#3fb950"
 sys_label = f"{crit_n} CRITICAL ACTIVE" if crit_n > 0 else "SYSTEM OPERATIONAL"
 
-st.markdown(f"""<style>@keyframes blink{{0%,100%{{opacity:1;}}50%{{opacity:.3;}}}}.dot{{animation:blink 2.2s ease-in-out infinite;}}</style>
-<div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem 0 .8rem;margin-bottom:.8rem;border-bottom:1px solid #30363d">
+_live_dot_color = "#3fb950" if not st.session_state.live_mode else "#39c5cf"
+_live_label     = "● LIVE" if st.session_state.live_mode else "● STANDBY"
+_n_stations     = len(STATIONS)
+st.markdown(f"""<style>
+@keyframes blink{{0%,100%{{opacity:1;}}50%{{opacity:.3;}}}}
+@keyframes blinkfast{{0%,100%{{opacity:1;}}50%{{opacity:.2;}}}}
+.dot{{animation:blink 2.2s ease-in-out infinite;}}
+.dotfast{{animation:blinkfast 0.9s ease-in-out infinite;}}
+</style>
+<div style="display:flex;align-items:center;justify-content:space-between;
+     padding:.4rem 0 .8rem;margin-bottom:.8rem;border-bottom:1px solid #30363d;flex-wrap:wrap;gap:.5rem">
+
+  <!-- LEFT: Logo + App name -->
   <div style="display:flex;align-items:center;gap:12px">
     <img src="{_LOGO}" width="44" height="44"/>
     <div>
-      <div style="display:flex;align-items:baseline;gap:5px">
-        <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.1rem;color:#e6edf3">AGENTIC</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-weight:300;font-size:1.1rem;color:#39c5cf">PdM</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:#7d8590;padding:1px 4px;border:1px solid #30363d;border-radius:3px;margin-left:4px">NOC</span>
+      <div style="display:flex;align-items:baseline;gap:4px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.15rem;color:#e6edf3;letter-spacing:-.01em">Tele</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:300;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Maint</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.15rem;color:#bc8cff;letter-spacing:-.01em">&nbsp;AI</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:.58rem;color:#7d8590;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:5px">NOC</span>
       </div>
-      <div style="font-size:.65rem;color:#7d8590">Agentic AI · Predictive Maintenance · Telecom Infrastructure · 10 Stations</div>
+      <div style="font-size:.63rem;color:#7d8590;margin-top:.1rem">
+        Predictive Maintenance · Telecom BTS Infrastructure · {_n_stations} Stations
+      </div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <div style="background:#161b22;border:1px solid {sys_color}44;border-radius:6px;padding:4px 11px;display:flex;align-items:center;gap:5px">
-      <span style="width:7px;height:7px;background:{sys_color};border-radius:50%;display:inline-block" class="dot"></span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:.64rem;color:{sys_color};white-space:nowrap">{sys_label}</span>
+
+  <!-- RIGHT: Status chips -->
+  <div style="display:flex;align-items:center;gap:7px;margin-left:auto">
+
+    <!-- Live / Standby -->
+    <div style="background:#161b22;border:1px solid {_live_dot_color}44;border-radius:6px;
+         padding:4px 10px;display:flex;align-items:center;gap:5px">
+      <span style="width:7px;height:7px;background:{_live_dot_color};border-radius:50%;display:inline-block"
+            class="{'dotfast' if st.session_state.live_mode else 'dot'}"></span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:{_live_dot_color};
+            white-space:nowrap">{_live_label}</span>
     </div>
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:4px 11px;font-family:'IBM Plex Mono',monospace;font-size:.67rem;color:{_rcolor}">{USER} · {ROLE.upper()}</div>
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:4px 11px;font-family:'IBM Plex Mono',monospace;font-size:.64rem;color:#7d8590">
-      FD001=<span style="color:#3fb950">12.31</span> · FD002=<span style="color:#f0b429">15.87</span> · FD003=<span style="color:#58a6ff">13.23</span> · FD004=<span style="color:#ff6b35">16.99</span>
+
+    <!-- Operational status -->
+    <div style="background:#161b22;border:1px solid {sys_color}44;border-radius:6px;
+         padding:4px 10px;display:flex;align-items:center;gap:5px">
+      <span style="width:7px;height:7px;background:{sys_color};border-radius:50%;display:inline-block"
+            class="{'dotfast' if crit_n>0 else 'dot'}"></span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:{sys_color};
+            white-space:nowrap">{sys_label}</span>
     </div>
+
+    <!-- User + role -->
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;
+         padding:4px 10px;font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:{_rcolor}">
+      {USER}&nbsp;·&nbsp;<span style="color:#7d8590">{ROLE.upper()}</span>
+    </div>
+
+    <!-- Combined RMSE only -->
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;
+         padding:4px 11px;font-family:'IBM Plex Mono',monospace;font-size:.65rem">
+      <span style="color:#7d8590">RMSE</span>&nbsp;
+      <span style="color:#39c5cf;font-weight:700">14.60</span>&nbsp;
+      <span style="color:#7d8590;font-size:.58rem">all-4&nbsp;·&nbsp;R²=</span>
+      <span style="color:#58a6ff;font-weight:700">0.874</span>
+    </div>
+
   </div>
 </div>""", unsafe_allow_html=True)
 
@@ -771,10 +874,10 @@ if pk == "Live Fleet Monitor":
 #  PAGE: FLEET OVERVIEW (enhanced with live data)
 # ══════════════════════════════════════════════════════════════════════════════
 elif pk == "Fleet Overview":
-    nc  = sum(1 for s in STATIONS if s["urgency"]=="Critical")
-    nw  = sum(1 for s in STATIONS if s["urgency"]=="Warning")
-    nm  = sum(1 for s in STATIONS if s["urgency"]=="Monitor")
-    mr  = sum(s["rul"] for s in STATIONS)/len(STATIONS)
+    nc  = sum(1 for s in STATIONS if live_urgency(live_rul(s))=="Critical")
+    nw  = sum(1 for s in STATIONS if live_urgency(live_rul(s))=="Warning")
+    nm  = sum(1 for s in STATIONS if live_urgency(live_rul(s))=="Monitor")
+    mr  = sum(live_rul(s) for s in STATIONS)/len(STATIONS)
     mcf = sum(s["conf"] for s in STATIONS)/len(STATIONS)
     mg  = sum(s["gr"]   for s in STATIONS)/len(STATIONS)
     for col, lbl, val, sub, color in zip(st.columns(6),
@@ -786,24 +889,25 @@ elif pk == "Fleet Overview":
 
     sh("FLEET ALERT STATUS — 10 STATIONS · XGBoost v2 Final")
     for s in STATIONS:
-        css_ = {"Critical":"c","Warning":"w","Monitor":"m"}[s["urgency"]]
+        _rul_now = live_rul(s); _urg_now = live_urgency(_rul_now)
+        css_ = {"Critical":"c","Warning":"w","Monitor":"m"}[_urg_now]
         bw_  = int(s["conf"]*100)
         bc_  = "#3fb950" if s["conf"]>0.7 else ("#f0b429" if s["conf"]>0.5 else "#ff6b35")
-        rc_  = rc(s["rul"])
+        rc_  = rc(_rul_now)
         sr   = SUBSET_RESULTS[s["subset"]]
         st.markdown(f"""
 <div class="ac {css_}">
   <div style="display:flex;justify-content:space-between">
     <div>
       <span style="font-size:.95rem;font-weight:700;color:#a5d6ff">{s["id"]}</span>&nbsp;
-      {badge(s["urgency"])}&nbsp;
+      {badge(_urg_now)}&nbsp;
       <span style="font-size:.63rem;color:#30363d;font-family:'IBM Plex Mono',monospace">{s["subset"]} · RMSE {sr["rmse"]} · {s["cycles"]} cycles</span>
       <div style="color:#7d8590;font-size:.69rem;margin-top:.2rem">{s["sub"]} · SLA {s["sla"]}h · RAG cov {s["cov"]:.2f}</div>
       <div style="color:#c9d1d9;font-size:.70rem;margin-top:.22rem">{s["hyp"]}</div>
       <div style="color:#7d8590;font-size:.64rem;margin-top:.18rem">Top feature: <span style="color:#58a6ff">{s["top_feat"]}</span> (imp={s["top_imp"]:.4f})</div>
     </div>
     <div style="text-align:right;min-width:120px">
-      <div style="font-size:1.3rem;font-weight:700;color:{rc_};font-family:'IBM Plex Mono',monospace">{s["rul"]:.1f}<span style="font-size:.70rem;color:#7d8590"> cyc</span></div>
+      <div style="font-size:1.3rem;font-weight:700;color:{rc_};font-family:'IBM Plex Mono',monospace">{_rul_now:.1f}<span style="font-size:.70rem;color:#7d8590"> cyc</span></div>
       <div style="font-size:.66rem;color:#7d8590">[{s["cl"]:.1f}–{s["ch"]:.1f}]</div>
       <div style="margin-top:.32rem;display:flex;align-items:center;gap:.3rem;justify-content:flex-end">
         <div style="width:55px;background:#21262d;height:3px;border-radius:2px">
@@ -820,11 +924,11 @@ elif pk == "Fleet Overview":
         with c1:
             sh("RUL DISTRIBUTION — XGBoost v2 PREDICTIONS")
             fig = go.Figure(go.Bar(
-                x=[s["id"] for s in STATIONS], y=[s["rul"] for s in STATIONS],
-                marker_color=[rc(s["rul"]) for s in STATIONS], marker_line_width=0,
+                x=[s["id"] for s in STATIONS], y=[live_rul(s) for s in STATIONS],
+                marker_color=[rc(live_rul(s)) for s in STATIONS], marker_line_width=0,
                 error_y=dict(type="data", symmetric=False,
-                    array=[s["ch"]-s["rul"] for s in STATIONS],
-                    arrayminus=[s["rul"]-s["cl"] for s in STATIONS],
+                    array=[s["ch"]-live_rul(s) for s in STATIONS],
+                    arrayminus=[live_rul(s)-s["cl"] for s in STATIONS],
                     color="#7d8590", thickness=1.5, width=5)))
             fig.add_hline(y=20, line_dash="dash", line_color="#ff6b35", annotation_text="Critical", annotation_font_size=9)
             fig.add_hline(y=50, line_dash="dash", line_color="#f0b429", annotation_text="Warning",  annotation_font_size=9)
@@ -914,7 +1018,7 @@ elif pk == "Station Detail":
             sh("LIVE RUL TRAJECTORY — SESSION SIMULATION")
             t_now   = elapsed_min()
             t_past  = max(0, t_now - 5)
-            t_max   = t_now + s["rul"] / s["degrade"]
+            t_max   = t_now + live_rul(s) / s["degrade"]
             t_range = np.linspace(0, t_max, 200)
             rul_trace = np.maximum(0, s["base_rul"] - t_range * s["degrade"])
             noise     = np.random.default_rng(42).normal(0, 1.2, 200)
@@ -959,7 +1063,7 @@ elif pk == "Station Detail":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pk == "Plain English":
     s = sel; sh(f"PLAIN-ENGLISH EXPLANATION — {s['id']}")
-    rul_h = int(s["rul"]); conf_pct = f"{s['conf']:.0%}"
+    _live_r = live_rul(s); rul_h = int(_live_r); conf_pct = f"{s['conf']:.0%}"
     em  = {"Critical":"⚠ [CRITICAL]","Warning":"◑ [WARNING]","Monitor":"● [MONITOR]"}[s["urgency"]]
     if s["urgency"]=="Critical":
         headline = f"Station {s['id']} requires emergency maintenance within {s['sla']}h"
@@ -1479,19 +1583,94 @@ elif pk == "Engineer Chatbot":
                          unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  PAGE: USER MANAGEMENT
+#  PAGE: USER MANAGEMENT  (admin: add / remove / change role in-session)
 # ══════════════════════════════════════════════════════════════════════════════
 elif pk == "User Management":
     if not IS_ADMIN:
         st.error("Admin only"); st.stop()
+
+    # ── Persistent in-session user store ────────────────────────────────────────
+    if "_runtime_users" not in st.session_state:
+        st.session_state._runtime_users = dict(_get_users())   # seed from secrets
+    _ru = st.session_state._runtime_users
+
     sh("USER MANAGEMENT")
-    users = _get_users()
-    if PD_OK:
-        import pandas as pd
-        rows = [{"Username":u,"Role":r,"Chatbot":"Yes" if r in("admin","engineer") else "No",
-                 "Upload":"Yes" if r in("admin","engineer") else "No","Admin":"Yes" if r=="admin" else "No"}
-                for u,(pw,r) in users.items()]
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    # ── Current users table ─────────────────────────────────────────────────────
+    _role_color = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}
+    for uname, (upw, urole) in list(_ru.items()):
+        rc2 = _role_color.get(urole,"#7d8590")
+        perms = ("Chatbot · Upload · Admin" if urole=="admin"
+                 else "Chatbot · Upload" if urole=="engineer"
+                 else "View only")
+        st.markdown(f"""
+<div style="display:flex;align-items:center;gap:.7rem;padding:.45rem .85rem;
+     background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:.3rem;
+     font-family:'IBM Plex Mono',monospace;font-size:.74rem">
+  <span style="color:#a5d6ff;font-weight:700;min-width:120px">{uname}</span>
+  <span style="background:{rc2}22;color:{rc2};border:1px solid {rc2}55;border-radius:4px;
+        padding:1px 7px;font-size:.67rem;min-width:75px;text-align:center">{urole.upper()}</span>
+  <span style="color:#7d8590;flex:1">{perms}</span>
+  <span style="color:#30363d">pw: {'*'*len(upw)}</span>
+</div>""", unsafe_allow_html=True)
+        _del_col, _ = st.columns([1,8])
+        with _del_col:
+            if uname != USER:   # can't delete yourself
+                if st.button(f"✕ Remove {uname}", key=f"del_{uname}",
+                             help=f"Permanently remove {uname} from this session"):
+                    del st.session_state._runtime_users[uname]
+                    st.success(f"User '{uname}' removed.")
+                    st.rerun()
+            else:
+                st.caption("(you)")
+
+    # ── Change role ─────────────────────────────────────────────────────────────
+    sh("CHANGE ROLE")
+    other_users = [u for u in _ru if u != USER]
+    if other_users:
+        cr1, cr2, cr3 = st.columns([2,2,1])
+        with cr1:
+            _target = st.selectbox("Select user", other_users, key="role_target")
+        with cr2:
+            _new_role = st.selectbox("New role", ["admin","engineer","viewer"], key="role_new")
+        with cr3:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Apply ✓", key="apply_role", use_container_width=True):
+                pw_old = _ru[_target][0]
+                st.session_state._runtime_users[_target] = (pw_old, _new_role)
+                st.success(f"Role of '{_target}' changed to {_new_role}.")
+                st.rerun()
+    else:
+        st.caption("No other users to modify.")
+
+    # ── Add new user ─────────────────────────────────────────────────────────────
+    sh("ADD NEW USER")
+    with st.form("add_user_form", clear_on_submit=True):
+        na1, na2, na3, na4 = st.columns([2,2,2,1])
+        with na1: _new_un   = st.text_input("Username", placeholder="e.g. eng_bob")
+        with na2: _new_pw   = st.text_input("Password", type="password", placeholder="secure-pw-2026")
+        with na3: _new_role2= st.selectbox("Role", ["engineer","viewer","admin"])
+        with na4:
+            st.markdown("<br>", unsafe_allow_html=True)
+            _add_submitted = st.form_submit_button("Add ➕", use_container_width=True)
+        if _add_submitted:
+            _ukey = _new_un.strip().lower()
+            if not _ukey:
+                st.error("Username cannot be empty.")
+            elif not _new_pw.strip():
+                st.error("Password cannot be empty.")
+            elif _ukey in _ru:
+                st.error(f"Username '{_ukey}' already exists.")
+            else:
+                st.session_state._runtime_users[_ukey] = (_new_pw.strip(), _new_role2)
+                st.success(f"User '{_ukey}' added as {_new_role2}.")
+                st.rerun()
+
+    st.markdown("""<div class="ac m" style="margin-top:.8rem;font-size:.72rem;color:#c9d1d9">
+      <strong style="color:#f0b429">⚠ Session-only:</strong> Users added/removed here persist for this browser session only.
+      For permanent users, add to <code>.streamlit/secrets.toml</code> → <strong>[users]</strong> section (prefix sets role: admin_ · eng_ · viewer_).
+    </div>""", unsafe_allow_html=True)
+
     sh("SECRETS TEMPLATE")
     st.code("""# .streamlit/secrets.toml  OR  Streamlit Cloud → Secrets
 [users]
