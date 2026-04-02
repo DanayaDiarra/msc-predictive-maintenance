@@ -633,74 +633,82 @@ crit_n = sum(1 for s in STATIONS if live_urgency(live_rul(s))=="Critical")
 sys_color = "#ff6b35" if crit_n > 0 else "#3fb950"
 sys_label = f"{crit_n} CRITICAL ACTIVE" if crit_n > 0 else "SYSTEM OPERATIONAL"
 
-_live_dot_color = "#39c5cf"
-_live_label     = "● LIVE"
-_live_border    = "#39c5cf44"
-_live_dot_cls   = "dotfast"
-_crit_border    = "#ff6b3544" if crit_n > 0 else "#3fb95044"
-_crit_dot_cls   = "dotfast" if crit_n > 0 else "dot"
-_n_stations     = len(STATIONS)
-st.markdown(f"""<style>
-@keyframes blink{{0%,100%{{opacity:1;}}50%{{opacity:.3;}}}}
-@keyframes blinkfast{{0%,100%{{opacity:1;}}50%{{opacity:.2;}}}}
-.dot{{animation:blink 2.2s ease-in-out infinite;}}
-.dotfast{{animation:blinkfast 0.9s ease-in-out infinite;}}
-</style>
-<div style="display:flex;align-items:center;justify-content:space-between;
-     padding:.4rem 0 .8rem;margin-bottom:.8rem;border-bottom:1px solid #30363d;flex-wrap:wrap;gap:.5rem">
+_crit_border  = "#ff6b3544" if crit_n > 0 else "#3fb95044"
+_crit_dot_cls = "dotfast"   if crit_n > 0 else "dot"
+_n_stations   = len(STATIONS)
 
-  <!-- LEFT: Logo + App name -->
-  <div style="display:flex;align-items:center;gap:12px">
-    <img src="{_LOGO}" width="44" height="44"/>
-    <div>
-      <div style="display:flex;align-items:baseline;gap:4px">
-        <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Maint</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:300;font-size:1.15rem;color:#e6edf3;letter-spacing:-.01em">Agent</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:.58rem;color:#7d8590;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:5px">NOC</span>
-      </div>
-      <div style="font-size:.63rem;color:#7d8590;margin-top:.1rem">
-        Predictive Maintenance · Telecom BTS Infrastructure · {_n_stations} Stations
-      </div>
-    </div>
-  </div>
+_nav_css = (
+    "<style>"
+    "@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}"
+    "@keyframes blinkfast{0%,100%{opacity:1;}50%{opacity:.2;}}"
+    ".dot{animation:blink 2.2s ease-in-out infinite;}"
+    ".dotfast{animation:blinkfast 0.9s ease-in-out infinite;}"
+    "</style>"
+)
 
-  <!-- RIGHT: Status chips -->
-  <div style="display:flex;align-items:center;gap:7px;margin-left:auto">
+_nav_left = (
+    f'<div style="display:flex;align-items:center;gap:12px">'
+    f'<img src="{_LOGO}" width="44" height="44"/>'
+    f'<div>'
+    f'<div style="display:flex;align-items:baseline;gap:4px">'
+    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Maint</span>'
+    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:300;font-size:1.15rem;color:#e6edf3;letter-spacing:-.01em">Agent</span>'
+    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:.58rem;color:#7d8590;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:5px">NOC</span>'
+    f'</div>'
+    f'<div style="font-size:.63rem;color:#7d8590;margin-top:.1rem">'
+    f'Predictive Maintenance · Telecom BTS Infrastructure · {_n_stations} Stations'
+    f'</div></div></div>'
+)
 
-    <!-- Live chip — always teal dotfast -->
-    <div style="background:#161b22;border:1px solid #39c5cf44;border-radius:6px;
-         padding:4px 10px;display:flex;align-items:center;gap:5px">
-      <span style="width:7px;height:7px;background:#39c5cf;border-radius:50%;display:inline-block"
-            class="dotfast"></span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:#39c5cf;
-            white-space:nowrap">● LIVE</span>
-    </div>
+_chip_live = (
+    '<div style="background:#161b22;border:1px solid #39c5cf44;border-radius:6px;'
+    'padding:4px 10px;display:flex;align-items:center;gap:5px">'
+    '<span style="width:7px;height:7px;background:#39c5cf;border-radius:50%;display:inline-block" class="dotfast"></span>'
+    '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:.62rem;color:#39c5cf;white-space:nowrap">&#9679; LIVE</span>'
+    '</div>'
+)
 
-    <!-- Critical / Operational status chip -->
-    <div style="background:#161b22;border:1px solid {_crit_border};border-radius:6px;
-         padding:4px 10px;display:flex;align-items:center;gap:5px">
-      <span style="width:7px;height:7px;background:{sys_color};border-radius:50%;display:inline-block"
-            class="{_crit_dot_cls}"></span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:{sys_color};
-            white-space:nowrap">{sys_label}</span>
-    </div>
+_chip_crit = (
+    f'<div style="background:#161b22;border:1px solid {_crit_border};border-radius:6px;'
+    f'padding:4px 10px;display:flex;align-items:center;gap:5px">'
+    f'<span style="width:7px;height:7px;background:{sys_color};border-radius:50%;display:inline-block" class="{_crit_dot_cls}"></span>'
+    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:.62rem;color:{sys_color};white-space:nowrap">{sys_label}</span>'
+    f'</div>'
+)
 
-    <!-- User + role chip -->
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;
-         padding:4px 10px;font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:{_rcolor}">
-      {USER}&nbsp;·&nbsp;<span style="color:#7d8590">{ROLE.upper()}</span>
-    </div>
+_chip_user = (
+    f'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;'
+    f'padding:4px 10px;font-family:\'IBM Plex Mono\',monospace;font-size:.65rem;color:{_rcolor}">'
+    f'{USER}&nbsp;&middot;&nbsp;<span style="color:#7d8590">{ROLE.upper()}</span>'
+    f'</div>'
+)
 
-    <!-- Model RMSE chip -->
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;
-         padding:4px 11px;font-family:'IBM Plex Mono',monospace;font-size:.65rem">
-      <span style="color:#7d8590">RMSE</span>&nbsp;
-      <span style="color:#39c5cf;font-weight:700">14.60</span>&nbsp;
-      <span style="color:#7d8590;font-size:.58rem">all-4&nbsp;·&nbsp;R²=</span>
-      <span style="color:#58a6ff;font-weight:700">0.874</span>
-    </div>
+_chip_rmse = (
+    '<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;'
+    'padding:4px 11px;font-family:\'IBM Plex Mono\',monospace;font-size:.65rem">'
+    '<span style="color:#7d8590">RMSE</span>&nbsp;'
+    '<span style="color:#39c5cf;font-weight:700">14.60</span>&nbsp;'
+    '<span style="color:#7d8590;font-size:.58rem">all-4&nbsp;&middot;&nbsp;R&sup2;=</span>'
+    '<span style="color:#58a6ff;font-weight:700">0.874</span>'
+    '</div>'
+)
 
-  </div>
-</div>""", unsafe_allow_html=True)
+_nav_right = (
+    f'<div style="display:flex;align-items:center;gap:7px;margin-left:auto">'
+    f'{_chip_live}{_chip_crit}{_chip_user}{_chip_rmse}'
+    f'</div>'
+)
+
+_nav_html = (
+    _nav_css
+    + '<div style="display:flex;align-items:center;justify-content:space-between;'
+    + 'padding:.4rem 0 .8rem;margin-bottom:.8rem;border-bottom:1px solid #30363d;flex-wrap:wrap;gap:.5rem">'
+    + _nav_left
+    + _nav_right
+    + '</div>'
+)
+
+st.markdown(_nav_html, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  SIDEBAR
