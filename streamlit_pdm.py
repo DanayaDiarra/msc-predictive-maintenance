@@ -654,9 +654,7 @@ st.markdown(f"""<style>
     <img src="{_LOGO}" width="44" height="44"/>
     <div>
       <div style="display:flex;align-items:baseline;gap:4px">
-        <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.15rem;color:#e6edf3;letter-spacing:-.01em">Tele</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-weight:300;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Maint</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.15rem;color:#bc8cff;letter-spacing:-.01em">&nbsp;AI</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Maint</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:300;font-size:1.15rem;color:#e6edf3;letter-spacing:-.01em">Agent</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:.58rem;color:#7d8590;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:5px">NOC</span>
       </div>
       <div style="font-size:.63rem;color:#7d8590;margin-top:.1rem">
@@ -801,10 +799,6 @@ if pk == "Live Fleet Monitor":
         ["#ff6b35","#f0b429","#3fb950","#58a6ff","#3fb950","#3fb950","#39c5cf"]):
         col.markdown(mc(lbl, val, sub, color, live=True), unsafe_allow_html=True)
 
-    # ── Live RUL bar chart ──
-    sh("REAL-TIME RUL FORECAST — ALL STATIONS (sorted by urgency)")
-    st.markdown(svg_rul_hbar(), unsafe_allow_html=True)
-
     # ── Live telemetry cards ──
     sh("LIVE STATION TELEMETRY — XGBoost v2 Degradation Simulation")
     for row_i in range(0, len(STATIONS), 2):
@@ -855,6 +849,10 @@ if pk == "Live Fleet Monitor":
     <div style="width:{min(100,int(rul/125*100))}%;height:4px;background:{col_hex};border-radius:2px"></div>
   </div>
 </div>""", unsafe_allow_html=True)
+
+    # ── Live RUL bar chart ──
+    sh("REAL-TIME RUL FORECAST — ALL STATIONS (sorted by urgency)")
+    st.markdown(svg_rul_hbar(), unsafe_allow_html=True)
 
     # ── Alert log ──
     sh("LIVE ALERT LOG")
