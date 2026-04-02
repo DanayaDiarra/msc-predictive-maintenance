@@ -230,6 +230,12 @@ _SS_DEFAULTS = {
     "chat_thinking": False,
     "_rt_ant_key": "",
     "sidebar_open": True,
+    # ── Dispatch & rolling roster ──
+    "dispatch_tickets": [],        # list of closed/completed tickets
+    "active_dispatches": {},       # {station_id: dispatch_dict}
+    "engineer_roster": [],         # runtime roster (seeded from ENGINEER_POOL)
+    "rul_overrides": {},           # {station_id: restored_rul} after validation
+    "notif_log": [],               # in-system notification feed
 }
 for _k, _v in _SS_DEFAULTS.items():
     if _k not in st.session_state:
@@ -451,13 +457,38 @@ for _s in STATIONS:
     _s["rul"] = _s["base_rul"]
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  LIVE PREDICTION ENGINE
+#  ENGINEER POOL & ROLLING ROSTER
 # ══════════════════════════════════════════════════════════════════════════════
+ENGINEER_POOL = [
+    dict(id="ENG001", name="Awa Diallo",       skill="power_subsystem",       level="Senior", on_call=True,  shift="Day",   phone="+221 77 100 0001", dispatches=0),
+    dict(id="ENG002", name="Mamadou Koné",     skill="thermal_management",    level="Senior", on_call=True,  shift="Day",   phone="+221 77 100 0002", dispatches=0),
+    dict(id="ENG003", name="Fatou Sow",        skill="rf_antenna",            level="Senior", on_call=False, shift="Night", phone="+221 77 100 0003", dispatches=0),
+    dict(id="ENG004", name="Ibrahim Traoré",   skill="backhaul_connectivity", level="Senior", on_call=True,  shift="Day",   phone="+221 77 100 0004", dispatches=0),
+    dict(id="ENG005", name="Aminata Bah",      skill="baseband_processing",   level="Senior", on_call=False, shift="Night", phone="+221 77 100 0005", dispatches=0),
+    dict(id="ENG006", name="Oumar Ndiaye",     skill="power_subsystem",       level="Mid",    on_call=True,  shift="Day",   phone="+221 77 100 0006", dispatches=0),
+    dict(id="ENG007", name="Kadiatou Barry",   skill="thermal_management",    level="Mid",    on_call=True,  shift="Day",   phone="+221 77 100 0007", dispatches=0),
+    dict(id="ENG008", name="Seydou Coulibaly", skill="rf_antenna",            level="Mid",    on_call=False, shift="Night", phone="+221 77 100 0008", dispatches=0),
+    dict(id="ENG009", name="Mariam Keita",     skill="backhaul_connectivity", level="Mid",    on_call=True,  shift="Day",   phone="+221 77 100 0009", dispatches=0),
+    dict(id="ENG010", name="Boubacar Diop",    skill="baseband_processing",   level="Junior", on_call=True,  shift="Day",   phone="+221 77 100 0010", dispatches=0),
+    dict(id="ENG011", name="Rokhaya Fall",     skill="power_subsystem",       level="Junior", on_call=False, shift="Night", phone="+221 77 100 0011", dispatches=0),
+    dict(id="ENG012", name="Alpha Balde",      skill="rf_antenna",            level="Junior", on_call=True,  shift="Day",   phone="+221 77 100 0012", dispatches=0),
+]
+
+# Seed roster into session state once
+if not st.session_state.engineer_roster:
+    st.session_state.engineer_roster = [dict(e) for e in ENGINEER_POOL]
 def elapsed_min():
     return (time.time() - st.session_state.session_start) / 60.0
 
 def live_rul(s):
-    """XGBoost v2 base prediction minus session-time degradation."""
+    """XGBoost v2 base prediction minus session-time degradation.
+    If a restored RUL override exists (engineer validated ticket), use that instead."""
+    override = st.session_state.rul_overrides.get(s["id"])
+    if override is not None:
+        # After restoration, degrade slowly from the override value
+        restore_time = st.session_state.rul_overrides.get(s["id"] + "_ts", time.time())
+        mins_since   = (time.time() - restore_time) / 60.0
+        return max(0.1, override - mins_since * s["degrade"] * 0.3)
     return max(0.1, s["base_rul"] - elapsed_min() * s["degrade"])
 
 def live_urgency(rul):
@@ -763,9 +794,9 @@ with st.sidebar:
     st.markdown("---")
     all_pages = ["Live Fleet Monitor","Fleet Overview","Station Detail","Plain English",
                  "RAG Evidence","Agent Reasoning","Model Benchmark",
-                 "Ablation Study","Engineer Chatbot","User Management"]
+                 "Ablation Study","Engineer Chatbot","Dispatch & Roster","User Management"]
     if not IS_ENG:
-        all_pages = [p for p in all_pages if p not in ["Engineer Chatbot","User Management"]]
+        all_pages = [p for p in all_pages if p not in ["Engineer Chatbot","Dispatch & Roster","User Management"]]
     if not IS_ADMIN:
         all_pages = [p for p in all_pages if p != "User Management"]
 
@@ -1696,6 +1727,392 @@ ANTHROPIC_API_KEY = "sk-ant-..."
 # admin_danaya = "secure-pw"   → Admin
 # eng_alice    = "alice-2026"  → Engineer
 # viewer_client = "view-only"  → Viewer""", language="toml")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PAGE: DISPATCH & ROLLING ROSTER
+# ══════════════════════════════════════════════════════════════════════════════
+elif pk == "Dispatch & Roster":
+    if not IS_ENG:
+        st.warning("Engineer / Admin role required.")
+        st.stop()
+
+    roster   = st.session_state.engineer_roster
+    active   = st.session_state.active_dispatches    # {station_id: dispatch}
+    tickets  = st.session_state.dispatch_tickets
+    notifs   = st.session_state.notif_log
+    rul_ov   = st.session_state.rul_overrides
+
+    # ── Helper: add notification ──────────────────────────────────────────────
+    def _push_notif(msg, level="info"):
+        st.session_state.notif_log.insert(0, {
+            "ts": time.strftime("%H:%M:%S"),
+            "msg": msg,
+            "level": level,
+        })
+
+    # ── Helper: find recommended engineers for a subsystem ───────────────────
+    def _recommend(subsystem, n=3):
+        """Rolling selection: prioritise matching skill + on_call + fewest dispatches."""
+        matched   = [e for e in roster if e["skill"] == subsystem and e["on_call"]]
+        unmatched = [e for e in roster if e["skill"] != subsystem and e["on_call"]]
+        pool      = sorted(matched, key=lambda e: e["dispatches"]) + \
+                    sorted(unmatched, key=lambda e: e["dispatches"])
+        return pool[:n]
+
+    # ── Section header ────────────────────────────────────────────────────────
+    sh("DISPATCH & ROLLING ROSTER — CRITICAL STATION ASSIGNMENT")
+
+    # ── Notification feed ─────────────────────────────────────────────────────
+    if notifs:
+        with st.expander(f"🔔 System notifications ({len(notifs)})", expanded=False):
+            for n_ in notifs[:15]:
+                col = {"info":"#39c5cf","success":"#3fb950","warning":"#f0b429","error":"#ff6b35"}.get(n_["level"],"#7d8590")
+                st.markdown(
+                    f'<div style="display:flex;gap:.7rem;padding:.28rem .6rem;border-left:3px solid {col};'
+                    f'background:#161b22;border-radius:0 4px 4px 0;margin-bottom:.2rem;font-family:monospace;font-size:.70rem">'
+                    f'<span style="color:#7d8590">{n_["ts"]}</span>'
+                    f'<span style="color:{col}">{n_["msg"]}</span></div>',
+                    unsafe_allow_html=True)
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  TAB 1: ASSIGN DISPATCH   TAB 2: ACTIVE DISPATCHES   TAB 3: TICKET LOG   TAB 4: ROSTER
+    # ═════════════════════════════════════════════════════════════════════════
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🚨 Assign Dispatch",
+        f"⚡ Active ({len(active)})",
+        f"✅ Completed ({len(tickets)})",
+        "👷 Engineer Roster",
+    ])
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 1 — ASSIGN DISPATCH
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab1:
+        # Filter stations needing attention
+        dispatch_stations = [s for s in STATIONS
+                              if live_urgency(live_rul(s)) in ("Critical","Warning")
+                              and s["id"] not in active]
+        restored_stations = [s for s in STATIONS if s["id"] in rul_ov]
+
+        if not dispatch_stations:
+            st.markdown(
+                '<div class="ac m" style="margin-top:.5rem">'
+                '<strong style="color:#3fb950">✓ No unassigned critical/warning stations</strong><br>'
+                '<span style="font-size:.78rem;color:#c9d1d9">All stations either stable or already dispatched.</span></div>',
+                unsafe_allow_html=True)
+        else:
+            for s in dispatch_stations:
+                rul_now = live_rul(s)
+                urg_now = live_urgency(rul_now)
+                uc      = "#ff6b35" if urg_now == "Critical" else "#f0b429"
+                uc_css  = "c" if urg_now == "Critical" else "w"
+
+                st.markdown(f"""
+<div class="ac {uc_css}" style="margin-bottom:.3rem">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <span style="font-size:.95rem;font-weight:700;color:#a5d6ff;font-family:monospace">{s['id']}</span>
+      &nbsp;<span class="{'bc' if urg_now=='Critical' else 'bw'}">{urg_now}</span>
+      &nbsp;<span style="font-size:.63rem;color:#30363d;font-family:monospace">{s['sub']} · SLA {s['sla']}h</span>
+    </div>
+    <div style="font-size:1.2rem;font-weight:700;color:{uc};font-family:monospace">{rul_now:.1f} cyc</div>
+  </div>
+  <div style="font-size:.70rem;color:#c9d1d9;margin:.2rem 0">{s['hyp']}</div>
+</div>""", unsafe_allow_html=True)
+
+                rec = _recommend(s["sub"], n=3)
+                rec_names = [e["name"] for e in rec]
+                all_names = [e["name"] for e in roster if e["on_call"]]
+
+                with st.form(f"dispatch_form_{s['id']}"):
+                    fc1, fc2 = st.columns([2, 1])
+                    with fc1:
+                        chosen = st.multiselect(
+                            f"Select engineers for {s['id']}",
+                            options=[e["name"] for e in roster],
+                            default=rec_names,
+                            help="Rolling algorithm pre-selects by skill match + fewest dispatches. Override freely.",
+                            label_visibility="collapsed")
+                        st.caption(
+                            f"🔄 Rolling recommendation (skill={s['sub'].split('_')[0]}, "
+                            f"fewest dispatches): {', '.join(rec_names)}")
+                    with fc2:
+                        priority = st.selectbox("Priority", ["CRITICAL — 4h","WARNING — 48h","MONITOR — 168h"],
+                                                index=0 if urg_now=="Critical" else 1,
+                                                label_visibility="collapsed",
+                                                key=f"pri_{s['id']}")
+                        sla_h  = int(priority.split("—")[1].strip().replace("h",""))
+                        submitted = st.form_submit_button(
+                            f"🚀 Dispatch to {s['id']}", use_container_width=True)
+
+                    if submitted and chosen:
+                        ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
+                        dispatch = {
+                            "station_id":   s["id"],
+                            "subsystem":    s["sub"],
+                            "urgency":      urg_now,
+                            "rul_at_dispatch": round(rul_now, 1),
+                            "hypothesis":   s["hyp"],
+                            "sla_hours":    sla_h,
+                            "engineers":    chosen,
+                            "assigned_at":  ts_now,
+                            "status":       "IN PROGRESS",
+                            "ticket_id":    f"TKT-{s['id']}-{int(time.time())}",
+                        }
+                        st.session_state.active_dispatches[s["id"]] = dispatch
+                        # Update dispatch count for rolling algorithm
+                        for e in st.session_state.engineer_roster:
+                            if e["name"] in chosen:
+                                e["dispatches"] += 1
+                        # Push in-system notifications
+                        for name in chosen:
+                            _push_notif(
+                                f"📟 [{dispatch['ticket_id']}] {name} dispatched → {s['id']} "
+                                f"({urg_now}, SLA {sla_h}h, RUL={rul_now:.1f}). Fault: {s['hyp'][:60]}",
+                                level="warning" if urg_now == "Warning" else "error")
+                        _push_notif(
+                            f"✅ Dispatch created for {s['id']}: {', '.join(chosen)}",
+                            level="success")
+                        st.success(f"Dispatched {', '.join(chosen)} to {s['id']}. Ticket: {dispatch['ticket_id']}")
+                        st.rerun()
+                    elif submitted and not chosen:
+                        st.error("Select at least one engineer.")
+                st.markdown("<hr style='border-color:#21262d;margin:.5rem 0'>", unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 2 — ACTIVE DISPATCHES + VALIDATION FORM
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab2:
+        if not active:
+            st.markdown(
+                '<div class="ac m"><span style="color:#3fb950">No active dispatches.</span></div>',
+                unsafe_allow_html=True)
+        else:
+            for sid, d in list(active.items()):
+                s_obj = next((s for s in STATIONS if s["id"] == sid), None)
+                elapsed_disp = (time.time() - time.mktime(
+                    time.strptime(d["assigned_at"], "%Y-%m-%d %H:%M:%S"))) / 3600
+                sla_pct  = min(100, int(elapsed_disp / max(d["sla_hours"], 1) * 100))
+                sla_col  = "#3fb950" if sla_pct < 60 else ("#f0b429" if sla_pct < 85 else "#ff6b35")
+
+                st.markdown(f"""
+<div class="ac c" style="margin-bottom:.4rem">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem">
+    <div>
+      <span style="font-size:.92rem;font-weight:700;color:#a5d6ff;font-family:monospace">{d['ticket_id']}</span>
+      &nbsp;<span class="bc">IN PROGRESS</span>
+      <div style="font-size:.68rem;color:#7d8590;margin-top:.2rem">
+        Station: <span style="color:#e6edf3">{sid}</span> · {d['subsystem']} · Assigned: {d['assigned_at']}
+      </div>
+      <div style="font-size:.68rem;color:#7d8590">
+        Engineers: <span style="color:#58a6ff">{'  ·  '.join(d['engineers'])}</span>
+      </div>
+      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{d['hypothesis'][:80]}…</div>
+    </div>
+    <div style="text-align:right;font-family:monospace;font-size:.70rem;color:#7d8590">
+      SLA: <span style="color:{sla_col}">{d['sla_hours']}h</span><br>
+      Elapsed: {elapsed_disp:.1f}h<br>
+      RUL at dispatch: {d['rul_at_dispatch']}
+    </div>
+  </div>
+  <div style="background:#21262d;height:4px;border-radius:2px;overflow:hidden">
+    <div style="width:{sla_pct}%;height:4px;background:{sla_col};border-radius:2px"></div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+                # Validation form
+                with st.expander(f"✅ Validate & Close Ticket — {d['ticket_id']}", expanded=False):
+                    with st.form(f"validate_{sid}"):
+                        st.markdown(
+                            '<div style="font-family:monospace;font-size:.72rem;color:#39c5cf;'
+                            'margin-bottom:.5rem">COMPLETION REPORT</div>',
+                            unsafe_allow_html=True)
+                        v1, v2 = st.columns(2)
+                        with v1:
+                            work_done = st.text_area(
+                                "Work performed *",
+                                placeholder="e.g. Replaced rectifier module B, verified DC bus voltage 48.2V, "
+                                            "restored TX power, cleared PWR-001 alarm.",
+                                height=100, key=f"work_{sid}")
+                            parts_used = st.text_input(
+                                "Parts / spares used",
+                                placeholder="e.g. Rectifier module Ericsson PSU 48V-50A (×1), BBU fuse set (×1)",
+                                key=f"parts_{sid}")
+                            alarm_cleared = st.selectbox(
+                                "Alarm cleared?",
+                                ["Yes — alarm auto-cleared", "Yes — manually cleared via OMC",
+                                 "Partial — monitoring required", "No — escalation needed"],
+                                key=f"alm_{sid}")
+                        with v2:
+                            restored_rul = st.slider(
+                                "Restored RUL (cycles) *",
+                                min_value=10, max_value=125,
+                                value=min(125, int(s_obj["base_rul"] * 0.85)) if s_obj else 100,
+                                help="Engineer's assessment of remaining useful life after repair.",
+                                key=f"rul_{sid}")
+                            root_cause = st.selectbox(
+                                "Root cause confirmed",
+                                ["Rectifier/power unit failure",
+                                 "Cooling fan bearing wear",
+                                 "Antenna connector corrosion",
+                                 "Fibre splice degradation",
+                                 "BBU software/hardware fault",
+                                 "Preventive — no active fault",
+                                 "Other (see notes)"],
+                                key=f"rc_{sid}")
+                            notes = st.text_area(
+                                "Additional notes",
+                                placeholder="Observations, follow-up recommendations…",
+                                height=68, key=f"notes_{sid}")
+
+                        validated = st.form_submit_button("✅ Close Ticket & Restore Station", use_container_width=True)
+                        if validated:
+                            if not work_done.strip():
+                                st.error("Work performed field is required.")
+                            else:
+                                ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
+                                closed = dict(d)
+                                closed.update({
+                                    "status":         "COMPLETED",
+                                    "closed_at":      ts_now,
+                                    "work_done":      work_done.strip(),
+                                    "parts_used":     parts_used.strip(),
+                                    "alarm_cleared":  alarm_cleared,
+                                    "root_cause":     root_cause,
+                                    "notes":          notes.strip(),
+                                    "restored_rul":   restored_rul,
+                                    "validated_by":   USER,
+                                })
+                                st.session_state.dispatch_tickets.insert(0, closed)
+                                del st.session_state.active_dispatches[sid]
+                                # Apply RUL override — station now shows restored RUL
+                                st.session_state.rul_overrides[sid]        = float(restored_rul)
+                                st.session_state.rul_overrides[sid + "_ts"] = time.time()
+                                _push_notif(
+                                    f"🔧 [{closed['ticket_id']}] CLOSED by {USER}. "
+                                    f"Station {sid} restored to RUL={restored_rul}. "
+                                    f"Root cause: {root_cause}.",
+                                    level="success")
+                                st.success(f"Ticket closed. Station {sid} restored to RUL={restored_rul} cycles.")
+                                st.rerun()
+
+                # Cancel dispatch
+                if st.button(f"✕ Cancel dispatch {d['ticket_id']}", key=f"cancel_{sid}"):
+                    del st.session_state.active_dispatches[sid]
+                    _push_notif(f"❌ Dispatch {d['ticket_id']} for {sid} cancelled by {USER}.", level="warning")
+                    st.rerun()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 3 — COMPLETED TICKET LOG
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab3:
+        if not tickets:
+            st.markdown(
+                '<div class="ac m"><span style="color:#7d8590">No completed tickets yet.</span></div>',
+                unsafe_allow_html=True)
+        else:
+            for t in tickets:
+                rul_delta = t["restored_rul"] - t["rul_at_dispatch"]
+                dc = "#3fb950" if rul_delta > 0 else "#ff6b35"
+                st.markdown(f"""
+<div class="ac m" style="margin-bottom:.4rem">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <span style="font-family:monospace;font-weight:700;color:#a5d6ff">{t['ticket_id']}</span>
+      &nbsp;<span class="bm">COMPLETED</span>
+      <div style="font-size:.68rem;color:#7d8590;margin-top:.15rem">
+        Station: <span style="color:#e6edf3">{t['station_id']}</span> ·
+        Engineers: <span style="color:#58a6ff">{'  ·  '.join(t['engineers'])}</span> ·
+        Validated by: <span style="color:#bc8cff">{t['validated_by']}</span>
+      </div>
+      <div style="font-size:.68rem;color:#7d8590">Closed: {t['closed_at']} · Root cause: {t['root_cause']}</div>
+      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{t['work_done'][:120]}{'…' if len(t['work_done'])>120 else ''}</div>
+      {f'<div style="font-size:.67rem;color:#7d8590;margin-top:.1rem">Parts: {t["parts_used"]}</div>' if t.get("parts_used") else ''}
+    </div>
+    <div style="text-align:right;font-family:monospace;font-size:.72rem;min-width:110px">
+      <div style="color:#7d8590">RUL restored</div>
+      <div style="font-size:1.1rem;font-weight:700;color:{dc}">{t['restored_rul']}</div>
+      <div style="color:{dc};font-size:.68rem">{'+' if rul_delta>=0 else ''}{rul_delta:.1f} cyc</div>
+    </div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 4 — ENGINEER ROSTER MANAGEMENT
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab4:
+        sh("ROLLING ROSTER — ON-CALL STATUS & DISPATCH COUNT")
+
+        skill_colors = {
+            "power_subsystem":       "#f0b429",
+            "thermal_management":    "#ff6b35",
+            "rf_antenna":            "#39c5cf",
+            "backhaul_connectivity": "#58a6ff",
+            "baseband_processing":   "#bc8cff",
+        }
+        level_colors = {"Senior":"#3fb950","Mid":"#58a6ff","Junior":"#f0b429"}
+
+        for e in st.session_state.engineer_roster:
+            sc = skill_colors.get(e["skill"],"#7d8590")
+            lc = level_colors.get(e["level"],"#7d8590")
+            on_col = "#3fb950" if e["on_call"] else "#30363d"
+            on_lbl = "ON-CALL" if e["on_call"] else "OFF"
+            disp_w = min(100, e["dispatches"] * 8)
+
+            c_eng, c_tog = st.columns([5, 1])
+            with c_eng:
+                st.markdown(f"""
+<div style="display:flex;align-items:center;gap:.7rem;padding:.45rem .85rem;
+     background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:.3rem;font-family:monospace;font-size:.73rem">
+  <span style="color:#a5d6ff;font-weight:700;min-width:90px">{e['name']}</span>
+  <span style="color:#7d8590;font-size:.65rem;min-width:30px">{e['id']}</span>
+  <span style="background:{sc}22;color:{sc};border:1px solid {sc}55;border-radius:3px;
+        padding:1px 6px;font-size:.63rem;min-width:110px">{e['skill'].replace('_',' ')}</span>
+  <span style="background:{lc}22;color:{lc};border:1px solid {lc}55;border-radius:3px;
+        padding:1px 6px;font-size:.63rem;min-width:48px">{e['level']}</span>
+  <span style="color:#7d8590;font-size:.63rem;min-width:50px">{e['shift']}</span>
+  <span style="color:{on_col};font-weight:700;font-size:.63rem;min-width:56px">{on_lbl}</span>
+  <span style="color:#7d8590;font-size:.63rem">{e['phone']}</span>
+  <div style="flex:1;margin:0 .5rem">
+    <div style="background:#21262d;height:4px;border-radius:2px">
+      <div style="width:{disp_w}%;height:4px;background:{sc};border-radius:2px"></div>
+    </div>
+  </div>
+  <span style="color:#7d8590;font-size:.63rem">{e['dispatches']} dispatches</span>
+</div>""", unsafe_allow_html=True)
+            with c_tog:
+                btn_lbl = "Set OFF" if e["on_call"] else "Set ON"
+                if st.button(btn_lbl, key=f"tog_{e['id']}", use_container_width=True):
+                    e["on_call"] = not e["on_call"]
+                    status = "ON-CALL" if e["on_call"] else "OFF duty"
+                    _push_notif(f"🔄 {e['name']} set to {status} by {USER}.", level="info")
+                    st.rerun()
+
+        sh("ADD ENGINEER TO ROSTER")
+        with st.form("add_eng_form", clear_on_submit=True):
+            ae1, ae2, ae3, ae4, ae5 = st.columns([2,2,1,1,1])
+            with ae1: _en  = st.text_input("Full name", placeholder="e.g. Cheikh Diallo")
+            with ae2: _esk = st.selectbox("Specialisation",
+                                          ["power_subsystem","thermal_management","rf_antenna",
+                                           "backhaul_connectivity","baseband_processing"])
+            with ae3: _elv = st.selectbox("Level", ["Senior","Mid","Junior"])
+            with ae4: _esh = st.selectbox("Shift", ["Day","Night"])
+            with ae5:
+                st.markdown("<br>", unsafe_allow_html=True)
+                _ea = st.form_submit_button("Add ➕", use_container_width=True)
+            if _ea:
+                if not _en.strip():
+                    st.error("Name required.")
+                else:
+                    new_id = f"ENG{len(st.session_state.engineer_roster)+1:03d}"
+                    st.session_state.engineer_roster.append(dict(
+                        id=new_id, name=_en.strip(), skill=_esk,
+                        level=_elv, on_call=True, shift=_esh,
+                        phone="—", dispatches=0))
+                    _push_notif(f"👷 {_en.strip()} added to roster ({_esk}, {_elv}) by {USER}.", level="info")
+                    st.success(f"Added {_en.strip()} to roster.")
+                    st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  FOOTER
