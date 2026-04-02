@@ -792,9 +792,16 @@ with st.sidebar:
             st.success("Key saved for this session")
 
     st.markdown("---")
-    all_pages = ["Live Fleet Monitor","Fleet Overview","Station Detail","Plain English",
-                 "RAG Evidence","Agent Reasoning","Model Benchmark",
-                 "Ablation Study","Engineer Chatbot","Dispatch & Roster","User Management"]
+    all_pages = [
+        "Live Fleet Monitor",
+        "Fleet Overview",
+        "Station Detail",
+        "Dispatch & Roster",
+        "Engineer Chatbot",
+        "Pipeline Intelligence",
+        "Results & Ablation",
+        "User Management",
+    ]
     if not IS_ENG:
         all_pages = [p for p in all_pages if p not in ["Engineer Chatbot","Dispatch & Roster","User Management"]]
     if not IS_ADMIN:
@@ -1000,408 +1007,408 @@ elif pk == "Fleet Overview":
 #  PAGE: STATION DETAIL  (with live RUL gauge)
 # ══════════════════════════════════════════════════════════════════════════════
 elif pk == "Station Detail":
-    s = sel
-    rul    = live_rul(s)
-    urg    = live_urgency(rul)
-    rcolor = rc(rul)
+    _sd1, _sd2 = st.tabs(["\U0001f4ca Detail", "\U0001f4d6 Plain English"])
+    with _sd1:
+        s = sel
+        rul    = live_rul(s)
+        urg    = live_urgency(rul)
+        rcolor = rc(rul)
 
-    c1, c2 = st.columns([2.5, 1])
-    with c1:
-        st.markdown(f"""<div style="font-family:'IBM Plex Mono',monospace">
-          <div style="font-size:1.35rem;font-weight:700;color:#a5d6ff">{s["id"]}</div>
-          <div style="font-size:.77rem;color:#7d8590;margin-top:.2rem">
-            {badge(urg)} &nbsp; {s["sub"]} &nbsp;·&nbsp;
-            C-MAPSS {s["subset"]} engine &nbsp;·&nbsp; {s["cycles"]} cycles observed
+        c1, c2 = st.columns([2.5, 1])
+        with c1:
+            st.markdown(f"""<div style="font-family:'IBM Plex Mono',monospace">
+              <div style="font-size:1.35rem;font-weight:700;color:#a5d6ff">{s["id"]}</div>
+              <div style="font-size:.77rem;color:#7d8590;margin-top:.2rem">
+                {badge(urg)} &nbsp; {s["sub"]} &nbsp;·&nbsp;
+                C-MAPSS {s["subset"]} engine &nbsp;·&nbsp; {s["cycles"]} cycles observed
+              </div>
+              <div style="font-size:.68rem;color:#5a6475;margin-top:.2rem;font-family:'IBM Plex Mono',monospace">
+                XGBoost v2 Final · all-4 RMSE=14.60 · FD001+FD003=12.77 · R²=0.874 · 15k trees · exp(α=3) weights
+              </div>
+            </div>""", unsafe_allow_html=True)
+            sh("PIPELINE FLOW")
+            nodes = ["XGBoost v2 Final","Interpreter","RAG","Diagnostic","Planning","Execution"]
+            st.markdown(" → ".join(
+                f'<span style="background:#1c2333;border:1px solid #39c5cf;border-radius:4px;padding:.32rem .6rem;'
+                f'color:#39c5cf;font-family:var(--mono);font-size:.67rem">{n}</span>' for n in nodes),
+                unsafe_allow_html=True)
+        with c2:
+            st.markdown(svg_gauge(rul, s["cl"], s["ch"], rcolor), unsafe_allow_html=True)
+
+        for col, lbl, val, color in zip(st.columns(5),
+            ["LIVE RUL","DIAG CONF","GROUNDING","RAG COVERAGE","SLA"],
+            [f"{rul:.1f}", f"{s['conf']:.3f}", f"{s['gr']:.3f}", f"{s['cov']:.2f}", f"{s['sla']}h"],
+            [rcolor,"#58a6ff","#3fb950" if s["gr"]>=0.8 else "#f0b429","#39c5cf","#bc8cff"]):
+            col.markdown(mc(lbl, val, live=(lbl=="LIVE RUL"), color=color), unsafe_allow_html=True)
+
+        if PLOTLY_OK:
+            f1, f2 = st.columns(2)
+            with f1:
+                sh("TOP CONTRIBUTING FEATURES — XGBoost v2")
+                fmap = {
+                    "power_subsystem":       ["voltage_rolling_mean","total_power_slope_20","battery_slope","power_std_30","current_trend"],
+                    "thermal_management":    ["temp_sensor_slope","thermal_index_mean","fan_speed_delta","heat_index_mean","s3_std_30"],
+                    "backhaul_connectivity": ["latency_slope","packet_loss_rate","link_util_mean","throughput_mean","s7_mean"],
+                    "rf_antenna":            ["rssi_std_30","sinr_rolling_mean","signal_quality_slope","vswr_trend","s1_mean"],
+                    "baseband_processing":   ["cpu_utilization_mean","processing_load_slope","utilization_trend","load_rolling_std","s4_mean"],
+                }
+                feats = fmap.get(s["sub"], fmap["power_subsystem"])
+                imps  = [s["top_imp"]*x for x in [1.0,0.82,0.61,0.44,0.37]]
+                fg = go.Figure(go.Bar(
+                    x=imps[::-1], y=feats[::-1], orientation="h",
+                    marker_color=["#58a6ff","#39c5cf","#bc8cff","#3fb950","#f0b429"][::-1],
+                    marker_line_width=0,
+                    hovertemplate="<b>%{y}</b><br>Importance: %{x:.4f}<extra></extra>"))
+                fg.update_layout(**pdk(), height=215, xaxis_title="Importance", showlegend=False)
+                st.plotly_chart(fg, use_container_width=True)
+            with f2:
+                sh("LIVE RUL TRAJECTORY — SESSION SIMULATION")
+                t_now   = elapsed_min()
+                t_past  = max(0, t_now - 5)
+                t_max   = t_now + live_rul(s) / s["degrade"]
+                t_range = np.linspace(0, t_max, 200)
+                rul_trace = np.maximum(0, s["base_rul"] - t_range * s["degrade"])
+                noise     = np.random.default_rng(42).normal(0, 1.2, 200)
+                rul_pred  = np.maximum(0, rul_trace + noise)
+                fr = go.Figure()
+                fr.add_trace(go.Scatter(x=t_range, y=rul_trace, name="True RUL",
+                    line=dict(color="#7d8590", dash="dot", width=1.5)))
+                fr.add_trace(go.Scatter(x=t_range, y=rul_pred, name="XGBoost v2",
+                    line=dict(color="#58a6ff", width=2)))
+                fr.add_vline(x=t_now, line_color=rcolor, line_dash="dash", line_width=1.5)
+                fr.add_annotation(x=t_now, y=rul+8,
+                    text=f"NOW {rul:.1f}", font=dict(size=9, color=rcolor), showarrow=False)
+                fr.add_hrect(y0=0, y1=20, fillcolor="#ff6b35", opacity=0.07, line_width=0)
+                fr.add_hrect(y0=20, y1=50, fillcolor="#f0b429", opacity=0.05, line_width=0)
+                fr.update_layout(**pdk(), height=215, yaxis_title="RUL (cycles)", xaxis_title="Session time (min)",
+                    legend=dict(font=dict(size=9), bgcolor="rgba(0,0,0,0)"))
+                st.plotly_chart(fr, use_container_width=True)
+
+        sh("ROOT CAUSE HYPOTHESIS")
+        _uc = {"Critical":"c","Warning":"w","Monitor":"m"}[urg]
+        st.markdown(f'<div class="ac {_uc}"><div style="font-size:.80rem;color:#e6edf3">{s["hyp"]}</div>'
+                    f'<div style="color:#7d8590;font-size:.70rem;margin-top:.3rem">Confidence: {s["conf"]:.3f} · Grounding: {s["gr"]:.3f} · Evidence: [{s["doc"]}]</div></div>',
+                    unsafe_allow_html=True)
+
+        sh("PRECISION DIAGNOSIS")
+        pc1, pc2, pc3 = st.columns(3)
+        pc1.markdown(mc("FAULT COMPONENT", f'<span style="font-size:.74rem;color:#58a6ff">{s["fc"]}</span>'), unsafe_allow_html=True)
+        pc2.markdown(mc("ALARM CODE",      f'<span style="font-size:.74rem;color:#f0b429">{s["alm"]}</span>'), unsafe_allow_html=True)
+        pc3.markdown(mc("FAULT MECHANISM", f'<span style="font-size:.74rem;color:#c9d1d9">{s["mech"]}</span>'), unsafe_allow_html=True)
+
+        sh("ACTION RECOMMENDATIONS")
+        for i, (act, tier, tool) in enumerate([(s["a1"],s["a1t"],s["a1tool"]),(s.get("a2"),s.get("a2t"),s.get("a2tool"))], 1):
+            if act:
+                st.markdown(
+                    f'<div class="ar"><div style="min-width:1.8rem;color:#7d8590;font-family:var(--mono)">[{i}]</div>'
+                    f'{tier_html(tier)}<div style="flex:1">{act}</div>'
+                    f'<div style="color:#7d8590;font-family:var(--mono);font-size:.67rem">{tool}</div></div>',
+                    unsafe_allow_html=True)
+
+    with _sd2:
+        s = sel; sh(f"PLAIN-ENGLISH EXPLANATION — {s['id']}")
+        _live_r  = live_rul(s)
+        _live_ug = live_urgency(_live_r)
+        rul_h    = int(_live_r); conf_pct = f"{s['conf']:.0%}"
+        em = {"Critical":"⚠ [CRITICAL]","Warning":"◑ [WARNING]","Monitor":"● [MONITOR]"}[_live_ug]
+        if _live_ug == "Critical":
+            headline = f"Station {s['id']} requires emergency maintenance within {s['sla']}h"
+            impact   = f"Approximately {rul_h} cycles remaining (~{rul_h}h). Without action in {s['sla']}h, service outage is expected."
+        elif _live_ug == "Warning":
+            headline = f"Station {s['id']} needs maintenance scheduled within {s['sla']}h"
+            impact   = f"{rul_h} cycles remaining. Early failure indicators detected in {s['sub'].replace('_',' ')}. Act before emergency."
+        else:
+            headline = f"Station {s['id']} is stable — monitoring recommended"
+            impact   = f"{rul_h} cycles remaining. Gradual degradation detected. Queue for scheduled maintenance within {s['sla']}h."
+        full = (f"The agentic AI system detected wear in the {s['sub'].replace('_',' ')} at station {s['id']} "
+                f"(C-MAPSS {s['subset']} engine, {s['cycles']} cycles), estimating {rul_h} cycles of remaining useful life. "
+                f"Predicted by XGBoost v2 Final — ONE combined model trained on all four C-MAPSS subsets jointly "
+                f"(all-4 RMSE=14.60, FD001+FD003 RMSE=12.77, R²=0.874, 15k trees, exp(alpha=3) weights). "
+                f"Most likely cause: {s['hyp'].lower()}. Mechanism: {s['mech'].lower()}. "
+                f"Confidence: {conf_pct} (grounding 100%, hallucination 0%). "
+                f"Top feature: {s['top_feat']} (imp={s['top_imp']:.4f}). "
+                f"First action: {s['a1'].lower()}. Expected alarm: {s['alm']}. Evidence: [{s['doc']}].")
+        st.markdown(f"""<div class="pe">
+          <div style="font-size:.95rem;font-weight:600;color:#e6edf3;margin-bottom:.4rem">{em} {headline}</div>
+          <div style="font-size:.79rem;color:#c9d1d9;line-height:1.6;margin-bottom:.45rem">{impact}</div>
+          <div style="background:#21262d;border-radius:4px;padding:.5rem .75rem;margin:.4rem 0;font-size:.78rem;color:#e6edf3">
+            <strong style="color:#39c5cf">Action:</strong> {s["a1"]}
           </div>
-          <div style="font-size:.68rem;color:#5a6475;margin-top:.2rem;font-family:'IBM Plex Mono',monospace">
-            XGBoost v2 Final · all-4 RMSE=14.60 · FD001+FD003=12.77 · R²=0.874 · 15k trees · exp(α=3) weights
+          <div style="font-size:.69rem;color:#7d8590;font-family:'IBM Plex Mono',monospace">
+            Conf: {conf_pct} · Grounding: 100% · No hallucination · XGBoost v2 Final (RMSE=14.60, R²=0.874)
           </div>
         </div>""", unsafe_allow_html=True)
-        sh("PIPELINE FLOW")
-        nodes = ["XGBoost v2 Final","Interpreter","RAG","Diagnostic","Planning","Execution"]
-        st.markdown(" → ".join(
-            f'<span style="background:#1c2333;border:1px solid #39c5cf;border-radius:4px;padding:.32rem .6rem;'
-            f'color:#39c5cf;font-family:var(--mono);font-size:.67rem">{n}</span>' for n in nodes),
-            unsafe_allow_html=True)
-    with c2:
-        st.markdown(svg_gauge(rul, s["cl"], s["ch"], rcolor), unsafe_allow_html=True)
+        sh("FULL EXPLANATION — FOR REPORTS")
+        st.markdown(f'<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.1rem;font-size:.82rem;color:#c9d1d9;line-height:1.7">{full}</div>', unsafe_allow_html=True)
 
-    for col, lbl, val, color in zip(st.columns(5),
-        ["LIVE RUL","DIAG CONF","GROUNDING","RAG COVERAGE","SLA"],
-        [f"{rul:.1f}", f"{s['conf']:.3f}", f"{s['gr']:.3f}", f"{s['cov']:.2f}", f"{s['sla']}h"],
-        [rcolor,"#58a6ff","#3fb950" if s["gr"]>=0.8 else "#f0b429","#39c5cf","#bc8cff"]):
-        col.markdown(mc(lbl, val, live=(lbl=="LIVE RUL"), color=color), unsafe_allow_html=True)
-
-    if PLOTLY_OK:
-        f1, f2 = st.columns(2)
-        with f1:
-            sh("TOP CONTRIBUTING FEATURES — XGBoost v2")
-            fmap = {
-                "power_subsystem":       ["voltage_rolling_mean","total_power_slope_20","battery_slope","power_std_30","current_trend"],
-                "thermal_management":    ["temp_sensor_slope","thermal_index_mean","fan_speed_delta","heat_index_mean","s3_std_30"],
-                "backhaul_connectivity": ["latency_slope","packet_loss_rate","link_util_mean","throughput_mean","s7_mean"],
-                "rf_antenna":            ["rssi_std_30","sinr_rolling_mean","signal_quality_slope","vswr_trend","s1_mean"],
-                "baseband_processing":   ["cpu_utilization_mean","processing_load_slope","utilization_trend","load_rolling_std","s4_mean"],
-            }
-            feats = fmap.get(s["sub"], fmap["power_subsystem"])
-            imps  = [s["top_imp"]*x for x in [1.0,0.82,0.61,0.44,0.37]]
-            fg = go.Figure(go.Bar(
-                x=imps[::-1], y=feats[::-1], orientation="h",
-                marker_color=["#58a6ff","#39c5cf","#bc8cff","#3fb950","#f0b429"][::-1],
-                marker_line_width=0,
-                hovertemplate="<b>%{y}</b><br>Importance: %{x:.4f}<extra></extra>"))
-            fg.update_layout(**pdk(), height=215, xaxis_title="Importance", showlegend=False)
-            st.plotly_chart(fg, use_container_width=True)
-        with f2:
-            sh("LIVE RUL TRAJECTORY — SESSION SIMULATION")
-            t_now   = elapsed_min()
-            t_past  = max(0, t_now - 5)
-            t_max   = t_now + live_rul(s) / s["degrade"]
-            t_range = np.linspace(0, t_max, 200)
-            rul_trace = np.maximum(0, s["base_rul"] - t_range * s["degrade"])
-            noise     = np.random.default_rng(42).normal(0, 1.2, 200)
-            rul_pred  = np.maximum(0, rul_trace + noise)
-            fr = go.Figure()
-            fr.add_trace(go.Scatter(x=t_range, y=rul_trace, name="True RUL",
-                line=dict(color="#7d8590", dash="dot", width=1.5)))
-            fr.add_trace(go.Scatter(x=t_range, y=rul_pred, name="XGBoost v2",
-                line=dict(color="#58a6ff", width=2)))
-            fr.add_vline(x=t_now, line_color=rcolor, line_dash="dash", line_width=1.5)
-            fr.add_annotation(x=t_now, y=rul+8,
-                text=f"NOW {rul:.1f}", font=dict(size=9, color=rcolor), showarrow=False)
-            fr.add_hrect(y0=0, y1=20, fillcolor="#ff6b35", opacity=0.07, line_width=0)
-            fr.add_hrect(y0=20, y1=50, fillcolor="#f0b429", opacity=0.05, line_width=0)
-            fr.update_layout(**pdk(), height=215, yaxis_title="RUL (cycles)", xaxis_title="Session time (min)",
-                legend=dict(font=dict(size=9), bgcolor="rgba(0,0,0,0)"))
-            st.plotly_chart(fr, use_container_width=True)
-
-    sh("ROOT CAUSE HYPOTHESIS")
-    _uc = {"Critical":"c","Warning":"w","Monitor":"m"}[urg]
-    st.markdown(f'<div class="ac {_uc}"><div style="font-size:.80rem;color:#e6edf3">{s["hyp"]}</div>'
-                f'<div style="color:#7d8590;font-size:.70rem;margin-top:.3rem">Confidence: {s["conf"]:.3f} · Grounding: {s["gr"]:.3f} · Evidence: [{s["doc"]}]</div></div>',
-                unsafe_allow_html=True)
-
-    sh("PRECISION DIAGNOSIS")
-    pc1, pc2, pc3 = st.columns(3)
-    pc1.markdown(mc("FAULT COMPONENT", f'<span style="font-size:.74rem;color:#58a6ff">{s["fc"]}</span>'), unsafe_allow_html=True)
-    pc2.markdown(mc("ALARM CODE",      f'<span style="font-size:.74rem;color:#f0b429">{s["alm"]}</span>'), unsafe_allow_html=True)
-    pc3.markdown(mc("FAULT MECHANISM", f'<span style="font-size:.74rem;color:#c9d1d9">{s["mech"]}</span>'), unsafe_allow_html=True)
-
-    sh("ACTION RECOMMENDATIONS")
-    for i, (act, tier, tool) in enumerate([(s["a1"],s["a1t"],s["a1tool"]),(s.get("a2"),s.get("a2t"),s.get("a2tool"))], 1):
-        if act:
-            st.markdown(
-                f'<div class="ar"><div style="min-width:1.8rem;color:#7d8590;font-family:var(--mono)">[{i}]</div>'
-                f'{tier_html(tier)}<div style="flex:1">{act}</div>'
-                f'<div style="color:#7d8590;font-family:var(--mono);font-size:.67rem">{tool}</div></div>',
-                unsafe_allow_html=True)
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  PAGE: PLAIN ENGLISH
-# ══════════════════════════════════════════════════════════════════════════════
-elif pk == "Plain English":
-    s = sel; sh(f"PLAIN-ENGLISH EXPLANATION — {s['id']}")
-    _live_r  = live_rul(s)
-    _live_ug = live_urgency(_live_r)
-    rul_h    = int(_live_r); conf_pct = f"{s['conf']:.0%}"
-    em = {"Critical":"⚠ [CRITICAL]","Warning":"◑ [WARNING]","Monitor":"● [MONITOR]"}[_live_ug]
-    if _live_ug == "Critical":
-        headline = f"Station {s['id']} requires emergency maintenance within {s['sla']}h"
-        impact   = f"Approximately {rul_h} cycles remaining (~{rul_h}h). Without action in {s['sla']}h, service outage is expected."
-    elif _live_ug == "Warning":
-        headline = f"Station {s['id']} needs maintenance scheduled within {s['sla']}h"
-        impact   = f"{rul_h} cycles remaining. Early failure indicators detected in {s['sub'].replace('_',' ')}. Act before emergency."
-    else:
-        headline = f"Station {s['id']} is stable — monitoring recommended"
-        impact   = f"{rul_h} cycles remaining. Gradual degradation detected. Queue for scheduled maintenance within {s['sla']}h."
-    full = (f"The agentic AI system detected wear in the {s['sub'].replace('_',' ')} at station {s['id']} "
-            f"(C-MAPSS {s['subset']} engine, {s['cycles']} cycles), estimating {rul_h} cycles of remaining useful life. "
-            f"Predicted by XGBoost v2 Final — ONE combined model trained on all four C-MAPSS subsets jointly "
-            f"(all-4 RMSE=14.60, FD001+FD003 RMSE=12.77, R²=0.874, 15k trees, exp(alpha=3) weights). "
-            f"Most likely cause: {s['hyp'].lower()}. Mechanism: {s['mech'].lower()}. "
-            f"Confidence: {conf_pct} (grounding 100%, hallucination 0%). "
-            f"Top feature: {s['top_feat']} (imp={s['top_imp']:.4f}). "
-            f"First action: {s['a1'].lower()}. Expected alarm: {s['alm']}. Evidence: [{s['doc']}].")
-    st.markdown(f"""<div class="pe">
-      <div style="font-size:.95rem;font-weight:600;color:#e6edf3;margin-bottom:.4rem">{em} {headline}</div>
-      <div style="font-size:.79rem;color:#c9d1d9;line-height:1.6;margin-bottom:.45rem">{impact}</div>
-      <div style="background:#21262d;border-radius:4px;padding:.5rem .75rem;margin:.4rem 0;font-size:.78rem;color:#e6edf3">
-        <strong style="color:#39c5cf">Action:</strong> {s["a1"]}
-      </div>
-      <div style="font-size:.69rem;color:#7d8590;font-family:'IBM Plex Mono',monospace">
-        Conf: {conf_pct} · Grounding: 100% · No hallucination · XGBoost v2 Final (RMSE=14.60, R²=0.874)
-      </div>
-    </div>""", unsafe_allow_html=True)
-    sh("FULL EXPLANATION — FOR REPORTS")
-    st.markdown(f'<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.1rem;font-size:.82rem;color:#c9d1d9;line-height:1.7">{full}</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: RAG EVIDENCE
 # ══════════════════════════════════════════════════════════════════════════════
-elif pk == "RAG Evidence":
-    s = sel; chunks = EVIDENCE.get(s["id"], EVIDENCE["FD002_47"])
-    sh(f"RAG EVIDENCE BUNDLE — {s['id']} (coverage={s['cov']:.2f})")
-    cl, cr = st.columns([3,1])
-    with cr:
-        for lbl, val, color in [("COVERAGE",f"{s['cov']:.2f}","#39c5cf"),("CANDIDATES","17","#58a6ff"),
-                                  ("LATENCY","9ms","#bc8cff"),("GROUNDING","1.00","#3fb950"),("HALLUCIN.","0.00","#3fb950")]:
-            st.markdown(mc(lbl, val, color=color)+"<br>", unsafe_allow_html=True)
-    with cl:
-        dc = {"sop":"#58a6ff","alarm_dict":"#ff6b35","tree":"#39c5cf","manual":"#bc8cff","ticket":"#f0b429"}
-        for cite, dtype, title, rrf, sr2, dr, text in chunks:
-            st.markdown(f"""<div class="ec">
-              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.22rem">
-                <span style="color:#39c5cf;font-weight:600">[{cite}]</span>
-                <span style="color:{dc.get(dtype,'#7d8590')};font-size:.62rem;background:{dc.get(dtype,'#7d8590')}22;padding:1px 5px;border-radius:3px">{dtype}</span>
-                <span style="color:#7d8590;font-size:.63rem">rrf={rrf:.5f} s#{sr2} d#{dr}</span>
-              </div>
-              <div style="color:#e6edf3;font-weight:600;margin-bottom:.22rem;font-size:.75rem">{title}</div>
-              <div style="color:#7d8590;font-size:.70rem;line-height:1.5">{text[:230]}…</div>
-            </div>""", unsafe_allow_html=True)
-    if PLOTLY_OK:
-        sh("RRF SCORES")
-        _kr = pdk(); _kr["yaxis"]["range"] = [0, max(c[3] for c in chunks)*1.22]
-        frrf = go.Figure(go.Bar(
-            x=[c[0] for c in chunks], y=[c[3] for c in chunks],
-            marker_color=[dc.get(c[1],"#7d8590") for c in chunks], marker_line_width=0,
-            text=[f"{c[3]:.5f}" for c in chunks], textposition="outside",
-            textfont=dict(size=8, family="IBM Plex Mono")))
-        frrf.update_layout(**_kr, height=195, showlegend=False)
-        st.plotly_chart(frrf, use_container_width=True)
+elif pk == "Pipeline Intelligence":
+    _pi1, _pi2 = st.tabs(["\U0001f4e1 RAG Evidence", "\U0001f9e0 Agent Reasoning"])
+    with _pi1:
+        s = sel; chunks = EVIDENCE.get(s["id"], EVIDENCE["FD002_47"])
+        sh(f"RAG EVIDENCE BUNDLE — {s['id']} (coverage={s['cov']:.2f})")
+        cl, cr = st.columns([3,1])
+        with cr:
+            for lbl, val, color in [("COVERAGE",f"{s['cov']:.2f}","#39c5cf"),("CANDIDATES","17","#58a6ff"),
+                                      ("LATENCY","9ms","#bc8cff"),("GROUNDING","1.00","#3fb950"),("HALLUCIN.","0.00","#3fb950")]:
+                st.markdown(mc(lbl, val, color=color)+"<br>", unsafe_allow_html=True)
+        with cl:
+            dc = {"sop":"#58a6ff","alarm_dict":"#ff6b35","tree":"#39c5cf","manual":"#bc8cff","ticket":"#f0b429"}
+            for cite, dtype, title, rrf, sr2, dr, text in chunks:
+                st.markdown(f"""<div class="ec">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.22rem">
+                    <span style="color:#39c5cf;font-weight:600">[{cite}]</span>
+                    <span style="color:{dc.get(dtype,'#7d8590')};font-size:.62rem;background:{dc.get(dtype,'#7d8590')}22;padding:1px 5px;border-radius:3px">{dtype}</span>
+                    <span style="color:#7d8590;font-size:.63rem">rrf={rrf:.5f} s#{sr2} d#{dr}</span>
+                  </div>
+                  <div style="color:#e6edf3;font-weight:600;margin-bottom:.22rem;font-size:.75rem">{title}</div>
+                  <div style="color:#7d8590;font-size:.70rem;line-height:1.5">{text[:230]}…</div>
+                </div>""", unsafe_allow_html=True)
+        if PLOTLY_OK:
+            sh("RRF SCORES")
+            _kr = pdk(); _kr["yaxis"]["range"] = [0, max(c[3] for c in chunks)*1.22]
+            frrf = go.Figure(go.Bar(
+                x=[c[0] for c in chunks], y=[c[3] for c in chunks],
+                marker_color=[dc.get(c[1],"#7d8590") for c in chunks], marker_line_width=0,
+                text=[f"{c[3]:.5f}" for c in chunks], textposition="outside",
+                textfont=dict(size=8, family="IBM Plex Mono")))
+            frrf.update_layout(**_kr, height=195, showlegend=False)
+            st.plotly_chart(frrf, use_container_width=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  PAGE: AGENT REASONING
-# ══════════════════════════════════════════════════════════════════════════════
-elif pk == "Agent Reasoning":
-    s = sel; sh(f"REASONING TRACE — {s['id']}")
-    rul = live_rul(s); urg = live_urgency(rul)
-    steps = [
-        ("Observe",      f"Alert {s['id']}: RUL={rul:.1f} cycles (live), urgency={urg}, subsystem={s['sub']}. Subset {s['subset']}, {s['cycles']} cycles observed."),
-        ("Query RAG",    f"Retrieved 5 evidence chunks (coverage={s['cov']:.2f}) in 9ms. Top chunk: [{s['doc']}]."),
-        ("Hypothesis",   f"Applied {s['sub']} rule set. Primary hypothesis confirmed by [{s['doc']}]. Confidence base={s['conf']:.3f}."),
-        ("Alternatives", "2 alternatives considered: (1) mains grid failure [conf=0.35]; (2) battery EoL [conf=0.25]. Primary retained."),
-        ("Actions",      f"{s['auto_n']+s['to_n']} actions selected for {urg} urgency. First tool: {s['a1tool']}."),
-        ("Grounding",    f"Grounding rate: {s['gr']:.3f} ({'PASS' if s['gr']>=0.8 else 'PARTIAL'}). Hallucination: {s['hal']:.3f}."),
-        ("Handoff",      f"Planning Agent receives: confidence={s['conf']:.3f}, action: {s['a1'][:55]}…"),
-    ]
-    for i, (lbl, txt) in enumerate(steps, 1):
-        with st.expander(f"Step {i} · {lbl}", expanded=(i<=3)):
-            st.markdown(
-                f'<div style="font-family:var(--mono);font-size:.72rem;color:#7d8590;padding:.2rem 0 .2rem 1rem;'
-                f'border-left:2px solid #30363d"><span style="color:#39c5cf;font-weight:600">[{lbl.upper()}]</span> {txt}</div>',
-                unsafe_allow_html=True)
+    with _pi2:
+            s = sel; sh(f"REASONING TRACE — {s['id']}")
+            rul = live_rul(s); urg = live_urgency(rul)
+            steps = [
+                ("Observe",      f"Alert {s['id']}: RUL={rul:.1f} cycles (live), urgency={urg}, subsystem={s['sub']}. Subset {s['subset']}, {s['cycles']} cycles observed."),
+                ("Query RAG",    f"Retrieved 5 evidence chunks (coverage={s['cov']:.2f}) in 9ms. Top chunk: [{s['doc']}]."),
+                ("Hypothesis",   f"Applied {s['sub']} rule set. Primary hypothesis confirmed by [{s['doc']}]. Confidence base={s['conf']:.3f}."),
+                ("Alternatives", "2 alternatives considered: (1) mains grid failure [conf=0.35]; (2) battery EoL [conf=0.25]. Primary retained."),
+                ("Actions",      f"{s['auto_n']+s['to_n']} actions selected for {urg} urgency. First tool: {s['a1tool']}."),
+                ("Grounding",    f"Grounding rate: {s['gr']:.3f} ({'PASS' if s['gr']>=0.8 else 'PARTIAL'}). Hallucination: {s['hal']:.3f}."),
+                ("Handoff",      f"Planning Agent receives: confidence={s['conf']:.3f}, action: {s['a1'][:55]}…"),
+            ]
+            for i, (lbl, txt) in enumerate(steps, 1):
+                with st.expander(f"Step {i} · {lbl}", expanded=(i<=3)):
+                    st.markdown(
+                        f'<div style="font-family:var(--mono);font-size:.72rem;color:#7d8590;padding:.2rem 0 .2rem 1rem;'
+                        f'border-left:2px solid #30363d"><span style="color:#39c5cf;font-weight:600">[{lbl.upper()}]</span> {txt}</div>',
+                        unsafe_allow_html=True)
 
-    sh("EXECUTION PLAN")
-    for seq, act, tier, tool, cost in [(1,s["a1"],s["a1t"],s["a1tool"],0),(2,s.get("a2"),s.get("a2t"),s.get("a2tool"),s["cost"])]:
-        if act:
-            st.markdown(
-                f'<div class="ar"><div style="min-width:1.8rem;color:#7d8590;font-family:var(--mono)">[{seq}]</div>'
-                f'{tier_html(tier)}<div style="flex:1">{act}</div>'
-                f'<div style="color:#7d8590;font-family:var(--mono);font-size:.67rem">{tool} · €{cost}</div></div>',
-                unsafe_allow_html=True)
+            sh("EXECUTION PLAN")
+            for seq, act, tier, tool, cost in [(1,s["a1"],s["a1t"],s["a1tool"],0),(2,s.get("a2"),s.get("a2t"),s.get("a2tool"),s["cost"])]:
+                if act:
+                    st.markdown(
+                        f'<div class="ar"><div style="min-width:1.8rem;color:#7d8590;font-family:var(--mono)">[{seq}]</div>'
+                        f'{tier_html(tier)}<div style="flex:1">{act}</div>'
+                        f'<div style="color:#7d8590;font-family:var(--mono);font-size:.67rem">{tool} · €{cost}</div></div>',
+                        unsafe_allow_html=True)
 
-    sh("GOVERNANCE MODEL")
-    tier_n = 3 if urg=="Critical" else 2 if urg=="Warning" else 1
-    tier_c = ["#3fb950","#f0b429","#ff6b35"][tier_n-1]
-    tier_label = ["Tier 1 — Fully Autonomous","Tier 2 — Recommend + Auto timeout","Tier 3 — Human approval required"][tier_n-1]
-    tier_desc  = [
-        "Low-risk, reversible actions execute immediately. No human involvement required.",
-        "Medium-risk actions surfaced to responsible engineer. Auto-execute after SLA timeout if no objection.",
-        "High-risk or irreversible actions require explicit human sign-off before execution.",
-    ][tier_n-1]
-    st.markdown(f"""
-<div style="background:var(--card);border:2px solid {tier_c}44;border-radius:8px;padding:.85rem 1.05rem;margin:.5rem 0">
-  <div style="font-size:.82rem;font-weight:700;color:{tier_c};margin-bottom:.3rem">{tier_label}</div>
-  <div style="font-size:.74rem;color:#c9d1d9">{tier_desc}</div>
-</div>""", unsafe_allow_html=True)
+            sh("GOVERNANCE MODEL")
+            tier_n = 3 if urg=="Critical" else 2 if urg=="Warning" else 1
+            tier_c = ["#3fb950","#f0b429","#ff6b35"][tier_n-1]
+            tier_label = ["Tier 1 — Fully Autonomous","Tier 2 — Recommend + Auto timeout","Tier 3 — Human approval required"][tier_n-1]
+            tier_desc  = [
+                "Low-risk, reversible actions execute immediately. No human involvement required.",
+                "Medium-risk actions surfaced to responsible engineer. Auto-execute after SLA timeout if no objection.",
+                "High-risk or irreversible actions require explicit human sign-off before execution.",
+            ][tier_n-1]
+            st.markdown(f"""
+        <div style="background:var(--card);border:2px solid {tier_c}44;border-radius:8px;padding:.85rem 1.05rem;margin:.5rem 0">
+          <div style="font-size:.82rem;font-weight:700;color:{tier_c};margin-bottom:.3rem">{tier_label}</div>
+          <div style="font-size:.74rem;color:#c9d1d9">{tier_desc}</div>
+        </div>""", unsafe_allow_html=True)
 
-    sh("MEMORY STORE ENTRY")
-    mem = {"station_id":s["id"],"urgency":urg,"timestamp":time.strftime("%Y-%m-%dT%H:%M:%S"),
-           "live_rul":round(rul,2),"base_rul":s["base_rul"],"confidence":s["conf"],
-           "top_feature":s["top_feat"],"actions_taken":[s["a1tool"]],
-           "outcome":f"auto={s['auto_n']} timeout={s['to_n']} human={s['hum_n']}"}
-    st.code(json.dumps(mem, indent=2), language="json")
+            sh("MEMORY STORE ENTRY")
+            mem = {"station_id":s["id"],"urgency":urg,"timestamp":time.strftime("%Y-%m-%dT%H:%M:%S"),
+                   "live_rul":round(rul,2),"base_rul":s["base_rul"],"confidence":s["conf"],
+                   "top_feature":s["top_feat"],"actions_taken":[s["a1tool"]],
+                   "outcome":f"auto={s['auto_n']} timeout={s['to_n']} human={s['hum_n']}"}
+            st.code(json.dumps(mem, indent=2), language="json")
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: MODEL BENCHMARK
 # ══════════════════════════════════════════════════════════════════════════════
-elif pk == "Model Benchmark":
-    sh("C-MAPSS BENCHMARK — ALL 4 SUBSETS · MARCH 2026")
+elif pk == "Results & Ablation":
+    _ra1, _ra2 = st.tabs(["\U0001f4ca Model Benchmark", "\U0001f9ea Ablation Study"])
+    with _ra1:
+            sh("C-MAPSS BENCHMARK — ALL 4 SUBSETS · MARCH 2026")
 
-    # Per-subset table
-    TH = "background:#1c2333;color:#7d8590;padding:.35rem .65rem;border:1px solid #30363d;font-size:.62rem;text-align:center"
-    TD = "padding:.32rem .65rem;border:1px solid #30363d;text-align:center;font-size:.72rem;font-family:'IBM Plex Mono',monospace"
-    st.markdown(f"""<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-family:'IBM Plex Mono',monospace">
-<tr>
-  <th style="{TH};text-align:left" rowspan="2">Model</th>
-  <th colspan="3" style="{TH};color:#3fb950">FD001 (1c·1f)</th>
-  <th colspan="3" style="{TH};color:#f0b429">FD002 (6c·1f)</th>
-  <th colspan="3" style="{TH};color:#58a6ff">FD003 (1c·2f)</th>
-  <th colspan="3" style="{TH};color:#ff6b35">FD004 (6c·2f)</th>
-  <th colspan="2" style="{TH};color:#39c5cf">Overall</th>
-</tr>
-<tr>
-  <th style="{TH}">RMSE</th><th style="{TH}">MAE</th><th style="{TH}">R²</th>
-  <th style="{TH}">RMSE</th><th style="{TH}">MAE</th><th style="{TH}">R²</th>
-  <th style="{TH}">RMSE</th><th style="{TH}">MAE</th><th style="{TH}">R²</th>
-  <th style="{TH}">RMSE</th><th style="{TH}">MAE</th><th style="{TH}">R²</th>
-  <th style="{TH}">RMSE</th><th style="{TH}">R²</th>
-</tr>
-<tr style="color:#39c5cf;font-weight:700">
-  <td style="{TD};text-align:left">XGBoost v2 Final ★</td>
-  <td style="{TD};color:#3fb950">12.31</td><td style="{TD}">8.14</td><td style="{TD}">0.912</td>
-  <td style="{TD};color:#f0b429">15.87</td><td style="{TD}">11.43</td><td style="{TD}">0.841</td>
-  <td style="{TD};color:#58a6ff">13.23</td><td style="{TD}">9.01</td><td style="{TD}">0.896</td>
-  <td style="{TD};color:#ff6b35">16.99</td><td style="{TD}">12.28</td><td style="{TD}">0.826</td>
-  <td style="{TD};color:#39c5cf">14.60</td><td style="{TD}">0.874</td>
-</tr>
-<tr style="color:#7d8590">
-  <td style="{TD};text-align:left">XGBoost v1</td>
-  <td style="{TD}">13.21</td><td style="{TD}">9.45</td><td style="{TD}">0.891</td>
-  <td style="{TD}">18.03</td><td style="{TD}">13.11</td><td style="{TD}">0.824</td>
-  <td style="{TD}">15.88</td><td style="{TD}">11.22</td><td style="{TD}">0.880</td>
-  <td style="{TD}">19.44</td><td style="{TD}">13.87</td><td style="{TD}">0.802</td>
-  <td style="{TD}">15.90</td><td style="{TD}">0.853</td>
-</tr>
-<tr style="color:#7d8590">
-  <td style="{TD};text-align:left">Transformer v2</td>
-  <td style="{TD}">13.87</td><td style="{TD}">9.10</td><td style="{TD}">0.878</td>
-  <td style="{TD}">19.22</td><td style="{TD}">13.84</td><td style="{TD}">0.812</td>
-  <td style="{TD}">16.55</td><td style="{TD}">11.40</td><td style="{TD}">0.868</td>
-  <td style="{TD}">20.11</td><td style="{TD}">14.22</td><td style="{TD}">0.790</td>
-  <td style="{TD}">17.48</td><td style="{TD}">0.822</td>
-</tr>
-<tr style="color:#7d8590">
-  <td style="{TD};text-align:left">BiLSTM v2</td>
-  <td style="{TD}">14.44</td><td style="{TD}">9.88</td><td style="{TD}">0.867</td>
-  <td style="{TD}">20.11</td><td style="{TD}">14.55</td><td style="{TD}">0.799</td>
-  <td style="{TD}">17.22</td><td style="{TD}">12.10</td><td style="{TD}">0.857</td>
-  <td style="{TD}">20.88</td><td style="{TD}">14.99</td><td style="{TD}">0.778</td>
-  <td style="{TD}">18.13</td><td style="{TD}">0.809</td>
-</tr>
-<tr style="color:#bc8cff;opacity:0.75">
-  <td style="{TD};text-align:left">CAELSTM (Elsherif 2025) †</td>
-  <td style="{TD}">11.24</td><td style="{TD}">8.31</td><td style="{TD}">—</td>
-  <td style="{TD}">—</td><td style="{TD}">—</td><td style="{TD}">—</td>
-  <td style="{TD}">11.05</td><td style="{TD}">—</td><td style="{TD}">—</td>
-  <td style="{TD}">—</td><td style="{TD}">—</td><td style="{TD}">—</td>
-  <td style="{TD}">—</td><td style="{TD}">—</td>
-</tr>
-</table>
-<div style="font-family:monospace;font-size:.62rem;color:#7d8590;margin-top:.28rem">† Literature: single-subset reported. ★ = primary model, trained on all 4 simultaneously.</div>
-</div>""", unsafe_allow_html=True)
+            # Per-subset table
+            TH = "background:#1c2333;color:#7d8590;padding:.35rem .65rem;border:1px solid #30363d;font-size:.62rem;text-align:center"
+            TD = "padding:.32rem .65rem;border:1px solid #30363d;text-align:center;font-size:.72rem;font-family:'IBM Plex Mono',monospace"
+            st.markdown(f"""<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-family:'IBM Plex Mono',monospace">
+        <tr>
+          <th style="{TH};text-align:left" rowspan="2">Model</th>
+          <th colspan="3" style="{TH};color:#3fb950">FD001 (1c·1f)</th>
+          <th colspan="3" style="{TH};color:#f0b429">FD002 (6c·1f)</th>
+          <th colspan="3" style="{TH};color:#58a6ff">FD003 (1c·2f)</th>
+          <th colspan="3" style="{TH};color:#ff6b35">FD004 (6c·2f)</th>
+          <th colspan="2" style="{TH};color:#39c5cf">Overall</th>
+        </tr>
+        <tr>
+          <th style="{TH}">RMSE</th><th style="{TH}">MAE</th><th style="{TH}">R²</th>
+          <th style="{TH}">RMSE</th><th style="{TH}">MAE</th><th style="{TH}">R²</th>
+          <th style="{TH}">RMSE</th><th style="{TH}">MAE</th><th style="{TH}">R²</th>
+          <th style="{TH}">RMSE</th><th style="{TH}">MAE</th><th style="{TH}">R²</th>
+          <th style="{TH}">RMSE</th><th style="{TH}">R²</th>
+        </tr>
+        <tr style="color:#39c5cf;font-weight:700">
+          <td style="{TD};text-align:left">XGBoost v2 Final ★</td>
+          <td style="{TD};color:#3fb950">12.31</td><td style="{TD}">8.14</td><td style="{TD}">0.912</td>
+          <td style="{TD};color:#f0b429">15.87</td><td style="{TD}">11.43</td><td style="{TD}">0.841</td>
+          <td style="{TD};color:#58a6ff">13.23</td><td style="{TD}">9.01</td><td style="{TD}">0.896</td>
+          <td style="{TD};color:#ff6b35">16.99</td><td style="{TD}">12.28</td><td style="{TD}">0.826</td>
+          <td style="{TD};color:#39c5cf">14.60</td><td style="{TD}">0.874</td>
+        </tr>
+        <tr style="color:#7d8590">
+          <td style="{TD};text-align:left">XGBoost v1</td>
+          <td style="{TD}">13.21</td><td style="{TD}">9.45</td><td style="{TD}">0.891</td>
+          <td style="{TD}">18.03</td><td style="{TD}">13.11</td><td style="{TD}">0.824</td>
+          <td style="{TD}">15.88</td><td style="{TD}">11.22</td><td style="{TD}">0.880</td>
+          <td style="{TD}">19.44</td><td style="{TD}">13.87</td><td style="{TD}">0.802</td>
+          <td style="{TD}">15.90</td><td style="{TD}">0.853</td>
+        </tr>
+        <tr style="color:#7d8590">
+          <td style="{TD};text-align:left">Transformer v2</td>
+          <td style="{TD}">13.87</td><td style="{TD}">9.10</td><td style="{TD}">0.878</td>
+          <td style="{TD}">19.22</td><td style="{TD}">13.84</td><td style="{TD}">0.812</td>
+          <td style="{TD}">16.55</td><td style="{TD}">11.40</td><td style="{TD}">0.868</td>
+          <td style="{TD}">20.11</td><td style="{TD}">14.22</td><td style="{TD}">0.790</td>
+          <td style="{TD}">17.48</td><td style="{TD}">0.822</td>
+        </tr>
+        <tr style="color:#7d8590">
+          <td style="{TD};text-align:left">BiLSTM v2</td>
+          <td style="{TD}">14.44</td><td style="{TD}">9.88</td><td style="{TD}">0.867</td>
+          <td style="{TD}">20.11</td><td style="{TD}">14.55</td><td style="{TD}">0.799</td>
+          <td style="{TD}">17.22</td><td style="{TD}">12.10</td><td style="{TD}">0.857</td>
+          <td style="{TD}">20.88</td><td style="{TD}">14.99</td><td style="{TD}">0.778</td>
+          <td style="{TD}">18.13</td><td style="{TD}">0.809</td>
+        </tr>
+        <tr style="color:#bc8cff;opacity:0.75">
+          <td style="{TD};text-align:left">CAELSTM (Elsherif 2025) †</td>
+          <td style="{TD}">11.24</td><td style="{TD}">8.31</td><td style="{TD}">—</td>
+          <td style="{TD}">—</td><td style="{TD}">—</td><td style="{TD}">—</td>
+          <td style="{TD}">11.05</td><td style="{TD}">—</td><td style="{TD}">—</td>
+          <td style="{TD}">—</td><td style="{TD}">—</td><td style="{TD}">—</td>
+          <td style="{TD}">—</td><td style="{TD}">—</td>
+        </tr>
+        </table>
+        <div style="font-family:monospace;font-size:.62rem;color:#7d8590;margin-top:.28rem">† Literature: single-subset reported. ★ = primary model, trained on all 4 simultaneously.</div>
+        </div>""", unsafe_allow_html=True)
 
-    st.markdown("""<div class="ac m" style="margin-top:.6rem">
-      <strong style="color:#3fb950">XGBoost v2 Final vs v1:</strong><br>
-      <span style="font-size:.77rem;color:#c9d1d9">
-        15,000 trees (↑ from 8,000) · lr=0.02 · exp(α=3.0) near-failure weighting (RUL≤30 weighted ~4×) ·
-        min_child_weight=5 · all 4 subsets simultaneously · subset_encoded feature · GPU (device=cuda)<br>
-        RMSE improvement: −8.2% all-4 · −19.7% FD001+FD003 · R² 0.853→0.874
-      </span>
-    </div>""", unsafe_allow_html=True)
+            st.markdown("""<div class="ac m" style="margin-top:.6rem">
+              <strong style="color:#3fb950">XGBoost v2 Final vs v1:</strong><br>
+              <span style="font-size:.77rem;color:#c9d1d9">
+                15,000 trees (↑ from 8,000) · lr=0.02 · exp(α=3.0) near-failure weighting (RUL≤30 weighted ~4×) ·
+                min_child_weight=5 · all 4 subsets simultaneously · subset_encoded feature · GPU (device=cuda)<br>
+                RMSE improvement: −8.2% all-4 · −19.7% FD001+FD003 · R² 0.853→0.874
+              </span>
+            </div>""", unsafe_allow_html=True)
 
-    if PLOTLY_OK:
-        b1, b2 = st.columns(2)
-        with b1:
-            sh("RMSE COMPARISON (ALL SUBSETS)")
-            mdl = ["XGBoost v2 ★","Transformer v2","BiLSTM v2","Trans v1","CNN v1","LSTM v1","Trans v3","MS-CNN v2"]
-            rms = [14.60,17.48,18.13,18.15,18.66,18.73,19.76,19.97]
-            clr = ["#58a6ff" if i<1 else ("#39c5cf" if i<2 else ("#7d8590" if i<6 else "#ff6b35")) for i in range(len(mdl))]
-            _kb = pdk(); _kb["xaxis"]["range"] = [12,22]
-            fb = go.Figure(go.Bar(x=rms, y=mdl, orientation="h", marker_color=clr, marker_line_width=0,
-                text=[f"{v:.2f}" for v in rms], textposition="outside",
-                textfont=dict(size=9, family="IBM Plex Mono")))
-            fb.update_layout(**_kb, height=295, xaxis_title="RMSE (cycles)", showlegend=False)
-            st.plotly_chart(fb, use_container_width=True)
-        with b2:
-            sh("TRAINING CONVERGENCE — XGBoost v2 Final")
-            trees = list(range(1, 501, 10)); np.random.seed(0)
-            tr = [22.0*np.exp(-0.006*t)+14.0+np.random.normal(0,.2) for t in trees]
-            vl = [23.0*np.exp(-0.005*t)+14.5+np.random.normal(0,.3) for t in trees]
-            fc2 = go.Figure()
-            fc2.add_trace(go.Scatter(x=trees, y=tr, name="Train RMSE", line=dict(color="#58a6ff",width=2)))
-            fc2.add_trace(go.Scatter(x=trees, y=vl, name="Val RMSE",   line=dict(color="#f0b429",width=2,dash="dash")))
-            fc2.add_hline(y=14.60, line_color="#3fb950", line_dash="dot",
-                annotation_text="Final 14.60", annotation_font_size=9)
-            fc2.update_layout(**pdk(), height=295, yaxis_title="RMSE", xaxis_title="Estimators (×10)",
-                legend=dict(font=dict(size=9), bgcolor="rgba(0,0,0,0)"))
-            st.plotly_chart(fc2, use_container_width=True)
+            if PLOTLY_OK:
+                b1, b2 = st.columns(2)
+                with b1:
+                    sh("RMSE COMPARISON (ALL SUBSETS)")
+                    mdl = ["XGBoost v2 ★","Transformer v2","BiLSTM v2","Trans v1","CNN v1","LSTM v1","Trans v3","MS-CNN v2"]
+                    rms = [14.60,17.48,18.13,18.15,18.66,18.73,19.76,19.97]
+                    clr = ["#58a6ff" if i<1 else ("#39c5cf" if i<2 else ("#7d8590" if i<6 else "#ff6b35")) for i in range(len(mdl))]
+                    _kb = pdk(); _kb["xaxis"]["range"] = [12,22]
+                    fb = go.Figure(go.Bar(x=rms, y=mdl, orientation="h", marker_color=clr, marker_line_width=0,
+                        text=[f"{v:.2f}" for v in rms], textposition="outside",
+                        textfont=dict(size=9, family="IBM Plex Mono")))
+                    fb.update_layout(**_kb, height=295, xaxis_title="RMSE (cycles)", showlegend=False)
+                    st.plotly_chart(fb, use_container_width=True)
+                with b2:
+                    sh("TRAINING CONVERGENCE — XGBoost v2 Final")
+                    trees = list(range(1, 501, 10)); np.random.seed(0)
+                    tr = [22.0*np.exp(-0.006*t)+14.0+np.random.normal(0,.2) for t in trees]
+                    vl = [23.0*np.exp(-0.005*t)+14.5+np.random.normal(0,.3) for t in trees]
+                    fc2 = go.Figure()
+                    fc2.add_trace(go.Scatter(x=trees, y=tr, name="Train RMSE", line=dict(color="#58a6ff",width=2)))
+                    fc2.add_trace(go.Scatter(x=trees, y=vl, name="Val RMSE",   line=dict(color="#f0b429",width=2,dash="dash")))
+                    fc2.add_hline(y=14.60, line_color="#3fb950", line_dash="dot",
+                        annotation_text="Final 14.60", annotation_font_size=9)
+                    fc2.update_layout(**pdk(), height=295, yaxis_title="RMSE", xaxis_title="Estimators (×10)",
+                        legend=dict(font=dict(size=9), bgcolor="rgba(0,0,0,0)"))
+                    st.plotly_chart(fc2, use_container_width=True)
 
-        sh("PER RUL-RANGE RMSE BREAKDOWN")
-        rr = go.Figure()
-        for nm, vals, col in [
-            ("XGBoost v2", [8.29,18.64,21.35,13.21],"#58a6ff"),
-            ("LSTM v1",    [12.64,21.87,25.26,15.14],"#7d8590"),
-            ("Trans v1",   [6.65,20.70,28.65,12.04],"#bc8cff"),
-            ("Trans v2",   [8.47,18.48,22.62,15.77],"#f0b429"),
-        ]:
-            rr.add_trace(go.Bar(name=nm, x=["0–20 (critical)","20–50","50–100","100–150"],
-                y=vals, marker_color=col, marker_line_width=0))
-        rr.update_layout(**pdk(), height=275, barmode="group", yaxis_title="RMSE (cycles)",
-            legend=dict(font=dict(size=9), bgcolor="rgba(0,0,0,0)"))
-        st.plotly_chart(rr, use_container_width=True)
+                sh("PER RUL-RANGE RMSE BREAKDOWN")
+                rr = go.Figure()
+                for nm, vals, col in [
+                    ("XGBoost v2", [8.29,18.64,21.35,13.21],"#58a6ff"),
+                    ("LSTM v1",    [12.64,21.87,25.26,15.14],"#7d8590"),
+                    ("Trans v1",   [6.65,20.70,28.65,12.04],"#bc8cff"),
+                    ("Trans v2",   [8.47,18.48,22.62,15.77],"#f0b429"),
+                ]:
+                    rr.add_trace(go.Bar(name=nm, x=["0–20 (critical)","20–50","50–100","100–150"],
+                        y=vals, marker_color=col, marker_line_width=0))
+                rr.update_layout(**pdk(), height=275, barmode="group", yaxis_title="RMSE (cycles)",
+                    legend=dict(font=dict(size=9), bgcolor="rgba(0,0,0,0)"))
+                st.plotly_chart(rr, use_container_width=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  PAGE: ABLATION STUDY
-# ══════════════════════════════════════════════════════════════════════════════
-elif pk == "Ablation Study":
-    sh("ABLATION STUDY — 5 CONFIGURATIONS (A → E)")
-    configs = ABLATION["configs"]
-    if PLOTLY_OK:
-        ab1, ab2 = st.columns(2)
-        with ab1:
-            sh("GROUNDING RATE PROGRESSION")
-            _kg = pdk(); _kg["yaxis"]["range"] = [0, 1.15]
-            fg = go.Figure(go.Bar(x=configs, y=ABLATION["ground"],
-                marker_color=["#21262d","#21262d","#21262d","#39c5cf","#3fb950"],
-                marker_line_width=0, text=[f"{v:.2f}" for v in ABLATION["ground"]],
-                textposition="outside", textfont=dict(size=9, family="IBM Plex Mono")))
-            fg.add_annotation(x=3, y=0.55, text="RAG →\ngrounding=1.00",
-                font=dict(size=9, color="#39c5cf"), showarrow=True, arrowcolor="#39c5cf", ax=0, ay=-40)
-            fg.update_layout(**_kg, height=255, yaxis_title="Grounding Rate", showlegend=False)
-            st.plotly_chart(fg, use_container_width=True)
-        with ab2:
-            sh("HALLUCINATION RATE")
-            _kh = pdk(); _kh["yaxis"]["range"] = [0, 1.15]
-            fh = go.Figure(go.Bar(x=configs, y=ABLATION["halluc"],
-                marker_color=["#ff6b35","#ff6b35","#f0b429","#3fb950","#3fb950"],
-                marker_line_width=0, text=[f"{v:.2f}" for v in ABLATION["halluc"]],
-                textposition="outside", textfont=dict(size=9, family="IBM Plex Mono")))
-            fh.update_layout(**_kh, height=255, yaxis_title="Hallucination Rate", showlegend=False)
-            st.plotly_chart(fh, use_container_width=True)
+    with _ra2:
+            sh("ABLATION STUDY — 5 CONFIGURATIONS (A → E)")
+            configs = ABLATION["configs"]
+            if PLOTLY_OK:
+                ab1, ab2 = st.columns(2)
+                with ab1:
+                    sh("GROUNDING RATE PROGRESSION")
+                    _kg = pdk(); _kg["yaxis"]["range"] = [0, 1.15]
+                    fg = go.Figure(go.Bar(x=configs, y=ABLATION["ground"],
+                        marker_color=["#21262d","#21262d","#21262d","#39c5cf","#3fb950"],
+                        marker_line_width=0, text=[f"{v:.2f}" for v in ABLATION["ground"]],
+                        textposition="outside", textfont=dict(size=9, family="IBM Plex Mono")))
+                    fg.add_annotation(x=3, y=0.55, text="RAG →\ngrounding=1.00",
+                        font=dict(size=9, color="#39c5cf"), showarrow=True, arrowcolor="#39c5cf", ax=0, ay=-40)
+                    fg.update_layout(**_kg, height=255, yaxis_title="Grounding Rate", showlegend=False)
+                    st.plotly_chart(fg, use_container_width=True)
+                with ab2:
+                    sh("HALLUCINATION RATE")
+                    _kh = pdk(); _kh["yaxis"]["range"] = [0, 1.15]
+                    fh = go.Figure(go.Bar(x=configs, y=ABLATION["halluc"],
+                        marker_color=["#ff6b35","#ff6b35","#f0b429","#3fb950","#3fb950"],
+                        marker_line_width=0, text=[f"{v:.2f}" for v in ABLATION["halluc"]],
+                        textposition="outside", textfont=dict(size=9, family="IBM Plex Mono")))
+                    fh.update_layout(**_kh, height=255, yaxis_title="Hallucination Rate", showlegend=False)
+                    st.plotly_chart(fh, use_container_width=True)
 
-    sh("CONFIGURATION TABLE")
-    for a_cfg, a_rmse, a_gr, a_ha, a_ac, a_au, a_desc in zip(
-        configs, ABLATION["rmse"], ABLATION["ground"], ABLATION["halluc"],
-        ABLATION["actions"], ["✗","✗","✗","✗","✓"],
-        [ABLATION["desc"][c] for c in configs]
-    ):
-        is_e = a_cfg.startswith("E:")
-        col_style = "color:#39c5cf;font-weight:700" if is_e else ("color:#58a6ff" if a_cfg.startswith("D:") else "")
-        gc = "#39c5cf" if a_gr==1.0 else "#7d8590"
-        hc = "#3fb950" if a_ha==0 else "#f0b429" if a_ha<0.7 else "#ff6b35"
-        st.markdown(f"""
-<div style="display:grid;grid-template-columns:220px 80px 90px 100px 70px 55px 1fr;gap:.3rem;align-items:center;
-     padding:.3rem .7rem;background:#161b22;border:1px solid #30363d;border-radius:5px;
-     margin-bottom:.2rem;font-family:'IBM Plex Mono',monospace;font-size:.71rem;{col_style}">
-  <span>{a_cfg}</span>
-  <span>RMSE {a_rmse:.2f}</span>
-  <span>Grd <span style="color:{gc}">{a_gr:.2f}</span></span>
-  <span>Hal <span style="color:{hc}">{a_ha:.2f}</span></span>
-  <span>Acts {a_ac}</span>
-  <span style="color:{'#3fb950' if a_au=='✓' else '#7d8590'}">{a_au}</span>
-  <span style="color:#7d8590">{a_desc}</span>
-</div>""", unsafe_allow_html=True)
+            sh("CONFIGURATION TABLE")
+            for a_cfg, a_rmse, a_gr, a_ha, a_ac, a_au, a_desc in zip(
+                configs, ABLATION["rmse"], ABLATION["ground"], ABLATION["halluc"],
+                ABLATION["actions"], ["✗","✗","✗","✗","✓"],
+                [ABLATION["desc"][c] for c in configs]
+            ):
+                is_e = a_cfg.startswith("E:")
+                col_style = "color:#39c5cf;font-weight:700" if is_e else ("color:#58a6ff" if a_cfg.startswith("D:") else "")
+                gc = "#39c5cf" if a_gr==1.0 else "#7d8590"
+                hc = "#3fb950" if a_ha==0 else "#f0b429" if a_ha<0.7 else "#ff6b35"
+                st.markdown(f"""
+        <div style="display:grid;grid-template-columns:220px 80px 90px 100px 70px 55px 1fr;gap:.3rem;align-items:center;
+             padding:.3rem .7rem;background:#161b22;border:1px solid #30363d;border-radius:5px;
+             margin-bottom:.2rem;font-family:'IBM Plex Mono',monospace;font-size:.71rem;{col_style}">
+          <span>{a_cfg}</span>
+          <span>RMSE {a_rmse:.2f}</span>
+          <span>Grd <span style="color:{gc}">{a_gr:.2f}</span></span>
+          <span>Hal <span style="color:{hc}">{a_ha:.2f}</span></span>
+          <span>Acts {a_ac}</span>
+          <span style="color:{'#3fb950' if a_au=='✓' else '#7d8590'}">{a_au}</span>
+          <span style="color:#7d8590">{a_desc}</span>
+        </div>""", unsafe_allow_html=True)
 
-    st.markdown("""<div class="ac m" style="margin-top:.7rem">
-      <strong style="color:#3fb950">KEY EMPIRICAL FINDINGS</strong><br>
-      <span style="font-size:.77rem;color:#c9d1d9;line-height:1.8">
-        <b>B vs A:</b> RMSE 15.90→14.60 all-subsets (−8.2%) and 15.90→12.77 FD001+FD003 (−19.7%). R²: 0.853→0.874. &nbsp;·&nbsp;
-        <b>C vs B:</b> LLM adds diagnostic language but hallucination=0.65 without grounding. &nbsp;·&nbsp;
-        <b>D vs C:</b> RAG reduces hallucination 0.65→0.00, grounding 0.0→1.00. &nbsp;·&nbsp;
-        <b>E vs D:</b> 12 autonomous actions executed in 33ms total pipeline latency.
-      </span>
-    </div>""", unsafe_allow_html=True)
+            st.markdown("""<div class="ac m" style="margin-top:.7rem">
+              <strong style="color:#3fb950">KEY EMPIRICAL FINDINGS</strong><br>
+              <span style="font-size:.77rem;color:#c9d1d9;line-height:1.8">
+                <b>B vs A:</b> RMSE 15.90→14.60 all-subsets (−8.2%) and 15.90→12.77 FD001+FD003 (−19.7%). R²: 0.853→0.874. &nbsp;·&nbsp;
+                <b>C vs B:</b> LLM adds diagnostic language but hallucination=0.65 without grounding. &nbsp;·&nbsp;
+                <b>D vs C:</b> RAG reduces hallucination 0.65→0.00, grounding 0.0→1.00. &nbsp;·&nbsp;
+                <b>E vs D:</b> 12 autonomous actions executed in 33ms total pipeline latency.
+              </span>
+            </div>""", unsafe_allow_html=True)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: ENGINEER CHATBOT
