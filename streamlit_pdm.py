@@ -565,7 +565,6 @@ def svg_rul_hbar():
         col = {"Critical":"#ff6b35","Warning":"#f0b429","Monitor":"#3fb950"}[urg]
         bw  = max(2, int(rul/125*(W-PL-PR)))
         y   = PT + i*ROW
-        sr  = SUBSET_RESULTS[s["subset"]]
         bars += (
             f'<text x="{PL-6}" y="{y+17}" fill="#c9d1d9" font-size="11" text-anchor="end" '
             f'font-family="IBM Plex Mono,monospace">{s["id"]}</text>'
@@ -573,8 +572,6 @@ def svg_rul_hbar():
             f'<rect x="{PL+5}" y="{y+5}" width="{bw}" height="15" fill="{col}" opacity="0.75" rx="2"/>'
             f'<text x="{PL+bw+10}" y="{y+17}" fill="{col}" font-size="11" font-family="IBM Plex Mono,monospace" '
             f'font-weight="700">{rul:.1f}</text>'
-            f'<text x="{PL+bw+48}" y="{y+17}" fill="#30363d" font-size="9" font-family="monospace">'
-            f'{sr["rmse"]}</text>'
         )
     for v in [20, 50, 75, 100, 125]:
         x = PL + int(v/125*(W-PL-PR))
@@ -636,8 +633,12 @@ crit_n = sum(1 for s in STATIONS if live_urgency(live_rul(s))=="Critical")
 sys_color = "#ff6b35" if crit_n > 0 else "#3fb950"
 sys_label = f"{crit_n} CRITICAL ACTIVE" if crit_n > 0 else "SYSTEM OPERATIONAL"
 
-_live_dot_color = "#3fb950" if not st.session_state.live_mode else "#39c5cf"
+_live_dot_color = "#39c5cf" if st.session_state.live_mode else "#3fb950"
 _live_label     = "● LIVE" if st.session_state.live_mode else "● STANDBY"
+_live_border    = "#39c5cf44" if st.session_state.live_mode else "#3fb95044"
+_live_dot_cls   = "dotfast" if st.session_state.live_mode else "dot"
+_crit_border    = "#ff6b3544" if crit_n > 0 else "#3fb95044"
+_crit_dot_cls   = "dotfast" if crit_n > 0 else "dot"
 _n_stations     = len(STATIONS)
 st.markdown(f"""<style>
 @keyframes blink{{0%,100%{{opacity:1;}}50%{{opacity:.3;}}}}
@@ -667,31 +668,31 @@ st.markdown(f"""<style>
   <!-- RIGHT: Status chips -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:auto">
 
-    <!-- Live / Standby -->
-    <div style="background:#161b22;border:1px solid {_live_dot_color}44;border-radius:6px;
+    <!-- Live / Standby chip -->
+    <div style="background:#161b22;border:1px solid {_live_border};border-radius:6px;
          padding:4px 10px;display:flex;align-items:center;gap:5px">
       <span style="width:7px;height:7px;background:{_live_dot_color};border-radius:50%;display:inline-block"
-            class="{'dotfast' if st.session_state.live_mode else 'dot'}"></span>
+            class="{_live_dot_cls}"></span>
       <span style="font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:{_live_dot_color};
             white-space:nowrap">{_live_label}</span>
     </div>
 
-    <!-- Operational status -->
-    <div style="background:#161b22;border:1px solid {sys_color}44;border-radius:6px;
+    <!-- Critical / Operational status chip -->
+    <div style="background:#161b22;border:1px solid {_crit_border};border-radius:6px;
          padding:4px 10px;display:flex;align-items:center;gap:5px">
       <span style="width:7px;height:7px;background:{sys_color};border-radius:50%;display:inline-block"
-            class="{'dotfast' if crit_n>0 else 'dot'}"></span>
+            class="{_crit_dot_cls}"></span>
       <span style="font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:{sys_color};
             white-space:nowrap">{sys_label}</span>
     </div>
 
-    <!-- User + role -->
+    <!-- User + role chip -->
     <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;
          padding:4px 10px;font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:{_rcolor}">
       {USER}&nbsp;·&nbsp;<span style="color:#7d8590">{ROLE.upper()}</span>
     </div>
 
-    <!-- Combined RMSE only -->
+    <!-- Model RMSE chip -->
     <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;
          padding:4px 11px;font-family:'IBM Plex Mono',monospace;font-size:.65rem">
       <span style="color:#7d8590">RMSE</span>&nbsp;
@@ -818,7 +819,6 @@ if pk == "Live Fleet Monitor":
             sv       = live_sensor(s)
             arr      = sensor_arrow(s)
             spark    = spark_history(s)
-            sr       = SUBSET_RESULTS[s["subset"]]
             conf_pct = int(s["conf"]*100)
 
             with col:
@@ -829,7 +829,7 @@ if pk == "Live Fleet Monitor":
       <div style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin-bottom:.2rem">
         <span style="font-size:.92rem;font-weight:700;color:#a5d6ff;font-family:'IBM Plex Mono',monospace">{s['id']}</span>
         {badge(urg)}
-        <span style="font-size:.60rem;color:#30363d;font-family:monospace">{s['subset']} · {sr['rmse']} RMSE</span>
+        <span style="font-size:.60rem;color:#30363d;font-family:monospace">C-MAPSS {s['subset']}</span>
       </div>
       <div style="font-size:.67rem;color:#7d8590;margin-bottom:.12rem">{s['sub'].replace('_',' ')} · SLA {s['sla']}h</div>
       <div style="font-size:.70rem;color:#c9d1d9;margin-bottom:.2rem">{s['hyp'][:72]}…</div>
@@ -887,21 +887,20 @@ elif pk == "Fleet Overview":
         ["#ff6b35","#f0b429","#3fb950","#58a6ff","#58a6ff","#39c5cf"]):
         col.markdown(mc(lbl, val, sub, color), unsafe_allow_html=True)
 
-    sh("FLEET ALERT STATUS — 10 STATIONS · XGBoost v2 Final")
+    sh("FLEET ALERT STATUS — 10 STATIONS · XGBoost v2 Final · All-4 RMSE=14.60 · R²=0.874")
     for s in STATIONS:
         _rul_now = live_rul(s); _urg_now = live_urgency(_rul_now)
         css_ = {"Critical":"c","Warning":"w","Monitor":"m"}[_urg_now]
         bw_  = int(s["conf"]*100)
         bc_  = "#3fb950" if s["conf"]>0.7 else ("#f0b429" if s["conf"]>0.5 else "#ff6b35")
         rc_  = rc(_rul_now)
-        sr   = SUBSET_RESULTS[s["subset"]]
         st.markdown(f"""
 <div class="ac {css_}">
   <div style="display:flex;justify-content:space-between">
     <div>
       <span style="font-size:.95rem;font-weight:700;color:#a5d6ff">{s["id"]}</span>&nbsp;
       {badge(_urg_now)}&nbsp;
-      <span style="font-size:.63rem;color:#30363d;font-family:'IBM Plex Mono',monospace">{s["subset"]} · RMSE {sr["rmse"]} · {s["cycles"]} cycles</span>
+      <span style="font-size:.63rem;color:#30363d;font-family:'IBM Plex Mono',monospace">C-MAPSS {s["subset"]} · {s["cycles"]} cycles</span>
       <div style="color:#7d8590;font-size:.69rem;margin-top:.2rem">{s["sub"]} · SLA {s["sla"]}h · RAG cov {s["cov"]:.2f}</div>
       <div style="color:#c9d1d9;font-size:.70rem;margin-top:.22rem">{s["hyp"]}</div>
       <div style="color:#7d8590;font-size:.64rem;margin-top:.18rem">Top feature: <span style="color:#58a6ff">{s["top_feat"]}</span> (imp={s["top_imp"]:.4f})</div>
@@ -968,7 +967,6 @@ elif pk == "Station Detail":
     rul    = live_rul(s)
     urg    = live_urgency(rul)
     rcolor = rc(rul)
-    sr     = SUBSET_RESULTS[s["subset"]]
 
     c1, c2 = st.columns([2.5, 1])
     with c1:
@@ -976,7 +974,10 @@ elif pk == "Station Detail":
           <div style="font-size:1.35rem;font-weight:700;color:#a5d6ff">{s["id"]}</div>
           <div style="font-size:.77rem;color:#7d8590;margin-top:.2rem">
             {badge(urg)} &nbsp; {s["sub"]} &nbsp;·&nbsp;
-            Subset {s["subset"]} (RMSE={sr["rmse"]}, R²={sr["r2"]}) &nbsp;·&nbsp; {s["cycles"]} cycles
+            C-MAPSS {s["subset"]} engine &nbsp;·&nbsp; {s["cycles"]} cycles observed
+          </div>
+          <div style="font-size:.68rem;color:#5a6475;margin-top:.2rem;font-family:'IBM Plex Mono',monospace">
+            XGBoost v2 Final · all-4 RMSE=14.60 · FD001+FD003=12.77 · R²=0.874 · 15k trees · exp(α=3) weights
           </div>
         </div>""", unsafe_allow_html=True)
         sh("PIPELINE FLOW")
@@ -1063,19 +1064,23 @@ elif pk == "Station Detail":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pk == "Plain English":
     s = sel; sh(f"PLAIN-ENGLISH EXPLANATION — {s['id']}")
-    _live_r = live_rul(s); rul_h = int(_live_r); conf_pct = f"{s['conf']:.0%}"
-    em  = {"Critical":"⚠ [CRITICAL]","Warning":"◑ [WARNING]","Monitor":"● [MONITOR]"}[s["urgency"]]
-    if s["urgency"]=="Critical":
+    _live_r  = live_rul(s)
+    _live_ug = live_urgency(_live_r)
+    rul_h    = int(_live_r); conf_pct = f"{s['conf']:.0%}"
+    em = {"Critical":"⚠ [CRITICAL]","Warning":"◑ [WARNING]","Monitor":"● [MONITOR]"}[_live_ug]
+    if _live_ug == "Critical":
         headline = f"Station {s['id']} requires emergency maintenance within {s['sla']}h"
         impact   = f"Approximately {rul_h} cycles remaining (~{rul_h}h). Without action in {s['sla']}h, service outage is expected."
-    elif s["urgency"]=="Warning":
+    elif _live_ug == "Warning":
         headline = f"Station {s['id']} needs maintenance scheduled within {s['sla']}h"
         impact   = f"{rul_h} cycles remaining. Early failure indicators detected in {s['sub'].replace('_',' ')}. Act before emergency."
     else:
         headline = f"Station {s['id']} is stable — monitoring recommended"
         impact   = f"{rul_h} cycles remaining. Gradual degradation detected. Queue for scheduled maintenance within {s['sla']}h."
     full = (f"The agentic AI system detected wear in the {s['sub'].replace('_',' ')} at station {s['id']} "
-            f"(subset {s['subset']}, {s['cycles']} cycles), estimating {rul_h} cycles of remaining useful life. "
+            f"(C-MAPSS {s['subset']} engine, {s['cycles']} cycles), estimating {rul_h} cycles of remaining useful life. "
+            f"Predicted by XGBoost v2 Final — ONE combined model trained on all four C-MAPSS subsets jointly "
+            f"(all-4 RMSE=14.60, FD001+FD003 RMSE=12.77, R²=0.874, 15k trees, exp(alpha=3) weights). "
             f"Most likely cause: {s['hyp'].lower()}. Mechanism: {s['mech'].lower()}. "
             f"Confidence: {conf_pct} (grounding 100%, hallucination 0%). "
             f"Top feature: {s['top_feat']} (imp={s['top_imp']:.4f}). "
@@ -1696,8 +1701,19 @@ st.markdown("""<div style="margin-top:1.5rem;padding-top:.7rem;border-top:1px so
 </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  AUTO-REFRESH — after full page render to avoid interrupting reads
+#  AUTO-REFRESH — use st.rerun with a non-blocking countdown
 # ══════════════════════════════════════════════════════════════════════════════
 if st.session_state.live_mode:
-    time.sleep(st.session_state.refresh_interval)
+    import time as _t
+    _ri = st.session_state.refresh_interval
+    # Show countdown in sidebar-level footer (non-blocking)
+    _ph = st.empty()
+    _ph.markdown(
+        f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:.60rem;'
+        f'color:#39c5cf;text-align:center;padding:.3rem 0">'
+        f'↻ auto-refresh in {_ri}s</div>',
+        unsafe_allow_html=True
+    )
+    _t.sleep(_ri)
+    _ph.empty()
     st.rerun()
