@@ -33,7 +33,7 @@ os.chdir(_HERE)
 import streamlit as st
 
 st.set_page_config(
-    page_title="Agentic PdM NOC",
+    page_title="VectorAgent NOC",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -682,12 +682,12 @@ _nav_left = (
     f'<img src="{_LOGO}" width="44" height="44"/>'
     f'<div>'
     f'<div style="display:flex;align-items:baseline;gap:4px">'
-    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Maint</span>'
+    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Vector</span>'
     f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:300;font-size:1.15rem;color:#e6edf3;letter-spacing:-.01em">Agent</span>'
     f'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:.58rem;color:#7d8590;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:5px">NOC</span>'
     f'</div>'
     f'<div style="font-size:.63rem;color:#7d8590;margin-top:.1rem">'
-    f'Predictive Maintenance · Telecom BTS Infrastructure · {_n_stations} Stations'
+    f'VectorAgent · Agentic PdM · {_n_stations} Stations'
     f'</div></div></div>'
 )
 
@@ -773,6 +773,17 @@ with st.sidebar:
     st.toggle("Live pipeline", value=PIPELINE_OK, disabled=not PIPELINE_OK)
     if not PIPELINE_OK:
         st.caption(f"Offline: {PIPELINE_ERR[:80]}")
+    # Live data connector status
+    _dc_ok = False
+    try:
+        from data_connector import DataConnectorClient as _DCC
+        _dc_ok = _DCC("http://localhost:8765").is_available()
+    except Exception:
+        pass
+    _dc_color = "#3fb950" if _dc_ok else "#7d8590"
+    _dc_dot   = "●" if _dc_ok else "○"
+    _dc_label = "data_connector ONLINE" if _dc_ok else "data_connector offline (simulation)"
+    st.markdown(f'<div style="font-family:monospace;font-size:.63rem;color:{_dc_color};margin-top:.3rem">{_dc_dot} {_dc_label}</div>', unsafe_allow_html=True)
 
     if IS_ENG:
         st.markdown("---")
@@ -2126,7 +2137,7 @@ elif pk == "Dispatch & Roster":
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("""<div style="margin-top:1.5rem;padding-top:.7rem;border-top:1px solid #30363d;
      display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:.63rem;color:#7d8590">
-  <span>Danaya Diarra · MSc Thesis 2026 · Agentic AI for Predictive Maintenance · GSOM SPBU</span>
+  <span>VectorAgent · Danaya Diarra · MSc Thesis 2026 · GSOM SPBU</span>
   <span>XGBoost v2: FD001=12.31 · FD002=15.87 · FD003=13.23 · FD004=16.99 · All-4=14.60 · R²=0.874</span>
 </div>""", unsafe_allow_html=True)
 
