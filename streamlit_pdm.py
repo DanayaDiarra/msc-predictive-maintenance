@@ -633,10 +633,10 @@ crit_n = sum(1 for s in STATIONS if live_urgency(live_rul(s))=="Critical")
 sys_color = "#ff6b35" if crit_n > 0 else "#3fb950"
 sys_label = f"{crit_n} CRITICAL ACTIVE" if crit_n > 0 else "SYSTEM OPERATIONAL"
 
-_live_dot_color = "#39c5cf" if st.session_state.live_mode else "#3fb950"
-_live_label     = "● LIVE" if st.session_state.live_mode else "● STANDBY"
-_live_border    = "#39c5cf44" if st.session_state.live_mode else "#3fb95044"
-_live_dot_cls   = "dotfast" if st.session_state.live_mode else "dot"
+_live_dot_color = "#39c5cf"
+_live_label     = "● LIVE"
+_live_border    = "#39c5cf44"
+_live_dot_cls   = "dotfast"
 _crit_border    = "#ff6b3544" if crit_n > 0 else "#3fb95044"
 _crit_dot_cls   = "dotfast" if crit_n > 0 else "dot"
 _n_stations     = len(STATIONS)
@@ -666,13 +666,13 @@ st.markdown(f"""<style>
   <!-- RIGHT: Status chips -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:auto">
 
-    <!-- Live / Standby chip -->
-    <div style="background:#161b22;border:1px solid {_live_border};border-radius:6px;
+    <!-- Live chip — always teal dotfast -->
+    <div style="background:#161b22;border:1px solid #39c5cf44;border-radius:6px;
          padding:4px 10px;display:flex;align-items:center;gap:5px">
-      <span style="width:7px;height:7px;background:{_live_dot_color};border-radius:50%;display:inline-block"
-            class="{_live_dot_cls}"></span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:{_live_dot_color};
-            white-space:nowrap">{_live_label}</span>
+      <span style="width:7px;height:7px;background:#39c5cf;border-radius:50%;display:inline-block"
+            class="dotfast"></span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:#39c5cf;
+            white-space:nowrap">● LIVE</span>
     </div>
 
     <!-- Critical / Operational status chip -->
