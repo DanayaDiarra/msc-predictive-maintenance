@@ -225,13 +225,14 @@ if not st.session_state.auth:
                 u = un.strip().lower()
                 if u in users and users[u][0] == pw.strip():
                     prof = _user_profile(u)
-                    st.session_state.auth      = True
-                    st.session_state.user      = u
-                    st.session_state.role      = prof[1]
-                    st.session_state.full_name = prof[2]
-                    st.session_state.position  = prof[3]
-                    st.session_state.dept      = prof[4]
-                    st.session_state.uid       = prof[5]
+                    st.session_state.auth         = True
+                    st.session_state.user         = u
+                    st.session_state.role         = prof[1]
+                    st.session_state.full_name    = prof[2]
+                    st.session_state.position     = prof[3]
+                    st.session_state.dept         = prof[4]
+                    st.session_state.uid          = prof[5]
+                    st.session_state.show_welcome = True   # trigger welcome toast
                     st.rerun()
                 else:
                     st.error("Invalid credentials")
@@ -252,6 +253,7 @@ IS_ENG    = ROLE in ("admin", "engineer")
 # ══════════════════════════════════════════════════════════════════════════════
 _SS_DEFAULTS = {
     "session_start": time.time(),
+    "show_welcome":  True,         # fires toast once after login
     "live_mode": False,
     "refresh_interval": 10,
     "alert_log": [],
@@ -694,6 +696,19 @@ with _c1:
         st.session_state.sidebar_open = not st.session_state.sidebar_open
         st.rerun()
 
+# ── Welcome toast (fires once per session, immediately after login) ───────────
+if st.session_state.get("show_welcome", False):
+    _greet_hour = time.localtime().tm_hour
+    _greet_word = ("Good morning" if _greet_hour < 12
+                   else "Good afternoon" if _greet_hour < 17
+                   else "Good evening")
+    _role_map   = {"admin":"Administrator","engineer":"Field Engineer","viewer":"Analyst"}
+    st.toast(
+        f"👋 {_greet_word}, {FULL_NAME} — welcome to OrchestrAI NOC! "
+        f"Role: {_role_map.get(ROLE, ROLE.title())} · Dept: {DEPT}",
+        icon="⚡")
+    st.session_state.show_welcome = False
+
 _rcolor = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}.get(ROLE,"#7d8590")
 check_alerts()
 crit_n = sum(1 for s in STATIONS if live_urgency(live_rul(s))=="Critical")
@@ -782,57 +797,52 @@ st.markdown(_nav_html, unsafe_allow_html=True)
 # ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("### Controls")
-    sel_id = st.selectbox("Station", [s["id"] for s in STATIONS])
+    _urgency_icons = {s["id"]: {"Critical":"🔴","Warning":"🟡","Monitor":"🟢"}.get(
+        live_urgency(live_rul(s)),"🔵") for s in STATIONS}
+    _sel_options = [f'{_urgency_icons[s["id"]]} {s["id"]}' for s in STATIONS]
+    _sel_raw     = st.selectbox("Station", _sel_options, label_visibility="visible")
+    sel_id       = _sel_raw.split(" ",1)[1] if " " in _sel_raw else _sel_raw
     sel = next(s for s in STATIONS if s["id"] == sel_id)
 
     st.markdown("---")
-    # ── RUL MODE (quick toggle — full control in Settings) ────────────────────
-    _rul_mode = st.session_state.get("rul_mode","simulation")
-    _rul_badge = "🟢 Live" if _rul_mode == "live" else "🔵 Simulation"
-    st.markdown(f'<div style="font-family:monospace;font-size:.67rem;color:#7d8590">RUL mode: <strong style="color:#39c5cf">{_rul_badge}</strong></div>', unsafe_allow_html=True)
-    # ── LIVE MODE ──
-    st.markdown("### ⚡ Auto-refresh")
-    live_on = st.toggle("Enable auto-refresh", value=st.session_state.live_mode, key="live_toggle")
+    # ── RUL / Data connector mode (auto-detects connected DB) ─────────────────
+    _rul_mode  = st.session_state.get("rul_mode","simulation")
+    _conn_mode = st.session_state.get("connector_mode","simulation")
+    # Auto-upgrade to live if a non-simulation connector is configured
+    if _conn_mode != "simulation" and _rul_mode == "simulation":
+        st.session_state.rul_mode = "live"
+        _rul_mode = "live"
+    _rul_badge_color = "#3fb950" if _rul_mode == "live" else "#58a6ff"
+    _rul_badge_icon  = "🟢" if _rul_mode == "live" else "🔵"
+    _conn_dot_color  = "#3fb950" if _conn_mode != "simulation" else "#7d8590"
+    st.markdown(
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;'
+        f'padding:.5rem .7rem;font-family:monospace;font-size:.64rem;line-height:1.9">'
+        f'<div>RUL&nbsp;&nbsp;&nbsp;&nbsp; <strong style="color:{_rul_badge_color}">{_rul_badge_icon} {_rul_mode.upper()}</strong></div>'
+        f'<div style="color:#7d8590">Data&nbsp;&nbsp;&nbsp; <span style="color:{_conn_dot_color}">{"●" if _conn_mode!="simulation" else "○"} {_conn_mode}</span></div>'
+        f'<div style="color:#7d8590">Pipeline <span style="color:{"#3fb950" if PIPELINE_OK else "#5a6475"}">{"●" if PIPELINE_OK else "○"} {"online" if PIPELINE_OK else "offline"}</span></div>'
+        f'</div>',
+        unsafe_allow_html=True)
+
+    # ── Auto-refresh ────────────────────────────────────────────────────────────
+    st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
+    live_on = st.toggle("⚡ Auto-refresh", value=st.session_state.live_mode, key="live_toggle")
     st.session_state.live_mode = live_on
     if live_on:
-        ri = st.select_slider("Refresh interval (s)", options=[5,10,15,30,60],
+        ri = st.select_slider("Interval (s)", options=[5,10,15,30,60],
                                value=st.session_state.refresh_interval)
         st.session_state.refresh_interval = ri
         el = elapsed_min()
-        st.markdown(f"""<div style="font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:#3fb950;margin:.3rem 0">
-          ● LIVE · {el:.1f}m elapsed · {ri}s interval</div>""", unsafe_allow_html=True)
-    if st.button("↺ Reset session clock", use_container_width=True):
+        st.markdown(
+            f'<div style="font-family:monospace;font-size:.62rem;color:#3fb950;margin:.15rem 0">'
+            f'● {el:.1f}m elapsed · refresh in {ri}s</div>',
+            unsafe_allow_html=True)
+    if st.button("↺ Reset clock", use_container_width=True):
         st.session_state.session_start = time.time()
         st.session_state.alert_log = []
         for k in list(st.session_state.keys()):
             if k.startswith("_alerted_"): del st.session_state[k]
         st.rerun()
-
-    st.markdown("---")
-    st.markdown("### Pipeline")
-    st.toggle("Live pipeline", value=PIPELINE_OK, disabled=not PIPELINE_OK)
-    if not PIPELINE_OK:
-        st.caption(f"Offline: {PIPELINE_ERR[:80]}")
-    # Live data connector status
-    _dc_ok = False
-    try:
-        from data_connector import DataConnectorClient as _DCC
-        _dc_ok = _DCC("http://localhost:8765").is_available()
-    except Exception:
-        pass
-    _dc_color = "#3fb950" if _dc_ok else "#7d8590"
-    _dc_dot   = "●" if _dc_ok else "○"
-    _dc_label = "data_connector ONLINE" if _dc_ok else "data_connector offline (simulation)"
-    st.markdown(f'<div style="font-family:monospace;font-size:.63rem;color:{_dc_color};margin-top:.3rem">{_dc_dot} {_dc_label}</div>', unsafe_allow_html=True)
-
-    # KB upload, API keys, live/offline mode → moved to Settings page
-    if IS_ENG:
-        st.markdown("---")
-        st.markdown(
-            '<div style="font-family:monospace;font-size:.64rem;color:#7d8590">'
-            '⚙ Knowledge Base, API keys and live mode controls are in '
-            '<strong style="color:#39c5cf">Settings</strong></div>',
-            unsafe_allow_html=True)
 
     st.markdown("---")
     all_pages = [
@@ -853,20 +863,38 @@ with st.sidebar:
     page = st.radio("Navigation", all_pages, label_visibility="collapsed")
 
     st.markdown("---")
-    # Quick model stats
-    el2 = elapsed_min()
-    st.markdown(f"""<div style="font-family:'IBM Plex Mono',monospace;font-size:.63rem;color:#5a6475;line-height:1.8">
-      All-4 RMSE: <span style="color:#39c5cf">14.60</span><br>
-      FD001+FD003: <span style="color:#3fb950">12.77</span><br>
-      R²: <span style="color:#58a6ff">0.874</span><br>
-      Session: <span style="color:#f0b429">{el2:.1f}m</span>
-    </div>""", unsafe_allow_html=True)
+    # ── Quick performance report link ──────────────────────────────────────────
+    if IS_ADMIN and st.button("📊 Performance Report", use_container_width=True, key="sb_perf_btn",
+                               help="View RMSE trends and alert resolution — Settings → Performance Reports"):
+        st.session_state["_nav_override"] = "Settings"
+        st.session_state["_settings_tab"]  = 3   # Performance Reports tab index
+        st.rerun()
+
     st.markdown("---")
-    if st.button("🔒 Sign Out"):
+    # ── Model stats — centred ──────────────────────────────────────────────────
+    el2 = elapsed_min()
+    _mono = "font-family:'IBM Plex Mono',monospace"
+    st.markdown(
+        f'<div style="text-align:center;padding:.3rem 0">'
+        f'<img src="{_LOGO}" width="34" style="margin-bottom:.4rem;opacity:.7"/><br>'
+        f'<div style="{_mono};font-size:.60rem;color:#5a6475;line-height:1.9">'
+        f'All-4 RMSE&nbsp;&nbsp;<span style="color:#39c5cf;font-weight:700">14.60</span><br>'
+        f'FD001+FD003&nbsp;<span style="color:#3fb950;font-weight:700">12.77</span><br>'
+        f'R²&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#58a6ff;font-weight:700">0.874</span><br>'
+        f'Session&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#f0b429;font-weight:700">{el2:.1f}m</span>'
+        f'</div></div>',
+        unsafe_allow_html=True)
+    st.markdown("---")
+    if st.button("🔒 Sign Out", use_container_width=True):
         st.session_state.auth = False
         st.rerun()
 
-pk = page
+# Allow sidebar buttons to override nav
+if "_nav_override" in st.session_state and st.session_state._nav_override:
+    pk = st.session_state._nav_override
+    st.session_state._nav_override = None
+else:
+    pk = page
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: LIVE FLEET MONITOR  ← NEW
@@ -889,7 +917,9 @@ if pk == "Live Fleet Monitor":
         col.markdown(mc(lbl, val, sub, color, live=True), unsafe_allow_html=True)
 
     # ── Live telemetry cards ──
-    sh("LIVE STATION TELEMETRY — XGBoost v2 Degradation Simulation")
+    _refresh_lbl = (f" · ↻ auto-refresh {st.session_state.refresh_interval}s"
+                     if st.session_state.live_mode else " · manual mode")
+    sh("LIVE STATION TELEMETRY — XGBoost v2 Degradation Simulation" + _refresh_lbl)
     for row_i in range(0, len(STATIONS), 2):
         cols2 = st.columns(2)
         for j, col in enumerate(cols2):
@@ -1726,6 +1756,7 @@ elif pk == "Settings":
 
     sh("SETTINGS")
 
+    _forced_tab_idx = int(st.session_state.pop("_settings_tab", 0))
     (s_tab1, s_tab2, s_tab3,
      s_tab4, s_tab5, s_tab6,
      s_tab7, s_tab8) = st.tabs([
@@ -2208,6 +2239,10 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
         st.markdown("<br>", unsafe_allow_html=True)
         # (h) Simulation vs Live RUL prediction
         sh("RUL PREDICTION MODE")
+        # Auto-switch when connector is live
+        _conn_m = st.session_state.get("connector_mode","simulation")
+        if _conn_m != "simulation":
+            st.session_state.rul_mode = "live"
         _current_rul_mode = st.session_state.get("rul_mode","simulation")
         _rul_ac_cls   = "c" if _current_rul_mode == "live" else "m"
         _rul_hdr_col  = "#3fb950" if _current_rul_mode == "live" else "#58a6ff"
