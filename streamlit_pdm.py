@@ -1,5 +1,5 @@
 """
-Agentic PdM NOC — FINAL v5 (Live Edition)
+FluxAgent NOC — FINAL v5 (Live Edition)
 Thesis: Agentic AI for Predictive Maintenance | Danaya Diarra | GSOM SPBU | 2026
 
 NEW IN v5:
@@ -33,7 +33,7 @@ os.chdir(_HERE)
 import streamlit as st
 
 st.set_page_config(
-    page_title="VectorAgent NOC",
+    page_title="FluxAgent NOC",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -192,8 +192,8 @@ if "auth" not in st.session_state:
 if not st.session_state.auth:
     st.markdown(f"""<div style="text-align:center;padding:3rem 0 2rem">
       <img src="{_LOGO}" width="72" style="display:block;margin:0 auto 1rem"/>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf;letter-spacing:.06em">AGENTIC PdM</div>
-      <div style="font-size:.75rem;color:#7d8590;margin-top:.35rem">NOC Monitor · Secure Login</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf;letter-spacing:.06em">FluxAgent</div>
+      <div style="font-size:.75rem;color:#7d8590;margin-top:.35rem">NOC · Secure Login</div>
     </div>""", unsafe_allow_html=True)
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
@@ -682,12 +682,12 @@ _nav_left = (
     f'<img src="{_LOGO}" width="44" height="44"/>'
     f'<div>'
     f'<div style="display:flex;align-items:baseline;gap:4px">'
-    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Vector</span>'
+    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Flux</span>'
     f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:300;font-size:1.15rem;color:#e6edf3;letter-spacing:-.01em">Agent</span>'
     f'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:.58rem;color:#7d8590;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:5px">NOC</span>'
     f'</div>'
     f'<div style="font-size:.63rem;color:#7d8590;margin-top:.1rem">'
-    f'VectorAgent · Agentic PdM · {_n_stations} Stations'
+    f'FluxAgent · Agentic PdM · {_n_stations} Stations'
     f'</div></div></div>'
 )
 
@@ -2137,7 +2137,7 @@ elif pk == "Dispatch & Roster":
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("""<div style="margin-top:1.5rem;padding-top:.7rem;border-top:1px solid #30363d;
      display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:.63rem;color:#7d8590">
-  <span>VectorAgent · Danaya Diarra · MSc Thesis 2026 · GSOM SPBU</span>
+  <span>FluxAgent · Danaya Diarra · MSc Thesis 2026 · GSOM SPBU</span>
   <span>XGBoost v2: FD001=12.31 · FD002=15.87 · FD003=13.23 · FD004=16.99 · All-4=14.60 · R²=0.874</span>
 </div>""", unsafe_allow_html=True)
 
