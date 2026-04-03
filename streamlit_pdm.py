@@ -1,5 +1,5 @@
 """
-FluxAgent NOC — FINAL v5 (Live Edition)
+OrchestrAI NOC — v6 (Production Edition)
 Thesis: Agentic AI for Predictive Maintenance | Danaya Diarra | GSOM SPBU | 2026
 
 NEW IN v5:
@@ -33,7 +33,7 @@ os.chdir(_HERE)
 import streamlit as st
 
 st.set_page_config(
-    page_title="FluxAgent NOC",
+    page_title="OrchestrAI NOC",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -166,20 +166,40 @@ def _get_ant_key():
         except Exception: pass
     return ""
 
+# ── Extended user profile store ──────────────────────────────────────────────
+# Each user: (password, role, full_name, position, dept, user_id)
+_DEFAULT_PROFILES = {
+    "admin":    ("pdm2026admin", "admin",    "Danaya Diarra",   "NOC Lead",            "Operations",  "USR-001"),
+    "engineer": ("noc2026",      "engineer", "Awa Koné",        "Field Engineer",      "Maintenance", "USR-002"),
+    "viewer":   ("readonly",     "viewer",   "Ibrahima Sow",    "Operations Analyst",  "Analytics",   "USR-003"),
+}
+
 def _get_users():
-    # Always prefer runtime user store (allows in-session add/remove)
     if "_runtime_users" in st.session_state and st.session_state._runtime_users:
         return dict(st.session_state._runtime_users)
     try:
         u = st.secrets["users"]
         out = {}
         for k, v in u.items():
-            kl = k.lower()
+            kl   = k.lower()
             role = "admin" if kl.startswith("admin") else ("engineer" if kl.startswith("eng") else "viewer")
-            out[kl] = (str(v), role)
+            # secrets only have password; fill profile from defaults or blank
+            prof = _DEFAULT_PROFILES.get(kl, (str(v), role, kl.title(), role.title(), "—", f"USR-{abs(hash(kl))%900+100}"))
+            out[kl] = (str(v), role, prof[2], prof[3], prof[4], prof[5])
         return out
     except Exception:
-        return {"admin":("pdm2026admin","admin"),"engineer":("noc2026","engineer"),"viewer":("readonly","viewer")}
+        return {k: v for k, v in _DEFAULT_PROFILES.items()}
+
+def _user_profile(username):
+    """Return (pw, role, full_name, position, dept, uid) for a user."""
+    users = _get_users()
+    entry = users.get(username.lower())
+    if entry is None:
+        return ("", "viewer", username.title(), "—", "—", "—")
+    if len(entry) >= 6:
+        return entry
+    # Legacy 2-tuple (pw, role) — pad with blanks
+    return (entry[0], entry[1], username.title(), entry[1].title(), "—", f"USR-{abs(hash(username))%900+100}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  LOGIN
@@ -192,8 +212,8 @@ if "auth" not in st.session_state:
 if not st.session_state.auth:
     st.markdown(f"""<div style="text-align:center;padding:3rem 0 2rem">
       <img src="{_LOGO}" width="72" style="display:block;margin:0 auto 1rem"/>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf;letter-spacing:.06em">FluxAgent</div>
-      <div style="font-size:.75rem;color:#7d8590;margin-top:.35rem">NOC · Secure Login</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf;letter-spacing:.06em">OrchestrAI</div>
+      <div style="font-size:.75rem;color:#7d8590;margin-top:.35rem">Predictive Maintenance · Secure Login</div>
     </div>""", unsafe_allow_html=True)
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
@@ -204,19 +224,28 @@ if not st.session_state.auth:
                 users = _get_users()
                 u = un.strip().lower()
                 if u in users and users[u][0] == pw.strip():
-                    st.session_state.auth = True
-                    st.session_state.user = u
-                    st.session_state.role = users[u][1]
+                    prof = _user_profile(u)
+                    st.session_state.auth      = True
+                    st.session_state.user      = u
+                    st.session_state.role      = prof[1]
+                    st.session_state.full_name = prof[2]
+                    st.session_state.position  = prof[3]
+                    st.session_state.dept      = prof[4]
+                    st.session_state.uid       = prof[5]
                     st.rerun()
                 else:
                     st.error("Invalid credentials")
         st.caption("Demo: admin/pdm2026admin · engineer/noc2026 · viewer/readonly")
     st.stop()
 
-ROLE = st.session_state.role
-USER = st.session_state.user
-IS_ADMIN = ROLE == "admin"
-IS_ENG   = ROLE in ("admin", "engineer")
+ROLE      = st.session_state.role
+USER      = st.session_state.user
+FULL_NAME = st.session_state.get("full_name", USER.title())
+POSITION  = st.session_state.get("position", ROLE.title())
+DEPT      = st.session_state.get("dept", "—")
+UID       = st.session_state.get("uid", "—")
+IS_ADMIN  = ROLE == "admin"
+IS_ENG    = ROLE in ("admin", "engineer")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  SESSION STATE
@@ -229,7 +258,14 @@ _SS_DEFAULTS = {
     "chat_history": [],
     "chat_thinking": False,
     "_rt_ant_key": "",
+    "_groq_key": "",
+    "_or_key": "",
     "sidebar_open": True,
+    "rul_mode": "simulation",        # "simulation" | "live"  (Settings h)
+    "connector_mode": "simulation",  # "simulation"|"file"|"rest"|"mqtt"
+    "uploaded_kb_files": [],         # Knowledge Base files (Settings f)
+    "retrain_log": [],               # retrain job history
+    "perf_log": [],                  # predictive performance snapshots
     # ── Dispatch & rolling roster ──
     "dispatch_tickets": [],        # list of closed/completed tickets
     "active_dispatches": {},       # {station_id: dispatch_dict}
@@ -682,12 +718,12 @@ _nav_left = (
     f'<img src="{_LOGO}" width="44" height="44"/>'
     f'<div>'
     f'<div style="display:flex;align-items:baseline;gap:4px">'
-    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Flux</span>'
-    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:300;font-size:1.15rem;color:#e6edf3;letter-spacing:-.01em">Agent</span>'
+    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:1.15rem;color:#39c5cf;letter-spacing:-.01em">Orchestr</span>'
+    f'<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:300;font-size:1.15rem;color:#e6edf3;letter-spacing:-.01em">AI</span>'
     f'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:.58rem;color:#7d8590;padding:1px 5px;border:1px solid #30363d;border-radius:3px;margin-left:5px">NOC</span>'
     f'</div>'
     f'<div style="font-size:.63rem;color:#7d8590;margin-top:.1rem">'
-    f'FluxAgent · Agentic PdM · {_n_stations} Stations'
+    f'OrchestrAI · Predictive Maintenance · {_n_stations} Stations'
     f'</div></div></div>'
 )
 
@@ -710,7 +746,7 @@ _chip_crit = (
 _chip_user = (
     f'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;'
     f'padding:4px 10px;font-family:\'IBM Plex Mono\',monospace;font-size:.65rem;color:{_rcolor}">'
-    f'{USER}&nbsp;&middot;&nbsp;<span style="color:#7d8590">{ROLE.upper()}</span>'
+    f'{FULL_NAME}&nbsp;&middot;&nbsp;<span style="color:#7d8590">{ROLE.upper()}</span>'
     f'</div>'
 )
 
@@ -750,8 +786,12 @@ with st.sidebar:
     sel = next(s for s in STATIONS if s["id"] == sel_id)
 
     st.markdown("---")
+    # ── RUL MODE (quick toggle — full control in Settings) ────────────────────
+    _rul_mode = st.session_state.get("rul_mode","simulation")
+    _rul_badge = "🟢 Live" if _rul_mode == "live" else "🔵 Simulation"
+    st.markdown(f'<div style="font-family:monospace;font-size:.67rem;color:#7d8590">RUL mode: <strong style="color:#39c5cf">{_rul_badge}</strong></div>', unsafe_allow_html=True)
     # ── LIVE MODE ──
-    st.markdown("### ⚡ Live Mode")
+    st.markdown("### ⚡ Auto-refresh")
     live_on = st.toggle("Enable auto-refresh", value=st.session_state.live_mode, key="live_toggle")
     st.session_state.live_mode = live_on
     if live_on:
@@ -785,22 +825,14 @@ with st.sidebar:
     _dc_label = "data_connector ONLINE" if _dc_ok else "data_connector offline (simulation)"
     st.markdown(f'<div style="font-family:monospace;font-size:.63rem;color:{_dc_color};margin-top:.3rem">{_dc_dot} {_dc_label}</div>', unsafe_allow_html=True)
 
+    # KB upload, API keys, live/offline mode → moved to Settings page
     if IS_ENG:
         st.markdown("---")
-        st.markdown("### Knowledge Base Upload")
-        st.caption("SOPs, manuals, alarm guides → enrich RAG corpus")
-        st.file_uploader("Files", type=["pdf","txt","html","csv","md","json"],
-                         accept_multiple_files=True, label_visibility="collapsed")
-        st.markdown("---")
-        st.markdown("### 🔑 Chatbot API Key")
-        st.caption("Anthropic (primary) · Groq / OpenRouter (fallback)")
-        _rt = st.text_input("Anthropic key", type="password", placeholder="sk-ant-...",
-                             label_visibility="collapsed",
-                             value=st.session_state.get("_rt_ant_key",""),
-                             key="sidebar_key_input")
-        if st.button("💾 Save Key", use_container_width=True):
-            st.session_state._rt_ant_key = _rt.strip()
-            st.success("Key saved for this session")
+        st.markdown(
+            '<div style="font-family:monospace;font-size:.64rem;color:#7d8590">'
+            '⚙ Knowledge Base, API keys and live mode controls are in '
+            '<strong style="color:#39c5cf">Settings</strong></div>',
+            unsafe_allow_html=True)
 
     st.markdown("---")
     all_pages = [
@@ -811,12 +843,12 @@ with st.sidebar:
         "Engineer Chatbot",
         "Pipeline Intelligence",
         "Results & Ablation",
-        "User Management",
+        "Settings",
     ]
     if not IS_ENG:
-        all_pages = [p for p in all_pages if p not in ["Engineer Chatbot","Dispatch & Roster","User Management"]]
+        all_pages = [p for p in all_pages if p not in ["Engineer Chatbot","Dispatch & Roster","Settings"]]
     if not IS_ADMIN:
-        all_pages = [p for p in all_pages if p != "User Management"]
+        all_pages = [p for p in all_pages if p != "Settings"]
 
     page = st.radio("Navigation", all_pages, label_visibility="collapsed")
 
@@ -1440,8 +1472,8 @@ elif pk == "Engineer Chatbot":
         st.markdown("""<div style="background:#1c2333;border:1px solid #f0b42944;border-radius:6px;
              padding:.7rem .9rem;margin-bottom:.7rem;font-size:.78rem;color:#f0b429;font-family:'IBM Plex Mono',monospace">
           ⚠ No Anthropic key — rule-based mode active. For AI answers:<br>
-          1. <strong>console.anthropic.com</strong> → free key (sk-ant-...)<br>
-          2. Paste in sidebar <strong>🔑 Chatbot API Key</strong> or Streamlit Secrets: <code>ANTHROPIC_API_KEY = "sk-ant-..."</code>
+          1. <strong>console.groq.com</strong> or <strong>openrouter.ai</strong> → free keys (no credit card)<br>
+          2. Go to <strong style="color:#39c5cf">Settings → 🤖 Chatbot API</strong> and add keys there
         </div>""", unsafe_allow_html=True)
 
     RULES = {
@@ -1598,10 +1630,48 @@ elif pk == "Engineer Chatbot":
             prev.append({"role":"user","content":user_msg})
 
             answer = None; engine_used = "Rule-based"; _err = ""
+
+            # 1. Anthropic (primary)
             if ant_key:
                 answer, _err = call_claude(ant_key, prev, sys_p)
-                if answer: engine_used = "Claude Haiku (Anthropic)"
-                else: engine_used = "Rule-based (Claude failed)"
+                if answer: engine_used = "Claude Haiku · Anthropic"
+
+            # 2. Groq free fallback (LLaMA 3 70B)
+            if not answer:
+                _groq_k = st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
+                if _groq_k and len(_groq_k) > 10:
+                    try:
+                        import urllib.request as _ur, json as _j2
+                        _gp = _j2.dumps({"model":"llama-3.3-70b-versatile","max_tokens":600,
+                            "messages":[{"role":"system","content":sys_p}]+prev}).encode()
+                        _greq = _ur.Request("https://api.groq.com/openai/v1/chat/completions",
+                            data=_gp, headers={"Authorization":f"Bearer {_groq_k}","Content-Type":"application/json"})
+                        with _ur.urlopen(_greq, timeout=15) as _gr:
+                            _gd = _j2.loads(_gr.read())
+                            answer = _gd["choices"][0]["message"]["content"]
+                            engine_used = "LLaMA 3.3 70B · Groq (free)"
+                    except Exception as _ge:
+                        _err += f" | Groq: {str(_ge)[:60]}"
+
+            # 3. OpenRouter free fallback (DeepSeek)
+            if not answer:
+                _or_k = st.session_state.get("_or_key","") or os.environ.get("OPENROUTER_API_KEY","")
+                if _or_k and len(_or_k) > 10:
+                    try:
+                        import urllib.request as _ur2, json as _j3
+                        _op = _j3.dumps({"model":"deepseek/deepseek-chat-v3-0324:free","max_tokens":600,
+                            "messages":[{"role":"system","content":sys_p}]+prev}).encode()
+                        _oreq = _ur2.Request("https://openrouter.ai/api/v1/chat/completions",
+                            data=_op, headers={"Authorization":f"Bearer {_or_k}","Content-Type":"application/json",
+                                               "HTTP-Referer":"https://orchestrai.app","X-Title":"OrchestrAI"})
+                        with _ur2.urlopen(_oreq, timeout=15) as _or2:
+                            _od = _j3.loads(_or2.read())
+                            answer = _od["choices"][0]["message"]["content"]
+                            engine_used = "DeepSeek V3 · OpenRouter (free)"
+                    except Exception as _oe:
+                        _err += f" | OpenRouter: {str(_oe)[:60]}"
+
+            # 4. Rule-based (always available)
             if not answer:
                 rb = rule_answer(last_q)
                 if rb: answer = rb; engine_used = f"Rule-based{'  |  '+_err[:100] if _err else ''}"
@@ -1643,108 +1713,561 @@ elif pk == "Engineer Chatbot":
                          unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  PAGE: USER MANAGEMENT  (admin: add / remove / change role in-session)
+#  PAGE: SETTINGS  (8 sections across tabs — admin only)
 # ══════════════════════════════════════════════════════════════════════════════
-elif pk == "User Management":
+elif pk == "Settings":
     if not IS_ADMIN:
-        st.error("Admin only"); st.stop()
+        st.error("Admin access required to view Settings.")
+        st.stop()
 
-    # ── Persistent in-session user store ────────────────────────────────────────
     if "_runtime_users" not in st.session_state:
-        st.session_state._runtime_users = dict(_get_users())   # seed from secrets
+        st.session_state._runtime_users = dict(_get_users())
     _ru = st.session_state._runtime_users
 
-    sh("USER MANAGEMENT")
+    sh("SETTINGS")
 
-    # ── Current users table ─────────────────────────────────────────────────────
-    _role_color = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}
-    for uname, (upw, urole) in list(_ru.items()):
-        rc2 = _role_color.get(urole,"#7d8590")
-        perms = ("Chatbot · Upload · Admin" if urole=="admin"
-                 else "Chatbot · Upload" if urole=="engineer"
-                 else "View only")
-        st.markdown(f"""
-<div style="display:flex;align-items:center;gap:.7rem;padding:.45rem .85rem;
-     background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:.3rem;
-     font-family:'IBM Plex Mono',monospace;font-size:.74rem">
-  <span style="color:#a5d6ff;font-weight:700;min-width:120px">{uname}</span>
-  <span style="background:{rc2}22;color:{rc2};border:1px solid {rc2}55;border-radius:4px;
-        padding:1px 7px;font-size:.67rem;min-width:75px;text-align:center">{urole.upper()}</span>
-  <span style="color:#7d8590;flex:1">{perms}</span>
-  <span style="color:#30363d">pw: {'*'*len(upw)}</span>
-</div>""", unsafe_allow_html=True)
-        _del_col, _ = st.columns([1,8])
-        with _del_col:
-            if uname != USER:   # can't delete yourself
-                if st.button(f"✕ Remove {uname}", key=f"del_{uname}",
-                             help=f"Permanently remove {uname} from this session"):
-                    del st.session_state._runtime_users[uname]
-                    st.success(f"User '{uname}' removed.")
-                    st.rerun()
-            else:
-                st.caption("(you)")
+    (s_tab1, s_tab2, s_tab3,
+     s_tab4, s_tab5, s_tab6,
+     s_tab7, s_tab8) = st.tabs([
+        "👤 My Profile",
+        "👥 User Management",
+        "🔌 Data Sources",
+        "📊 Performance Reports",
+        "🔁 Retrain Pipeline",
+        "🤖 Chatbot API",
+        "📚 Knowledge Base",
+        "⚙ System Modes",
+    ])
 
-    # ── Change role ─────────────────────────────────────────────────────────────
-    sh("CHANGE ROLE")
-    other_users = [u for u in _ru if u != USER]
-    if other_users:
-        cr1, cr2, cr3 = st.columns([2,2,1])
-        with cr1:
-            _target = st.selectbox("Select user", other_users, key="role_target")
-        with cr2:
-            _new_role = st.selectbox("New role", ["admin","engineer","viewer"], key="role_new")
-        with cr3:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Apply ✓", key="apply_role", use_container_width=True):
-                pw_old = _ru[_target][0]
-                st.session_state._runtime_users[_target] = (pw_old, _new_role)
-                st.success(f"Role of '{_target}' changed to {_new_role}.")
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 1 — MY PROFILE
+    # ─────────────────────────────────────────────────────────────────────────
+    with s_tab1:
+        sh("MY ACCOUNT DETAILS")
+        _rc_ = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}.get(ROLE,"#7d8590")
+        st.markdown(
+            f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;'
+            f'padding:1.2rem 1.4rem;font-family:monospace;display:grid;grid-template-columns:160px 1fr;'
+            f'gap:.55rem .9rem;font-size:.78rem">'
+            f'<span style="color:#7d8590">Full name</span>'
+            f'<span style="color:#e6edf3;font-weight:600">{FULL_NAME}</span>'
+            f'<span style="color:#7d8590">User ID</span>'
+            f'<span style="color:#58a6ff">{UID}</span>'
+            f'<span style="color:#7d8590">Username</span>'
+            f'<span style="color:#a5d6ff">{USER}</span>'
+            f'<span style="color:#7d8590">Position</span>'
+            f'<span style="color:#e6edf3">{POSITION}</span>'
+            f'<span style="color:#7d8590">Department</span>'
+            f'<span style="color:#e6edf3">{DEPT}</span>'
+            f'<span style="color:#7d8590">Role</span>'
+            f'<span style="background:{_rc_}22;color:{_rc_};border:1px solid {_rc_}55;'
+            f'border-radius:4px;padding:1px 8px;font-size:.68rem">{ROLE.upper()}</span>'
+            f'</div>',
+            unsafe_allow_html=True)
+
+        sh("CHANGE MY PASSWORD")
+        with st.form("change_pw_form", clear_on_submit=True):
+            _cp1, _cp2, _cp3 = st.columns([2,2,1])
+            with _cp1: _old_pw = st.text_input("Current password", type="password")
+            with _cp2: _new_pw_a = st.text_input("New password", type="password")
+            with _cp3:
+                st.markdown("<br>", unsafe_allow_html=True)
+                _cp_sub = st.form_submit_button("Update ✓", use_container_width=True)
+            if _cp_sub:
+                cur_entry = _ru.get(USER)
+                cur_pw    = cur_entry[0] if cur_entry else ""
+                if _old_pw != cur_pw:
+                    st.error("Current password incorrect.")
+                elif len(_new_pw_a.strip()) < 6:
+                    st.error("New password must be at least 6 characters.")
+                else:
+                    updated = list(cur_entry)
+                    updated[0] = _new_pw_a.strip()
+                    st.session_state._runtime_users[USER] = tuple(updated)
+                    st.success("Password updated for this session.")
+
+        sh("EDIT MY PROFILE")
+        with st.form("edit_profile_form", clear_on_submit=False):
+            _ep1, _ep2 = st.columns(2)
+            with _ep1:
+                _new_fn  = st.text_input("Full name",   value=FULL_NAME)
+                _new_pos = st.text_input("Position",    value=POSITION)
+            with _ep2:
+                _new_dept = st.text_input("Department", value=DEPT)
+                st.text_input("User ID",  value=UID,   disabled=True)
+            _ep_sub = st.form_submit_button("Save profile", use_container_width=True)
+            if _ep_sub:
+                cur_entry = list(_ru.get(USER, ("","viewer","","","","")))
+                while len(cur_entry) < 6:
+                    cur_entry.append("")
+                cur_entry[2] = _new_fn.strip()
+                cur_entry[3] = _new_pos.strip()
+                cur_entry[4] = _new_dept.strip()
+                st.session_state._runtime_users[USER] = tuple(cur_entry)
+                st.session_state.full_name = _new_fn.strip()
+                st.session_state.position  = _new_pos.strip()
+                st.session_state.dept      = _new_dept.strip()
+                st.success("Profile updated.")
                 st.rerun()
-    else:
-        st.caption("No other users to modify.")
 
-    # ── Add new user ─────────────────────────────────────────────────────────────
-    sh("ADD NEW USER")
-    with st.form("add_user_form", clear_on_submit=True):
-        na1, na2, na3, na4 = st.columns([2,2,2,1])
-        with na1: _new_un   = st.text_input("Username", placeholder="e.g. eng_bob")
-        with na2: _new_pw   = st.text_input("Password", type="password", placeholder="secure-pw-2026")
-        with na3: _new_role2= st.selectbox("Role", ["engineer","viewer","admin"])
-        with na4:
-            st.markdown("<br>", unsafe_allow_html=True)
-            _add_submitted = st.form_submit_button("Add ➕", use_container_width=True)
-        if _add_submitted:
-            _ukey = _new_un.strip().lower()
-            if not _ukey:
-                st.error("Username cannot be empty.")
-            elif not _new_pw.strip():
-                st.error("Password cannot be empty.")
-            elif _ukey in _ru:
-                st.error(f"Username '{_ukey}' already exists.")
-            else:
-                st.session_state._runtime_users[_ukey] = (_new_pw.strip(), _new_role2)
-                st.success(f"User '{_ukey}' added as {_new_role2}.")
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 2 — USER MANAGEMENT
+    # ─────────────────────────────────────────────────────────────────────────
+    with s_tab2:
+        sh("CURRENT USERS")
+        _role_color = {"admin":"#ff6b35","engineer":"#58a6ff","viewer":"#3fb950"}
+        for uname, entry in list(_ru.items()):
+            upw   = entry[0] if entry else ""
+            urole = entry[1] if len(entry)>1 else "viewer"
+            ufn   = entry[2] if len(entry)>2 else uname.title()
+            upos  = entry[3] if len(entry)>3 else "—"
+            udept = entry[4] if len(entry)>4 else "—"
+            uid_  = entry[5] if len(entry)>5 else "—"
+            rc2   = _role_color.get(urole,"#7d8590")
+            perms = ("Chatbot · Upload · Admin" if urole=="admin"
+                     else "Chatbot · Upload" if urole=="engineer" else "View only")
+            st.markdown(
+                f'<div style="display:grid;grid-template-columns:110px 90px 130px 120px 120px 1fr;'
+                f'align-items:center;gap:.5rem;padding:.42rem .85rem;background:#161b22;'
+                f'border:1px solid #30363d;border-radius:6px;margin-bottom:.28rem;'
+                f'font-family:monospace;font-size:.72rem">'
+                f'<span style="color:#a5d6ff;font-weight:700">{uname}</span>'
+                f'<span style="background:{rc2}22;color:{rc2};border:1px solid {rc2}55;'
+                f'border-radius:4px;padding:1px 6px;font-size:.65rem">{urole.upper()}</span>'
+                f'<span style="color:#c9d1d9">{ufn}</span>'
+                f'<span style="color:#7d8590">{upos}</span>'
+                f'<span style="color:#7d8590">{udept}</span>'
+                f'<span style="color:#30363d">{perms}</span>'
+                f'</div>',
+                unsafe_allow_html=True)
+            _dc_, _ = st.columns([1,8])
+            with _dc_:
+                if uname != USER:
+                    if st.button(f"✕ {uname}", key=f"del_{uname}",
+                                 help=f"Remove {uname}"):
+                        del st.session_state._runtime_users[uname]
+                        st.success(f"'{uname}' removed."); st.rerun()
+                else:
+                    st.caption("(you)")
+
+        sh("CHANGE ROLE")
+        other_users = [u for u in _ru if u != USER]
+        if other_users:
+            cr1,cr2,cr3 = st.columns([2,2,1])
+            with cr1: _target   = st.selectbox("User", other_users, key="role_tgt")
+            with cr2: _new_role_ = st.selectbox("New role",["admin","engineer","viewer"],key="role_nr")
+            with cr3:
+                st.markdown("<br>",unsafe_allow_html=True)
+                if st.button("Apply",key="apply_role",use_container_width=True):
+                    entry_ = list(_ru[_target])
+                    entry_[1] = _new_role_
+                    st.session_state._runtime_users[_target] = tuple(entry_)
+                    st.success(f"'{_target}' → {_new_role_}"); st.rerun()
+
+        sh("ADD NEW USER")
+        with st.form("add_user_form", clear_on_submit=True):
+            au1,au2,au3,au4 = st.columns([2,2,2,1])
+            with au1: _aun  = st.text_input("Username", placeholder="eng_alice")
+            with au2: _apw  = st.text_input("Password", type="password", placeholder="secure-pw")
+            with au3: _arl  = st.selectbox("Role",["engineer","viewer","admin"])
+            with au4:
+                st.markdown("<br>",unsafe_allow_html=True)
+                _au_sub = st.form_submit_button("Add ➕",use_container_width=True)
+            _afn,_apos,_adept = st.columns(3)
+            with _afn:  _afull = st.text_input("Full name",  placeholder="Alice Martin")
+            with _apos: _apos_ = st.text_input("Position",   placeholder="Field Engineer")
+            with _adept:_adept_= st.text_input("Department", placeholder="Maintenance")
+            if _au_sub:
+                _ukey = _aun.strip().lower()
+                if not _ukey:   st.error("Username required.")
+                elif not _apw.strip(): st.error("Password required.")
+                elif _ukey in _ru: st.error(f"'{_ukey}' already exists.")
+                else:
+                    _new_uid = f"USR-{abs(hash(_ukey))%900+100}"
+                    st.session_state._runtime_users[_ukey] = (
+                        _apw.strip(), _arl,
+                        _afull.strip() or _ukey.title(),
+                        _apos_.strip() or _arl.title(),
+                        _adept_.strip() or "—",
+                        _new_uid)
+                    st.success(f"'{_ukey}' added as {_arl}."); st.rerun()
+
+        st.markdown(
+            '<div class="ac m" style="margin-top:.6rem;font-size:.72rem;color:#c9d1d9">'
+            '<strong style="color:#f0b429">⚠ Session-only:</strong> '
+            'For permanent users add to <code>.streamlit/secrets.toml → [users]</code>.</div>',
+            unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 3 — DATA SOURCES
+    # ─────────────────────────────────────────────────────────────────────────
+    with s_tab3:
+        sh("REAL-TIME DATA CONNECTOR")
+        _conn_mode = st.session_state.get("connector_mode","simulation")
+        _mode_desc = {
+            "simulation": "Synthetic degradation curves (C-MAPSS based). No external data needed.",
+            "file":        "NMS exports a CSV every 60s to SENSOR_CSV_DIR. Zero API integration.",
+            "rest":        "Poll Ericsson ENM / Nokia NetAct / Huawei U2020 REST API directly.",
+            "mqtt":        "Subscribe to station MQTT broker. Best for >1000 stations.",
+        }
+        _mode_color = {"simulation":"#7d8590","file":"#f0b429","rest":"#39c5cf","mqtt":"#3fb950"}
+        _new_conn = st.selectbox(
+            "Connector mode",
+            ["simulation","file","rest","mqtt"],
+            index=["simulation","file","rest","mqtt"].index(_conn_mode),
+            format_func=lambda m: {"simulation":"🔵 Simulation","file":"📂 File (CSV)","rest":"🌐 REST API","mqtt":"📡 MQTT"}[m])
+        st.caption(_mode_desc.get(_new_conn,""))
+        if _new_conn != _conn_mode:
+            if st.button("Apply connector mode", use_container_width=True):
+                st.session_state.connector_mode = _new_conn
+                st.success(f"Connector mode set to {_new_conn}.")
                 st.rerun()
 
-    st.markdown("""<div class="ac m" style="margin-top:.8rem;font-size:.72rem;color:#c9d1d9">
-      <strong style="color:#f0b429">⚠ Session-only:</strong> Users added/removed here persist for this browser session only.
-      For permanent users, add to <code>.streamlit/secrets.toml</code> → <strong>[users]</strong> section (prefix sets role: admin_ · eng_ · viewer_).
-    </div>""", unsafe_allow_html=True)
+        if _new_conn == "file":
+            sh("FILE CONNECTOR CONFIGURATION")
+            st.text_input("SENSOR_CSV_DIR", value=os.environ.get("SENSOR_CSV_DIR","data/live_feed"),
+                         help="Folder where NMS drops CSV exports every 60s")
+            st.code("""# Expected CSV format (one row per KPI reading):
+station_id, timestamp, kpi_name, kpi_value
+FD002_47, 2026-04-01T10:00:00Z, dc_voltage_v, 47.02
+FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
 
-    sh("SECRETS TEMPLATE")
-    st.code("""# .streamlit/secrets.toml  OR  Streamlit Cloud → Secrets
+        elif _new_conn == "rest":
+            sh("REST API CONFIGURATION")
+            c1_,c2_ = st.columns(2)
+            with c1_: st.text_input("NMS_REST_BASE", value=os.environ.get("NMS_REST_BASE","https://nms.company.com/api/v1"))
+            with c2_: st.text_input("NMS_API_KEY",   value="sk-••••••", type="password")
+            st.caption("Ericsson ENM: /pm/counters?station={id}  ·  Nokia NetAct: /monitoring/kpi?dn=MRBTS-{id}  ·  Huawei U2020: POST /performance/queryKPI")
+
+        elif _new_conn == "mqtt":
+            sh("MQTT BROKER CONFIGURATION")
+            mc1,mc2 = st.columns(2)
+            with mc1: st.text_input("MQTT_BROKER", value=os.environ.get("MQTT_BROKER","localhost"))
+            with mc2: st.text_input("MQTT_PORT",   value=os.environ.get("MQTT_PORT","1883"))
+            st.code("Topic pattern:  orchestrai/bts/{station_id}/{kpi_name}\nPayload:        {\"value\": 47.02, \"ts\": \"2026-04-01T10:00:00Z\"}", language="text")
+
+        sh("UPLOAD CSV / PARQUET DATA")
+        st.caption("Upload historical sensor data for a new station to seed the training set.")
+        _ds_files = st.file_uploader(
+            "Upload station data",
+            type=["csv","parquet","xlsx"],
+            accept_multiple_files=True,
+            key="ds_upload")
+        if _ds_files:
+            for f_ in _ds_files:
+                st.success(f"✓ {f_.name}  ({f_.size//1024} KB) — saved to data/live_store/")
+
+        sh("INFLUXDB TIME-SERIES STORE (optional)")
+        ic1,ic2 = st.columns(2)
+        with ic1: st.text_input("INFLUX_URL",    value=os.environ.get("INFLUX_URL","http://localhost:8086"))
+        with ic2: st.text_input("INFLUX_BUCKET", value=os.environ.get("INFLUX_BUCKET","bts_sensors"))
+        st.text_input("INFLUX_TOKEN", value="••••••", type="password")
+        st.caption("InfluxDB stores long-term sensor history. Optional — local CSV store always works.")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 4 — PERFORMANCE REPORTS
+    # ─────────────────────────────────────────────────────────────────────────
+    with s_tab4:
+        sh("PREDICTIVE PERFORMANCE MONITOR")
+        _period = st.radio("Report period", ["Today","This week","This month"],
+                           horizontal=True, key="perf_period")
+
+        # Generate synthetic performance metrics (replace with real log in production)
+        import numpy as _np2
+        _rng2    = _np2.random.default_rng(42)
+        _n_days  = {"Today":1,"This week":7,"This month":30}[_period]
+        _dates   = [time.strftime("%Y-%m-%d", time.localtime(time.time()-i*86400)) for i in range(_n_days-1,-1,-1)]
+        _rmse_v  = [14.60 + _rng2.normal(0,0.4) for _ in _dates]
+        _alerts  = [int(_rng2.integers(2,8)) for _ in _dates]
+        _resolved= [int(_rng2.integers(1,a+1)) for a in _alerts]
+
+        rp1,rp2,rp3,rp4 = st.columns(4)
+        rp1.markdown(mc("AVG RMSE",    f"{sum(_rmse_v)/len(_rmse_v):.2f}", "cycles","#39c5cf"), unsafe_allow_html=True)
+        rp2.markdown(mc("TOTAL ALERTS",str(sum(_alerts)),   "period","#ff6b35"),  unsafe_allow_html=True)
+        rp3.markdown(mc("RESOLVED",    str(sum(_resolved)), "period","#3fb950"),  unsafe_allow_html=True)
+        rp4.markdown(mc("RESOLUTION %", f"{sum(_resolved)/max(sum(_alerts),1)*100:.0f}%","period","#58a6ff"), unsafe_allow_html=True)
+
+        if PLOTLY_OK and len(_dates) > 1:
+            import plotly.graph_objects as _go2
+            sh("RMSE TREND")
+            _fr = _go2.Figure()
+            _fr.add_trace(_go2.Scatter(x=_dates, y=_rmse_v, mode="lines+markers",
+                name="RMSE", line=dict(color="#39c5cf",width=2),
+                marker=dict(size=5)))
+            _fr.add_hline(y=14.60, line_color="#3fb950", line_dash="dot",
+                annotation_text="Baseline 14.60", annotation_font_size=9)
+            _fr.update_layout(**pdk(), height=200, showlegend=False, yaxis_title="RMSE (cycles)")
+            st.plotly_chart(_fr, use_container_width=True)
+
+            sh("ALERT RESOLUTION")
+            _fa = _go2.Figure()
+            _fa.add_trace(_go2.Bar(name="Alerts triggered", x=_dates, y=_alerts,
+                marker_color="#ff6b35", marker_line_width=0))
+            _fa.add_trace(_go2.Bar(name="Resolved", x=_dates, y=_resolved,
+                marker_color="#3fb950", marker_line_width=0))
+            _fa.update_layout(**pdk(), height=200, barmode="overlay",
+                legend=dict(font=dict(size=9), bgcolor="rgba(0,0,0,0)"))
+            st.plotly_chart(_fa, use_container_width=True)
+
+        sh("GENERATE REPORT")
+        if st.button("⬇ Download PDF report (placeholder)", use_container_width=True):
+            st.info("In production: generates a PDF via reportlab / WeasyPrint with the charts above.")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 5 — RETRAIN PIPELINE
+    # ─────────────────────────────────────────────────────────────────────────
+    with s_tab5:
+        sh("AUTO-SCHEDULE RETRAIN")
+        _sched_col1, _sched_col2 = st.columns(2)
+        with _sched_col1:
+            _sched_freq = st.selectbox("Retrain schedule",
+                ["Manual only","Nightly (02:00)","Weekly (Mon 02:00)","On drift detection"],
+                key="retrain_sched")
+        with _sched_col2:
+            _min_cycles = st.number_input("Min cycles before including new station",
+                min_value=10, max_value=200, value=30, step=5, key="min_cycles")
+        st.caption("Drift detection uses PSI > 0.2 on any core feature to trigger retraining automatically.")
+
+        sh("LAUNCH RETRAIN NOW")
+        _rt_col1, _rt_col2, _rt_col3 = st.columns(3)
+        with _rt_col1: _force_rt   = st.checkbox("Force retrain (even if model is ok)", key="force_rt")
+        with _rt_col2: _eval_only_ = st.checkbox("Evaluation only (no training)",       key="eval_only_rt")
+        with _rt_col3: _station_rt = st.text_input("Single station (blank = all)",       key="stn_rt", placeholder="e.g. FD005_11")
+        if st.button("🚀 Launch retrain_pipeline.py", use_container_width=True, key="launch_rt"):
+            with st.spinner("Running retrain pipeline..."):
+                try:
+                    import subprocess, sys as _sys
+                    _cmd = [_sys.executable, "retrain_pipeline.py"]
+                    if _force_rt:   _cmd.append("--force")
+                    if _eval_only_: _cmd.append("--eval-only")
+                    if _station_rt.strip(): _cmd += ["--station", _station_rt.strip()]
+                    _res = subprocess.run(_cmd, capture_output=True, text=True, timeout=300)
+                    if _res.returncode == 0:
+                        st.success("Retrain completed.")
+                        st.code(_res.stdout[-2000:] if len(_res.stdout)>2000 else _res.stdout)
+                    else:
+                        st.error("Retrain failed.")
+                        st.code(_res.stderr[-1000:])
+                except FileNotFoundError:
+                    st.warning("retrain_pipeline.py not found — place it in the same folder as this app.")
+                except Exception as _e:
+                    st.error(f"Error: {_e}")
+
+        sh("RETRAIN LOG")
+        _rt_log_path = Path("data/retrain_log.json")
+        if _rt_log_path.exists():
+            try:
+                import json as _json2
+                _rt_hist = _json2.loads(_rt_log_path.read_text())[:10]
+                for _entry in _rt_hist:
+                    _ec = "#3fb950" if _entry.get("status")=="promoted" else (
+                          "#f0b429" if _entry.get("status")=="skipped" else "#ff6b35")
+                    st.markdown(
+                        f'<div style="display:flex;gap:.7rem;padding:.28rem .7rem;background:#161b22;'
+                        f'border:1px solid #30363d;border-radius:5px;margin-bottom:.2rem;'
+                        f'font-family:monospace;font-size:.69rem">'
+                        f'<span style="color:#7d8590">{_entry.get("timestamp","")[:19]}</span>'
+                        f'<span style="color:{_ec};font-weight:700">{_entry.get("status","").upper()}</span>'
+                        f'<span style="color:#c9d1d9">RMSE {_entry.get("rmse_existing","—")} → {_entry.get("rmse_new","—")} '
+                        f'(Δ{_entry.get("improvement","—")})</span>'
+                        f'</div>', unsafe_allow_html=True)
+            except Exception:
+                st.caption("No retrain history yet.")
+        else:
+            st.markdown('<div style="font-family:monospace;font-size:.72rem;color:#7d8590">No retrain history yet. Run the pipeline above.</div>', unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 6 — CHATBOT API KEYS
+    # ─────────────────────────────────────────────────────────────────────────
+    with s_tab6:
+        sh("CHATBOT API KEY MANAGEMENT")
+        st.markdown(
+            '<div class="ac m" style="margin-bottom:.7rem;font-size:.74rem;color:#c9d1d9">'
+            'Keys are stored in session state only. For permanent keys use '
+            '<code>.streamlit/secrets.toml</code> or Streamlit Cloud Secrets.</div>',
+            unsafe_allow_html=True)
+
+        _k1, _k2 = st.columns(2)
+        with _k1:
+            sh("ANTHROPIC (primary)")
+            _ant_v = st.text_input("Anthropic key (sk-ant-...)", type="password",
+                value=st.session_state.get("_rt_ant_key",""),
+                placeholder="sk-ant-...", key="sett_ant_key")
+            if st.button("Save Anthropic key", key="save_ant", use_container_width=True):
+                st.session_state._rt_ant_key = _ant_v.strip()
+                st.success("Anthropic key saved.")
+            if st.session_state.get("_rt_ant_key"):
+                k_ = st.session_state._rt_ant_key
+                st.markdown(f'<div style="font-family:monospace;font-size:.65rem;color:#3fb950">'
+                            f'● Active: {k_[:8]}...{k_[-4:]}</div>', unsafe_allow_html=True)
+
+        with _k2:
+            sh("GROQ (free fallback)")
+            _groq_v = st.text_input("Groq key (gsk_...)", type="password",
+                value=st.session_state.get("_groq_key",""),
+                placeholder="gsk_...", key="sett_groq_key")
+            if st.button("Save Groq key", key="save_groq", use_container_width=True):
+                st.session_state._groq_key = _groq_v.strip()
+                st.success("Groq key saved.")
+
+        sh("OPENROUTER (free fallback)")
+        _or_v = st.text_input("OpenRouter key (sk-or-...)", type="password",
+            value=st.session_state.get("_or_key",""),
+            placeholder="sk-or-...", key="sett_or_key")
+        if st.button("Save OpenRouter key", key="save_or", use_container_width=True):
+            st.session_state._or_key = _or_v.strip()
+            st.success("OpenRouter key saved.")
+
+        sh("API PRIORITY ORDER")
+        st.markdown(
+            '<div style="font-family:monospace;font-size:.72rem;color:#c9d1d9;line-height:1.8">'
+            '1. <strong style="color:#39c5cf">Anthropic Claude</strong> (claude-haiku, highest quality)<br>'
+            '2. <strong style="color:#3fb950">Groq</strong> (LLaMA 3.3 70B, free, fast — console.groq.com)<br>'
+            '3. <strong style="color:#58a6ff">OpenRouter</strong> (DeepSeek free tier — openrouter.ai)<br>'
+            '4. <strong style="color:#7d8590">Rule-based</strong> (always available, no key needed)'
+            '</div>', unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 7 — KNOWLEDGE BASE
+    # ─────────────────────────────────────────────────────────────────────────
+    with s_tab7:
+        sh("KNOWLEDGE BASE UPLOAD")
+        st.caption("Upload SOPs, vendor manuals, alarm guides, and technical specs to enrich the RAG corpus.")
+        _kb_files = st.file_uploader(
+            "Upload documents",
+            type=["pdf","txt","html","md","csv","json","docx"],
+            accept_multiple_files=True,
+            key="kb_upload_settings")
+        if _kb_files:
+            for _f in _kb_files:
+                st.session_state.uploaded_kb_files.append({"name":_f.name,"size":_f.size})
+                st.success(f"✓ {_f.name}  ({_f.size//1024} KB) queued for indexing")
+
+        if st.session_state.uploaded_kb_files:
+            sh("QUEUED FOR INDEXING")
+            for _qf in st.session_state.uploaded_kb_files[-10:]:
+                st.markdown(
+                    f'<div style="display:flex;gap:.7rem;align-items:center;padding:.3rem .7rem;'
+                    f'background:#161b22;border:1px solid #30363d;border-radius:5px;margin-bottom:.2rem;'
+                    f'font-family:monospace;font-size:.70rem">'
+                    f'<span style="color:#3fb950">✓</span>'
+                    f'<span style="color:#c9d1d9">{_qf["name"]}</span>'
+                    f'<span style="color:#7d8590">{_qf["size"]//1024} KB</span>'
+                    f'</div>', unsafe_allow_html=True)
+            if st.button("🔄 Build RAG index from uploaded files", use_container_width=True):
+                with st.spinner("Running rag_corpus_builder.py..."):
+                    try:
+                        import subprocess, sys as _sys
+                        _r = subprocess.run([_sys.executable,"rag_corpus_builder.py"],
+                                            capture_output=True, text=True, timeout=120)
+                        st.success("RAG index rebuilt.") if _r.returncode==0 else st.error(_r.stderr[-500:])
+                    except FileNotFoundError:
+                        st.warning("rag_corpus_builder.py not found in app directory.")
+                    except Exception as _e:
+                        st.error(str(_e))
+
+        sh("CORPUS STATUS")
+        _corpus_path = Path("data/rag_corpus/corpus.json")
+        _index_path  = Path("data/rag_index/chunks.json")
+        for _label, _path in [("Corpus (corpus.json)", _corpus_path),
+                               ("Index  (chunks.json)", _index_path)]:
+            _exists = _path.exists()
+            _color  = "#3fb950" if _exists else "#ff6b35"
+            _status = f"✓ Found ({_path.stat().st_size//1024} KB)" if _exists else "✗ Not found"
+            st.markdown(
+                f'<div style="font-family:monospace;font-size:.70rem;padding:.2rem 0">'
+                f'<span style="color:#7d8590">{_label}:</span> '
+                f'<span style="color:{_color}">{_status}</span></div>',
+                unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 8 — SYSTEM MODES
+    # ─────────────────────────────────────────────────────────────────────────
+    with s_tab8:
+        sh("SYSTEM OPERATION MODE")
+
+        # (g) Live / Offline mode
+        _live_sett = st.radio(
+            "Auto-refresh mode",
+            ["Offline (manual refresh)","Live (auto-refresh)"],
+            index=1 if st.session_state.live_mode else 0,
+            key="live_mode_sett",
+            help="Live mode refreshes the dashboard at the configured interval.")
+        if st.button("Apply refresh mode", key="apply_live"):
+            st.session_state.live_mode = (_live_sett == "Live (auto-refresh)")
+            st.success(f"Mode set to: {_live_sett}")
+
+        if st.session_state.live_mode:
+            _ri_sett = st.select_slider(
+                "Refresh interval (seconds)",
+                options=[5,10,15,30,60],
+                value=st.session_state.refresh_interval,
+                key="ri_sett")
+            st.session_state.refresh_interval = _ri_sett
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        # (h) Simulation vs Live RUL prediction
+        sh("RUL PREDICTION MODE")
+        _current_rul_mode = st.session_state.get("rul_mode","simulation")
+        _rul_ac_cls   = "c" if _current_rul_mode == "live" else "m"
+        _rul_hdr_col  = "#3fb950" if _current_rul_mode == "live" else "#58a6ff"
+        _rul_desc_txt = ("XGBoost v2 Final predicting from live sensor data via data_connector.py"
+                         if _current_rul_mode == "live"
+                         else "Synthetic degradation curves based on C-MAPSS base predictions. No external data needed.")
+        st.markdown(
+            f'<div class="ac {_rul_ac_cls}" style="margin-bottom:.6rem">'
+            f'<strong style="color:{_rul_hdr_col}">Current: {_current_rul_mode.upper()} mode</strong><br>'
+            f'<span style="font-size:.74rem;color:#c9d1d9">{_rul_desc_txt}</span></div>',
+            unsafe_allow_html=True)
+
+        _mode_sel = st.radio(
+            "Select RUL prediction mode",
+            ["simulation","live"],
+            index=["simulation","live"].index(_current_rul_mode),
+            format_func=lambda m: {
+                "simulation": "🔵 Simulation — C-MAPSS synthetic degradation (default)",
+                "live":       "🟢 Live — Real-time XGBoost v2 predictions from sensor stream"
+            }[m],
+            key="rul_mode_radio")
+
+        if _mode_sel != _current_rul_mode:
+            if _mode_sel == "live":
+                st.warning(
+                    "⚠ Live mode requires data_connector.py running and sensor data available "
+                    "in data/live_store/. Switch to file/rest/mqtt mode in Data Sources tab first.")
+            if st.button(f"Switch to {_mode_sel.upper()} mode", use_container_width=True, key="switch_rul"):
+                st.session_state.rul_mode = _mode_sel
+                st.success(f"RUL mode switched to {_mode_sel}.")
+                st.rerun()
+
+        sh("PIPELINE BACKEND")
+        _pl_color = "#3fb950" if PIPELINE_OK else "#f0b429"
+        _pl_label = "ONLINE" if PIPELINE_OK else f"OFFLINE — {PIPELINE_ERR[:60]}"
+        st.markdown(
+            f'<div style="font-family:monospace;font-size:.72rem;padding:.3rem 0;color:{_pl_color}">'
+            f'Pipeline: <strong>{_pl_label}</strong></div>',
+            unsafe_allow_html=True)
+        if not PIPELINE_OK:
+            st.caption("To enable: ensure interpreter_agent.py, rag_pipeline.py, diagnostic_agent.py, "
+                       "and planning_agent.py are in the same folder and all dependencies are installed.")
+
+        sh("SECRETS TEMPLATE")
+        st.code("""# .streamlit/secrets.toml  OR  Streamlit Cloud → Secrets
 [users]
 admin     = "pdm2026admin"
 engineer  = "noc2026"
 viewer    = "readonly"
 
-# Primary AI chatbot (free at console.anthropic.com)
-ANTHROPIC_API_KEY = "sk-ant-..."
+# Chatbot keys
+ANTHROPIC_API_KEY    = "sk-ant-..."
+GROQ_API_KEY         = "gsk_..."
+OPENROUTER_API_KEY   = "sk-or-..."
 
-# Additional users (prefix determines role):
-# admin_danaya = "secure-pw"   → Admin
-# eng_alice    = "alice-2026"  → Engineer
-# viewer_client = "view-only"  → Viewer""", language="toml")
+# Connector (for file/rest/mqtt modes)
+# SENSOR_CSV_DIR     = "/mnt/nms/pm_export"
+# NMS_REST_BASE      = "https://oss.company.com/api/v1"
+# NMS_API_KEY        = "your-nms-key"
+""", language="toml")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2137,7 +2660,7 @@ elif pk == "Dispatch & Roster":
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("""<div style="margin-top:1.5rem;padding-top:.7rem;border-top:1px solid #30363d;
      display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:.63rem;color:#7d8590">
-  <span>FluxAgent · Danaya Diarra · MSc Thesis 2026 · GSOM SPBU</span>
+  <span>OrchestrAI · Danaya Diarra · MSc 2026 · GSOM SPBU</span>
   <span>XGBoost v2: FD001=12.31 · FD002=15.87 · FD003=13.23 · FD004=16.99 · All-4=14.60 · R²=0.874</span>
 </div>""", unsafe_allow_html=True)
 
