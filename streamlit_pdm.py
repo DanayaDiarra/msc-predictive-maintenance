@@ -122,10 +122,13 @@ div[data-testid="stColumn"] .stButton>button{width:100%!important;height:auto!im
     linear-gradient(160deg, #0b0f1a 0%, #0d1117 40%, #0a1020 100%);
   background-attachment: fixed;
 }
-/* ── Icon nav button: invisible overlay on top of nav div ── */
-section[data-testid="stSidebar"] .stButton > button[data-testid="baseButton-secondary"] {
-  position:relative!important;height:36px!important;min-height:36px!important;
-  margin-top:-40px!important;opacity:0!important;z-index:5!important;cursor:pointer!important;
+/* ── Icon nav buttons: tiny arrow, flush style ── */
+section[data-testid="stSidebar"] .stButton > button {
+  height:28px!important;min-height:28px!important;
+  padding:0 .4rem!important;font-size:.65rem!important;
+  color:var(--muted)!important;border:none!important;
+  background:transparent!important;margin-top:-36px!important;
+  opacity:0!important;width:100%!important;
 }
 </style>""", unsafe_allow_html=True)
 
@@ -1075,7 +1078,9 @@ with st.sidebar:
   <span style="font-family:'IBM Plex Mono',monospace;font-size:.71rem;
         font-weight:{_fw2};color:{_tc2}">{_pg.replace("📖 ","")}</span>
 </div>""", unsafe_allow_html=True)
-        if st.button(_pg, key=f"nav_{_pg}", use_container_width=True, label_visibility="collapsed"):
+        # Use a clean key (strip emoji/spaces)
+        _pg_key = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:30]
+        if st.button("▸", key=_pg_key, use_container_width=True, help=_pg.replace("📖 ","")):
             st.session_state.nav_page = _pg
             st.rerun()
     page = st.session_state.nav_page
