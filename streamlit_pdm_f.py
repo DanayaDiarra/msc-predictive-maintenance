@@ -24,6 +24,18 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Open Graph / link preview meta tags ──────────────────────────────────────
+st.markdown("""
+<head>
+  <meta property="og:title" content="VectorAgent NOC"/>
+  <meta property="og:description" content="Agentic AI for Predictive Maintenance · Telecom BTS · GSOM SPBU"/>
+  <meta property="og:type" content="website"/>
+  <meta name="description" content="VectorAgent NOC — Agentic AI for Predictive Maintenance in Distributed Telecom Infrastructure"/>
+  <meta name="theme-color" content="#39c5cf"/>
+</head>
+""", unsafe_allow_html=True)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  GLOBAL CSS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -225,15 +237,42 @@ if "auth" not in st.session_state:
     st.session_state.role = ""
 
 if not st.session_state.auth:
-    st.markdown(f"""<div style="text-align:center;padding:3rem 0 2rem">
-      <img src="{_LOGO}" width="72" style="display:block;margin:0 auto 1rem"/>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:700;color:#39c5cf;letter-spacing:.06em">OrchestrAI</div>
-      <div style="font-size:.75rem;color:#7d8590;margin-top:.35rem">Predictive Maintenance · Secure Login</div>
-    </div>""", unsafe_allow_html=True)
-    _, col, _ = st.columns([1, 1.2, 1])
+    # ── Centered login page with full branding ──────────────────────────────
+    st.markdown(f"""
+<style>
+/* Hide default Streamlit padding on login page */
+.block-container{{padding-top:2rem!important;}}
+</style>
+<div style="display:flex;flex-direction:column;align-items:center;
+     justify-content:center;min-height:80vh;padding:1rem">
+  <div style="text-align:center;padding:2.8rem 2.2rem 2rem;
+       background:linear-gradient(145deg,#161b22,#1c2333);
+       border:1.5px solid #39c5cf55;border-radius:18px;
+       box-shadow:0 0 60px #39c5cf12,0 8px 32px #00000040;
+       max-width:400px;width:100%;margin:0 auto">
+    <img src="{_LOGO}" width="88" height="88"
+         alt="VectorAgent NOC — Predictive Maintenance"
+         style="display:block;margin:0 auto 1.3rem;
+                filter:drop-shadow(0 0 16px #39c5cf55)"/>
+    <div style="font-family:'IBM Plex Mono',monospace;
+         font-size:1.8rem;font-weight:700;color:#39c5cf;
+         letter-spacing:.03em;line-height:1.1">
+      VectorAgent
+      <span style="font-weight:300;color:#e6edf3;font-size:1.4rem"> NOC</span>
+    </div>
+    <div style="font-family:'IBM Plex Mono',monospace;
+         font-size:.68rem;color:#7d8590;margin-top:.5rem;
+         letter-spacing:.10em;text-transform:uppercase">
+      Predictive Maintenance · Telecom BTS
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    _, col, _ = st.columns([1, 1.6, 1])
     with col:
         with st.form("login"):
-            un = st.text_input("Username", placeholder="admin / engineer / viewer")
+            un = st.text_input("Username", placeholder="username")
             pw = st.text_input("Password", type="password", placeholder="password")
             if st.form_submit_button("Sign In ⚡", use_container_width=True):
                 users = _get_users()
@@ -2895,7 +2934,6 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
 
         sh("SECRETS TEMPLATE")
         # Note: the caption below is shown only in Settings (admin-only page, not publicly visible)
-        st.caption("Admin reference — configure in Streamlit Cloud → App Settings → Secrets (not visible to public users)")
         st.code("""[users]
 # username = "password"   (prefix: admin_ / eng_ / viewer_ sets role)
 admin    = "your-admin-password"
@@ -3933,7 +3971,7 @@ elif pk == "Dispatch & Roster":
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("""<div style="margin-top:1.5rem;padding-top:.7rem;border-top:1px solid #30363d;
      display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:.63rem;color:#7d8590">
-  <span>OrchestrAI · Danaya Diarra · MSc · GSOM SPBU</span>
+  <span>VectorAgent NOC · Danaya Diarra · MSc · GSOM SPBU</span>
   <span>XGBoost v2: FD001=12.31 · FD002=15.87 · FD003=13.23 · FD004=16.99 · All-4=14.60 · R²=0.874</span>
 </div>""", unsafe_allow_html=True)
 
