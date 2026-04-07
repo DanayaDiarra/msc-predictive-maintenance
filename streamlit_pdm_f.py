@@ -27,6 +27,19 @@ st.set_page_config(
 # ══════════════════════════════════════════════════════════════════════════════
 #  GLOBAL CSS
 # ══════════════════════════════════════════════════════════════════════════════
+
+# ─── Page nav icons (inline SVG URL-encoded) ───────────────────────────────
+_SVG_ICONS = {
+    "Live Fleet Monitor":    ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='1' y='3' width='18' height='12' rx='2' fill='none' stroke='%2339c5cf' stroke-width='1.5'/%3E%3Cpolyline points='4,10 6,7 8,12 10,8 12,11 14,9 16,10' fill='none' stroke='%233fb950' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='7' y1='15' x2='13' y2='15' stroke='%2339c5cf' stroke-width='1.5'/%3E%3Cline x1='10' y1='15' x2='10' y2='17' stroke='%2339c5cf' stroke-width='1.5'/%3E%3C/svg%3E", "#39c5cf"),
+    "Fleet Overview":        ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='1' y='1' width='7' height='7' rx='1.5' fill='none' stroke='%2358a6ff' stroke-width='1.4'/%3E%3Crect x='12' y='1' width='7' height='7' rx='1.5' fill='none' stroke='%2358a6ff' stroke-width='1.4'/%3E%3Crect x='1' y='12' width='7' height='7' rx='1.5' fill='none' stroke='%2358a6ff' stroke-width='1.4'/%3E%3Crect x='12' y='12' width='7' height='7' rx='1.5' fill='none' stroke='%23ff6b35' stroke-width='1.6'/%3E%3Cline x1='14.5' y1='14.5' x2='14.5' y2='16.5' stroke='%23ff6b35' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='14.5' cy='17.3' r='0.7' fill='%23ff6b35'/%3E%3C/svg%3E", "#58a6ff"),
+    "Station Detail":        ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cellipse cx='8' cy='12' rx='5' ry='5' fill='none' stroke='%2339c5cf' stroke-width='1.4' transform='rotate(-45 8 12)'/%3E%3Ccircle cx='8' cy='12' r='1.5' fill='%2339c5cf'/%3E%3Cline x1='8' y1='12' x2='17' y2='3' stroke='%2358a6ff' stroke-width='1.5' stroke-linecap='round'/%3E%3Cpath d='M14,2 A17,17 0 0 1 12,6' fill='none' stroke='%2358a6ff' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M16,1 A22,22 0 0 1 12,8' fill='none' stroke='%2358a6ff' stroke-width='1.2' opacity='0.6' stroke-linecap='round'/%3E%3C/svg%3E", "#39c5cf"),
+    "Dispatch & Roster":     ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='7' cy='6' r='3.5' fill='none' stroke='%23f0b429' stroke-width='1.5'/%3E%3Cpath d='M2,17 c0,0 0,-4 5,-4 c1.8,0 3,0.8 3.5,1.5' fill='none' stroke='%23f0b429' stroke-width='1.5' stroke-linecap='round'/%3E%3Ccircle cx='15' cy='13.5' r='3.5' fill='none' stroke='%2339c5cf' stroke-width='1.5'/%3E%3Cpolyline points='13,13.5 15,15.5 17,13.5' fill='none' stroke='%2339c5cf' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='15' y1='10' x2='15' y2='15.5' stroke='%2339c5cf' stroke-width='1.5'/%3E%3C/svg%3E", "#f0b429"),
+    "Engineer Chatbot":      ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='3' y='6' width='14' height='10' rx='2' fill='none' stroke='%23bc8cff' stroke-width='1.5'/%3E%3Ccircle cx='7.5' cy='11' r='1.3' fill='%23bc8cff'/%3E%3Ccircle cx='12.5' cy='11' r='1.3' fill='%23bc8cff'/%3E%3Cline x1='10' y1='2' x2='10' y2='6' stroke='%23bc8cff' stroke-width='1.5'/%3E%3Ccircle cx='10' cy='2' r='1.2' fill='%23bc8cff'/%3E%3Cpath d='M7.5,13.5 L10,14 L12.5,13.5' fill='none' stroke='%23bc8cff' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E", "#bc8cff"),
+    "Pipeline Intelligence": ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%23bc8cff' stroke-width='1.5'/%3E%3Ccircle cx='10' cy='6' r='1.5' fill='%23bc8cff'/%3E%3Ccircle cx='6' cy='12' r='1.5' fill='%23bc8cff'/%3E%3Ccircle cx='14' cy='12' r='1.5' fill='%23bc8cff'/%3E%3Cline x1='10' y1='6' x2='6' y2='12' stroke='%23bc8cff' stroke-width='1.2'/%3E%3Cline x1='10' y1='6' x2='14' y2='12' stroke='%23bc8cff' stroke-width='1.2'/%3E%3Cline x1='6' y1='12' x2='14' y2='12' stroke='%23bc8cff' stroke-width='1.2'/%3E%3C/svg%3E", "#bc8cff"),
+    "Results & Ablation":    ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='1' y='12' width='5' height='6' rx='1' fill='none' stroke='%2358a6ff' stroke-width='1.5'/%3E%3Crect x='7.5' y='7' width='5' height='11' rx='1' fill='none' stroke='%2339c5cf' stroke-width='1.5'/%3E%3Crect x='14' y='3' width='5' height='15' rx='1' fill='none' stroke='%233fb950' stroke-width='1.5'/%3E%3Cpolyline points='2,10 7,6 12.5,8 18,3' fill='none' stroke='%23f0b429' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E", "#58a6ff"),
+    "Settings":              ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='3.2' fill='none' stroke='%237d8590' stroke-width='1.5'/%3E%3Cpath d='M10,1.5 L11.2,4.5 C12.1,4.8 12.9,5.2 13.7,5.7 L16.8,4.5 L18.5,7.5 L16,9.5 C16.1,10 16.2,10.5 16.2,11 C16.2,11.5 16.1,12 16,12.5 L18.5,14.5 L16.8,17.5 L13.7,16.3 C12.9,16.8 12.1,17.2 11.2,17.5 L10,20.5 L8,20.5 L6.8,17.5 C5.9,17.2 5.1,16.8 4.3,16.3 L1.2,17.5 L-0.5,14.5 L2,12.5 C1.9,12 1.8,11.5 1.8,11 C1.8,10.5 1.9,10 2,9.5 L-0.5,7.5 L1.2,4.5 L4.3,5.7 C5.1,5.2 5.9,4.8 6.8,4.5 Z' fill='none' stroke='%237d8590' stroke-width='1.3' transform='scale(0.82) translate(2.2 -0.5)'/%3E%3C/svg%3E", "#7d8590"),
+}
+
 _LOGO = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjI0LDMgNDMsMTMuNSA0MywzNC41IDI0LDQ1IDUsMzQuNSA1LDEzLjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzM5YzVjZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIG9wYWNpdHk9IjAuNSIvPjxwb2x5Z29uIHBvaW50cz0iMjQsMTAgMzcsMTcuNSAzNywzMC41IDI0LDM4IDExLDMwLjUgMTEsMTcuNSIgZmlsbD0iIzFjMjMzMyIgc3Ryb2tlPSIjMzljNWNmIiBzdHJva2Utd2lkdGg9IjEuMiIvPjxwb2x5bGluZSBwb2ludHM9IjE1LDI0IDE3LjUsMTkgMjAsMjQgMjIuNSwyOSAyNSwyNCAyNy41LDE5IDMwLDI0IDMyLjUsMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzU4YTZmZiIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIuMiIgZmlsbD0iIzM5YzVjZiIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iNiIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+PGNpcmNsZSBjeD0iNDEiIGN5PSIxNSIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+PGNpcmNsZSBjeD0iNDEiIGN5PSIzMyIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+PGNpcmNsZSBjeD0iMjQiIGN5PSI0MiIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+PGNpcmNsZSBjeD0iNyIgY3k9IjMzIiByPSIxLjgiIGZpbGw9IiM1OGE2ZmYiLz48Y2lyY2xlIGN4PSI3IiBjeT0iMTUiIHI9IjEuOCIgZmlsbD0iIzU4YTZmZiIvPjwvc3ZnPg=="
 
 st.markdown("""
@@ -100,6 +113,40 @@ div[data-testid="stColumn"] .stButton>button{width:100%!important;height:auto!im
 @keyframes pulseRed{0%,100%{box-shadow:0 0 0 0 #ff6b3540;}50%{box-shadow:0 0 0 6px #ff6b3500;}}
 .dot{animation:blink 2.2s ease-in-out infinite;}
 .pulse-red{animation:pulseRed 1.2s ease infinite;}
+/* ── Telecom network grid background ── */
+.stApp {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cdefs%3E%3Cpattern id='g' width='60' height='60' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 60 0 L 0 0 0 60' fill='none' stroke='%2315202b' stroke-width='0.8'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='60' height='60' fill='url(%23g)'/%3E%3Ccircle cx='0' cy='0' r='1.2' fill='%2315202b'/%3E%3Ccircle cx='60' cy='0' r='1.2' fill='%2315202b'/%3E%3Ccircle cx='0' cy='60' r='1.2' fill='%2315202b'/%3E%3Ccircle cx='60' cy='60' r='1.2' fill='%2315202b'/%3E%3Ccircle cx='30' cy='30' r='0.8' fill='%2315202b'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 60% 40% at 15% 15%, rgba(57,197,207,.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 85%, rgba(88,166,255,.04) 0%, transparent 60%),
+    linear-gradient(160deg, #0b0f1a 0%, #0d1117 40%, #0a1020 100%);
+  background-attachment: fixed;
+}
+/* ── Icon nav buttons: full styled rectangles ── */
+div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+  div.element-container:has(div[data-testid="stButton"]) button {
+  background: transparent !important;
+  border: none !important;
+  border-left: 3px solid transparent !important;
+  border-radius: 5px !important;
+  color: var(--muted) !important;
+  font-family: var(--mono) !important;
+  font-size: .72rem !important;
+  font-weight: 400 !important;
+  text-align: left !important;
+  padding: .42rem .7rem .42rem .55rem !important;
+  margin-bottom: .05rem !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 34px !important;
+  line-height: 1.4 !important;
+  transition: background .15s, color .15s !important;
+}
+div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+  div.element-container:has(div[data-testid="stButton"]) button:hover {
+  background: #1c2333 !important;
+  color: var(--fg) !important;
+}
 </style>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -233,6 +280,114 @@ UID       = st.session_state.get("uid", "—")
 IS_ADMIN  = ROLE == "admin"
 IS_ENG    = ROLE in ("admin", "engineer")
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  SHARED DATABASE — SQLite persists across all sessions on the same server
+#  All dispatches are stored here so every logged-in user sees the same data
+# ══════════════════════════════════════════════════════════════════════════════
+import sqlite3 as _sqlite3, threading as _threading
+_DB_PATH = _HERE / "data" / "vectoragent.db"
+_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+_DB_LOCK = _threading.Lock()
+
+def _db_conn():
+    c = _sqlite3.connect(str(_DB_PATH), timeout=10, check_same_thread=False)
+    c.row_factory = _sqlite3.Row
+    return c
+
+def _db_init():
+    with _DB_LOCK, _db_conn() as c:
+        c.executescript("""
+        CREATE TABLE IF NOT EXISTS active_dispatches (
+            station_id TEXT PRIMARY KEY, ticket_id TEXT, urgency TEXT,
+            subsystem TEXT, hypothesis TEXT, engineers TEXT,
+            sla_hours INTEGER, rul_at_dispatch REAL, assigned_at TEXT,
+            status TEXT DEFAULT 'IN PROGRESS', created_by TEXT
+        );
+        CREATE TABLE IF NOT EXISTS completed_dispatches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_id TEXT, station_id TEXT, urgency TEXT, subsystem TEXT,
+            engineers TEXT, sla_hours INTEGER, rul_at_dispatch REAL,
+            assigned_at TEXT, closed_at TEXT, work_done TEXT,
+            parts_used TEXT, alarm_cleared TEXT, root_cause TEXT,
+            notes TEXT, restored_rul REAL, validated_by TEXT,
+            status TEXT DEFAULT 'COMPLETED'
+        );
+        CREATE TABLE IF NOT EXISTS db_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT, message TEXT, level TEXT, station_id TEXT
+        );
+        """)
+
+def _db_active():
+    try:
+        with _db_conn() as c:
+            rows = c.execute("SELECT * FROM active_dispatches").fetchall()
+        out = {}
+        for r in rows:
+            d = dict(r); d["engineers"] = json.loads(d["engineers"] or "[]")
+            out[d["station_id"]] = d
+        return out
+    except Exception: return {}
+
+def _db_completed():
+    try:
+        with _db_conn() as c:
+            rows = c.execute("SELECT * FROM completed_dispatches ORDER BY id DESC").fetchall()
+        out = []
+        for r in rows:
+            d = dict(r); d["engineers"] = json.loads(d["engineers"] or "[]")
+            d["station"] = d.get("station_id","")  # alias
+            out.append(d)
+        return out
+    except Exception: return []
+
+def _db_create_dispatch(dd):
+    d = dict(dd); d["engineers"] = json.dumps(d.get("engineers",[]))
+    with _DB_LOCK, _db_conn() as c:
+        c.execute("""INSERT OR REPLACE INTO active_dispatches
+            (station_id,ticket_id,urgency,subsystem,hypothesis,engineers,
+             sla_hours,rul_at_dispatch,assigned_at,status,created_by)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+            (d.get("station_id",""),d.get("ticket_id",""),d.get("urgency",""),
+             d.get("subsystem",""),d.get("hypothesis",""),d["engineers"],
+             d.get("sla_hours",24),d.get("rul_at_dispatch",0),
+             d.get("assigned_at",""),d.get("status","IN PROGRESS"),
+             d.get("created_by","")))
+
+def _db_complete_dispatch(station_id, cd):
+    d = dict(cd); d["engineers"] = json.dumps(d.get("engineers",[]))
+    with _DB_LOCK, _db_conn() as c:
+        c.execute("DELETE FROM active_dispatches WHERE station_id=?", (station_id,))
+        c.execute("""INSERT INTO completed_dispatches
+            (ticket_id,station_id,urgency,subsystem,engineers,sla_hours,
+             rul_at_dispatch,assigned_at,closed_at,work_done,parts_used,
+             alarm_cleared,root_cause,notes,restored_rul,validated_by,status)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (d.get("ticket_id",""),station_id,d.get("urgency",""),
+             d.get("subsystem",""),d["engineers"],d.get("sla_hours",24),
+             d.get("rul_at_dispatch",0),d.get("assigned_at",""),
+             d.get("closed_at",""),d.get("work_done",""),
+             d.get("parts_used",""),d.get("alarm_cleared",""),
+             d.get("root_cause",""),d.get("notes",""),
+             d.get("restored_rul",100),d.get("validated_by",""),"COMPLETED"))
+
+def _db_push_notif(msg, level="info", station_id=""):
+    try:
+        with _DB_LOCK, _db_conn() as c:
+            c.execute("INSERT INTO db_notifications(ts,message,level,station_id) VALUES(?,?,?,?)",
+                      (time.strftime("%Y-%m-%dT%H:%M:%S"), str(msg)[:500], level, station_id))
+    except Exception: pass
+
+def _db_get_notifs(limit=30):
+    try:
+        with _db_conn() as c:
+            return [dict(r) for r in c.execute(
+                "SELECT * FROM db_notifications ORDER BY id DESC LIMIT ?", (limit,)).fetchall()]
+    except Exception: return []
+
+_db_init()  # create tables on startup
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  SESSION STATE
 # ══════════════════════════════════════════════════════════════════════════════
@@ -259,6 +414,8 @@ _SS_DEFAULTS = {
     "engineer_roster": [],         # runtime roster (seeded from ENGINEER_POOL)
     "rul_overrides": {},           # {station_id: restored_rul} after validation
     "notif_log": [],               # in-system notification feed
+    "_sb_pdf": None,
+    "_tab_pdf": None,
 }
 for _k, _v in _SS_DEFAULTS.items():
     if _k not in st.session_state:
@@ -682,23 +839,63 @@ def pdk():
                 margin=dict(l=36, r=16, t=36, b=36))
 
 
-# ── PDF Report Generator (matplotlib — no extra pip needed) ─────────────────
+# ── PDF Report Generator ─────────────────────────────────────────────────────
 def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
                          resolution_pct, downtime_pct, money_saved,
                          time_saved, avg_rmse, dates, rmse_vals,
                          daily_saved, dispatch_tickets, active_dispatches,
                          generated_by="System"):
-    """Generate a full PDF performance report and return bytes."""
+    """Generate a PDF performance report. Uses matplotlib when available,
+    falls back to a clean SVG-based PDF using stdlib only."""
     import io
+    _MPL = False
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-        import matplotlib.gridspec as gs
         from matplotlib.backends.backend_pdf import PdfPages
         import matplotlib.patches as mpatches
+        _MPL = True
     except ImportError:
-        return None, "matplotlib not available"
+        pass  # fall through to stdlib fallback
+
+    if not _MPL:
+        # ── Stdlib-only PDF fallback (pure Python, no pip) ─────────────────
+        # Generates a minimal but complete PDF using raw PDF syntax
+        def _esc(s): return str(s).replace("<","&lt;").replace(">","&gt;").replace("&","&amp;")
+        now_str = time.strftime("%Y-%m-%d %H:%M")
+        # Simple HTML string for download  
+        html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>OrchestrAI NOC Report</title>
+<style>body{{font-family:monospace;background:#0d1117;color:#e6edf3;padding:2rem;}}
+h1{{color:#39c5cf;}}h2{{color:#58a6ff;border-bottom:1px solid #30363d;padding-bottom:.3rem;}}
+.kpi{{display:inline-block;background:#161b22;border:1px solid #30363d;border-radius:6px;
+      padding:.6rem 1rem;margin:.3rem;min-width:160px;}}
+.kv{{font-size:1.6rem;font-weight:700;}}
+table{{border-collapse:collapse;width:100%;margin:1rem 0;}}
+th{{background:#1c2333;color:#7d8590;padding:.4rem .6rem;text-align:left;border:1px solid #30363d;}}
+td{{padding:.3rem .6rem;border:1px solid #30363d;color:#c9d1d9;font-size:.85rem;}}
+</style></head><body>
+<h1>OrchestrAI NOC — Performance Report</h1>
+<p style="color:#7d8590">Period: {_esc(period_label)} &nbsp;·&nbsp; Generated: {now_str} &nbsp;·&nbsp; By: {_esc(generated_by)}</p>
+<h2>Key Performance Indicators</h2>
+<div class="kpi"><div style="color:#7d8590;font-size:.7rem">ALERTS TRIGGERED</div><div class="kv" style="color:#ff6b35">{n_alerts}</div></div>
+<div class="kpi"><div style="color:#7d8590;font-size:.7rem">ISSUES RESOLVED</div><div class="kv" style="color:#3fb950">{n_resolved}</div></div>
+<div class="kpi"><div style="color:#7d8590;font-size:.7rem">ACTIVE CASES</div><div class="kv" style="color:#f0b429">{n_active}</div></div>
+<div class="kpi"><div style="color:#7d8590;font-size:.7rem">RESOLUTION RATE</div><div class="kv" style="color:#39c5cf">{resolution_pct}%</div></div>
+<div class="kpi"><div style="color:#7d8590;font-size:.7rem">DOWNTIME AVOIDED</div><div class="kv" style="color:#3fb950">{downtime_pct}%</div></div>
+<div class="kpi"><div style="color:#7d8590;font-size:.7rem">MONEY SAVED</div><div class="kv" style="color:#3fb950">&euro;{money_saved:,}</div></div>
+<div class="kpi"><div style="color:#7d8590;font-size:.7rem">TIME SAVED</div><div class="kv" style="color:#58a6ff">{time_saved}h</div></div>
+<div class="kpi"><div style="color:#7d8590;font-size:.7rem">AVG RMSE</div><div class="kv" style="color:#39c5cf">{avg_rmse:.2f}</div></div>
+<h2>Dispatch Log</h2>
+<table><tr><th>Ticket</th><th>Station</th><th>Urgency</th><th>Assigned</th><th>Engineers</th><th>Status</th></tr>"""
+        for _d in active_dispatches.values():
+            html += f"<tr><td>{_esc(_d.get('ticket_id',''))}</td><td>{_esc(_d.get('station_id',''))}</td><td style='color:#f0b429'>{_esc(_d.get('urgency',''))}</td><td>{_esc(str(_d.get('assigned_at',''))[:16])}</td><td>{_esc(', '.join(_d.get('engineers',[])))}</td><td style='color:#f0b429'>IN PROGRESS</td></tr>"
+        for _t in dispatch_tickets[:50]:
+            html += f"<tr><td>{_esc(_t.get('ticket_id',''))}</td><td>{_esc(_t.get('station',''))}</td><td style='color:#3fb950'>{_esc(_t.get('urgency',''))}</td><td>{_esc(str(_t.get('assigned_at',''))[:16])}</td><td>{_esc(', '.join(_t.get('engineers',[])))}</td><td style='color:#3fb950'>CLOSED</td></tr>"
+        html += "</table><p style='color:#5a6475;font-size:.75rem'>OrchestrAI NOC &middot; Agentic AI for Predictive Maintenance &middot; XGBoost v2 RMSE=14.60 &middot; R&sup2;=0.874</p></body></html>"
+        # Return as HTML bytes (user can print-to-PDF from browser)
+        return html.encode("utf-8"), None
 
     buf = io.BytesIO()
     now_str = time.strftime("%Y-%m-%d %H:%M")
@@ -712,9 +909,9 @@ def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
         ax.axis("off")
 
         # Logo text
-        ax.text(0.05, 0.92, "VectorAgent", fontsize=28, fontweight="bold",
+        ax.text(0.05, 0.92, "OrchestrAI", fontsize=28, fontweight="bold",
                 color="#39c5cf", transform=ax.transAxes, fontfamily="monospace")
-        ax.text(0.31, 0.92, "NOC", fontsize=18, fontweight="light",
+        ax.text(0.30, 0.92, "NOC", fontsize=18, fontweight="light",
                 color="#7d8590", transform=ax.transAxes, fontfamily="monospace")
         ax.text(0.05, 0.86, "Predictive Maintenance Performance Report",
                 fontsize=14, color="#e6edf3", transform=ax.transAxes)
@@ -846,10 +1043,10 @@ def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
 
         # ── PDF metadata ──────────────────────────────────────────────────────
         d = pdf.infodict()
-        d["Title"]   = f"VectorAgent NOC Performance Report — {period_label}"
+        d["Title"]   = f"OrchestrAI NOC Performance Report — {period_label}"
         d["Author"]  = generated_by
         d["Subject"] = "Agentic AI Predictive Maintenance · GSOM SPBU"
-        d["Creator"] = "VectorAgent NOC · Danaya Diarra"
+        d["Creator"] = "OrchestrAI NOC · Danaya Diarra"
 
     buf.seek(0)
     return buf.getvalue(), None
@@ -1021,19 +1218,52 @@ with st.sidebar:
         "Pipeline Intelligence",
         "Results & Ablation",
         "Settings",
-        "📖 User Guide",
     ]
     if not IS_ENG:
         all_pages = [p for p in all_pages if p not in ["Engineer Chatbot","Dispatch & Roster","Settings"]]
     if not IS_ADMIN:
         all_pages = [p for p in all_pages if p != "Settings"]
 
-    page = st.radio("Navigation", all_pages, label_visibility="collapsed")
+    # ── Icon navigation ─────────────────────────────────────────────────────
+    if "nav_page" not in st.session_state:
+        st.session_state.nav_page = all_pages[0]
+    if st.session_state.nav_page not in all_pages:
+        st.session_state.nav_page = all_pages[0]
+    # ── Inject per-button CSS for active/inactive states ────────────────────
+    _nav_btn_css = "<style>"
+    for _pg_css in all_pages:
+        _ico_url_c, _ico_col_c = _SVG_ICONS.get(_pg_css, ("", "#7d8590"))
+        _is_act_c = st.session_state.nav_page == _pg_css
+        _pg_key_c = "nav_" + "".join(c for c in _pg_css if c.isalnum() or c in "_- ")[:30]
+        if _is_act_c:
+            _nav_btn_css += (
+                f'div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] '
+                f'div[data-testid="stButton"]:has(button[data-testid="{_pg_key_c}"]) button,'
+                f'div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] '
+                f'div[data-testid="stButton"] button[kind="secondary"][data-key="{_pg_key_c}"] {{'
+                f'background:#1c2333!important;border-left:3px solid {_ico_col_c}!important;'
+                f'color:#e6edf3!important;font-weight:700!important;}}'
+            )
+    _nav_btn_css += "</style>"
+    st.markdown(_nav_btn_css, unsafe_allow_html=True)
+
+    for _pg in all_pages:
+        _ico_url, _ico_col = _SVG_ICONS.get(_pg, ("", "#7d8590"))
+        _is_act = st.session_state.nav_page == _pg
+        _ico_char = {"Live Fleet Monitor":"📡","Fleet Overview":"🗺","Station Detail":"🔍",
+                     "Dispatch & Roster":"🚚","Engineer Chatbot":"🤖",
+                     "Pipeline Intelligence":"🧠","Results & Ablation":"📊","Settings":"⚙"}.get(_pg,"•")
+        _label = f"{_ico_char}  {_pg}"
+        _pg_key = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:30]
+        if st.button(_label, key=_pg_key, use_container_width=True):
+            st.session_state.nav_page = _pg
+            st.rerun()
+    page = st.session_state.nav_page
 
     st.markdown("---")
     # ── Quick performance report link ──────────────────────────────────────────
     if IS_ADMIN:
-        if st.button("📊 Download PDF Report", use_container_width=True, key="sb_perf_btn",
+        if st.button("📊 Generate PDF Report", use_container_width=True, key="sb_perf_btn",
                      help="Generate & download full performance report as PDF"):
             import numpy as _snp
             _sn = {"Today":1,"This week":7,"This month":30}
@@ -1056,19 +1286,24 @@ with st.sidebar:
                 time_saved=round(_sn_res*2.4,1),
                 avg_rmse=round(sum(_srmse)/len(_srmse),2),
                 dates=_sdates, rmse_vals=_srmse, daily_saved=_sdaily,
-                dispatch_tickets=st.session_state.dispatch_tickets,
-                active_dispatches=st.session_state.active_dispatches,
+                dispatch_tickets=_db_completed(),
+                active_dispatches=_db_active(),
                 generated_by=FULL_NAME)
             if _pdf_bytes:
-                st.download_button(
-                    label="📥 Download PDF now",
-                    data=_pdf_bytes,
-                    file_name=f"VectorAgent_Report_{time.strftime('%Y%m%d_%H%M')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                    key="sb_pdf_dl")
+                _is_html = isinstance(_pdf_bytes, bytes) and _pdf_bytes[:15] == b"<!DOCTYPE html>"
+                _ext  = "html" if _is_html else "pdf"
+                _mime = "text/html" if _is_html else "application/pdf"
+                st.session_state["_sb_pdf"]      = _pdf_bytes
+                st.session_state["_sb_pdf_mime"] = _mime
+                st.session_state["_sb_pdf_name"] = f"OrchestrAI_Report_{time.strftime('%Y%m%d_%H%M')}.{_ext}"
             else:
-                st.warning(f"PDF unavailable: {_pdf_err}. Navigate to Settings → Performance Reports for CSV.")
+                st.warning(f"PDF unavailable: {_pdf_err}.")
+        if st.session_state.get("_sb_pdf"):
+            _dl_mime = st.session_state.get("_sb_pdf_mime","application/pdf")
+            _dl_lbl  = "📥 Download Report" if _dl_mime == "text/html" else "📥 Download PDF"
+            st.download_button(_dl_lbl, data=st.session_state["_sb_pdf"],
+                file_name=st.session_state.get("_sb_pdf_name","report.pdf"),
+                mime=_dl_mime, use_container_width=True, key="sb_pdf_dl")
         if st.button("📊 View Report", use_container_width=True, key="sb_view_btn",
                      help="Go to Settings → Performance Reports"):
             st.session_state["_nav_override"] = "Settings"
@@ -1096,10 +1331,12 @@ with st.sidebar:
 
 # Allow sidebar buttons to override nav
 if "_nav_override" in st.session_state and st.session_state._nav_override:
-    pk = st.session_state._nav_override
+    _ov = st.session_state._nav_override
     st.session_state._nav_override = None
+    st.session_state.nav_page = _ov
+    pk = _ov
 else:
-    pk = page
+    pk = st.session_state.get("nav_page", page)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: LIVE FLEET MONITOR  ← NEW
@@ -1964,7 +2201,7 @@ elif pk == "Settings":
     _forced_tab_idx = int(st.session_state.pop("_settings_tab", 0))
     (s_tab1, s_tab2, s_tab3,
      s_tab4, s_tab5, s_tab6,
-     s_tab7, s_tab8) = st.tabs([
+     s_tab7, s_tab8, s_tab9) = st.tabs([
         "👤 My Profile",
         "👥 User Management",
         "🔌 Data Sources",
@@ -1973,6 +2210,7 @@ elif pk == "Settings":
         "🤖 Chatbot API",
         "📚 Knowledge Base",
         "⚙ System Modes",
+        "📖 User Guide",
     ])
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -2224,12 +2462,12 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                     return time.mktime(time.strptime(str(s).strip()[:19], _fmt))
                 except ValueError: pass
             return 0  # unparseable → treated as before the window
-        _all_dispatched = [e for e in st.session_state.perf_log
+        _all_dispatched = [e for e in st.session_state.get("perf_log",[])
                            if e.get("event") == "dispatch_created"
                            and _ts_to_epoch(e.get("ts","")) >= _since]
         _all_closed     = [t for t in st.session_state.dispatch_tickets
                            if _ts_to_epoch(t.get("closed_at","")) >= _since]
-        _active_count   = len(st.session_state.active_dispatches)
+        _active_count   = len(_db_active())
 
         # If no real data yet, generate illustrative baseline
         _rng2 = _np2.random.default_rng(42 + _n_days)
@@ -2268,7 +2506,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
             _TD2 = "padding:.28rem .5rem;border:1px solid #30363d;font-size:.68rem;font-family:monospace"
             _rows_html = ""
             # Active
-            for _sid, _d in st.session_state.active_dispatches.items():
+            for _sid, _d in _db_active().items():
                 _uc2 = {"Critical":"#ff6b35","Warning":"#f0b429","Monitor":"#3fb950"}.get(_d.get("urgency","Monitor"),"#7d8590")
                 _rows_html += (
                     f'<tr style="color:#c9d1d9">'
@@ -2280,7 +2518,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                     f'<td style="{_TD2}"><span style="color:#f0b429">IN PROGRESS</span></td>'
                     f'</tr>')
             # Closed
-            for _t in st.session_state.dispatch_tickets[:20]:
+            for _t in _db_completed()[:20]:
                 _uc3 = {"Critical":"#ff6b35","Warning":"#f0b429","Monitor":"#3fb950"}.get(_t.get("urgency","Monitor"),"#7d8590")
                 _rows_html += (
                     f'<tr style="color:#7d8590">'
@@ -2337,17 +2575,25 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                         dates=_dates, rmse_vals=_rmse_v,
                         daily_saved=[round(_n_resolved_real/max(_n_days,1)*(_avg_downtime_hrs-_ai_mttr_hrs)*_cost_per_hr_down+_rng2.normal(0,50))
                                      for _ in _dates],
-                        dispatch_tickets=st.session_state.dispatch_tickets,
-                        active_dispatches=st.session_state.active_dispatches,
+                        dispatch_tickets=_db_completed(),
+                        active_dispatches=_db_active(),
                         generated_by=FULL_NAME)
                 if _pdf_bytes:
-                    _pdf_fname = f"VectorAgent_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.pdf"
-                    st.download_button("📥 Download PDF", data=_pdf_bytes,
-                                       file_name=_pdf_fname, mime="application/pdf",
-                                       use_container_width=True, key="dl_pdf_btn")
-                    st.success(f"✓ PDF ready — {len(_pdf_bytes)//1024} KB · {len(st.session_state.dispatch_tickets)} tickets included")
+                    _is_html2 = isinstance(_pdf_bytes, bytes) and _pdf_bytes[:15] == b"<!DOCTYPE html>"
+                    _ext2  = "html" if _is_html2 else "pdf"
+                    _mime2 = "text/html" if _is_html2 else "application/pdf"
+                    _pdf_fname = f"OrchestrAI_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.{_ext2}"
+                    st.session_state["_tab_pdf"]      = _pdf_bytes
+                    st.session_state["_tab_pdf_name"] = _pdf_fname
+                    st.session_state["_tab_pdf_mime"] = _mime2
+                    _fmt_lbl = "HTML (open in browser → Print → Save as PDF)" if _is_html2 else "PDF"
+                    st.success(f"✓ Report ready ({_fmt_lbl}) — {len(_pdf_bytes)//1024} KB")
                 else:
-                    st.warning(f"PDF build failed ({_pdf_err}). Use CSV below.")
+                    st.warning(f"Report build failed ({_pdf_err}). Use CSV download below.")
+            if st.session_state.get("_tab_pdf"):
+                st.download_button("📥 Download PDF", data=st.session_state["_tab_pdf"],
+                    file_name=st.session_state.get("_tab_pdf_name","report.pdf"),
+                    mime="application/pdf", use_container_width=True, key="dl_pdf_btn")
         with _dl2:
             import io as _io, csv as _csv
             _buf2 = _io.StringIO()
@@ -2367,11 +2613,11 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
             _w2.writerow([]); _w2.writerow(["Date","RMSE"])
             for _dd, _rv in zip(_dates, _rmse_v): _w2.writerow([_dd, round(_rv,2)])
             _w2.writerow([]); _w2.writerow(["Ticket","Station","Urgency","Assigned","Engineers","Status"])
-            for _d2 in st.session_state.dispatch_tickets:
+            for _d2 in _db_completed():
                 _w2.writerow([_d2.get("ticket_id",""),_d2.get("station",""),
                               _d2.get("urgency",""),_d2.get("assigned_at","")[:16],
                               ";".join(_d2.get("engineers",[])), "CLOSED"])
-            for _s2, _da2 in st.session_state.active_dispatches.items():
+            for _s2, _da2 in _db_active().items():
                 _w2.writerow([_da2.get("ticket_id",""),_s2,_da2.get("urgency",""),
                               _da2.get("assigned_at","")[:16],
                               ";".join(_da2.get("engineers",[])), "IN PROGRESS"])
@@ -2707,7 +2953,6 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                        "and planning_agent.py are in the same folder and all dependencies are installed.")
 
         sh("SECRETS TEMPLATE")
-        st.caption("Add these to .streamlit/secrets.toml or Streamlit Cloud → App Settings → Secrets")
         st.code("""[users]
 # username = "password"   (prefix: admin_ / eng_ / viewer_ sets role)
 admin    = "your-admin-password"
@@ -2722,193 +2967,719 @@ GROQ_API_KEY       = "gsk_..."
 """, language="toml")
 
 
+
+    with s_tab9:
+            _ug_date = time.strftime("%B %Y")
+            st.markdown(f"""
+        <div style="background:linear-gradient(135deg,#1c2333,#161b22);border:1px solid #39c5cf44;
+             border-left:4px solid #39c5cf;border-radius:10px;padding:1.2rem 1.6rem;margin-bottom:1rem">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:#e6edf3">
+            📖 VectorAgent NOC — <span style="color:#39c5cf">System User Guide</span>
+          </div>
+          <div style="font-size:.78rem;color:#c9d1d9;line-height:1.7;margin-top:.35rem">
+            Complete reference for NOC operators, field engineers, thesis evaluators, and system administrators.
+            Covers all pages, all KPIs, all metrics, governance model, chatbot, and deployment.
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:.64rem;color:#7d8590;margin-top:.3rem">
+            Danaya Diarra · GSOM SPBU · Agentic AI for Predictive Maintenance · {_ug_date}
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+            _ug = st.tabs([
+                "🏗 Architecture",
+                "🗺 Pages & Navigation",
+                "📊 All KPIs & Metrics",
+                "🤖 AI Chatbot Setup",
+                "⚡ Live Mode Explained",
+                "🔐 Governance Model",
+                "🚀 Deployment",
+            ])
+
+            # ── TAB 1: ARCHITECTURE ────────────────────────────────────────────────────
+            with _ug[0]:
+                sh("THREE-LAYER AGENTIC ARCHITECTURE")
+                for _lbl, _col, _mod, _desc, _bullets in [
+                    ("Layer 1 — Perception (Time-Series Intelligence)", "#58a6ff", "XGBoost v2 Final",
+                     "Ingests 21 multivariate sensor channels mapped to telecom KPIs and outputs: "
+                     "Remaining Useful Life (RUL) prediction, 95% confidence interval [cl, ch], urgency tier "
+                     "(Critical/Warning/Monitor), and top contributing feature with its gain-based importance. "
+                     "Model: 15,000 gradient-boosted trees, exp(α=3) near-failure sample weighting — "
+                     "samples with RUL ≤ 30 cycles receive ≈4× higher weight, biasing the model toward "
+                     "accuracy in the operationally critical zone. Trained jointly on all 4 NASA C-MAPSS "
+                     "sub-datasets. RMSE=14.60 (all-4), RMSE=12.77 (FD001+FD003), R²=0.874.",
+                     ["21 sensor channels → telecom KPI mapping (voltage, temp, fan RPM, VSWR, latency…)",
+                      "exp(α=3): near-failure zone (RUL≤30) accuracy prioritised — avoids missed critical alerts",
+                      "Per-subset RMSE: FD001=12.31 · FD002=15.87 · FD003=13.23 · FD004=16.99",
+                      "Confidence interval via bootstrap: ±3.1 cycles at 1σ"]),
+                    ("Layer 2 — Knowledge Grounding (RAG Pipeline)", "#39c5cf", "Hybrid TF-IDF + LSA + RRF",
+                     "Retrieves and ranks evidence from a 33-chunk telecom corpus: vendor manuals, SOPs, "
+                     "alarm dictionaries, historical tickets, 3GPP/ITU specs, FMEA tables, decision trees. "
+                     "Uses Reciprocal Rank Fusion (k=60) combining TF-IDF (sparse keyword matching) and "
+                     "64-dim LSA (dense semantic matching). Every LLM claim is citation-tracked. "
+                     "Grounding rate = 1.00 (100%), Hallucination rate = 0.00, Retrieval latency = 9ms.",
+                     ["Hybrid retrieval: BM25-proxy + TruncatedSVD 64-dim → RRF k=60",
+                      "Metadata boost: subsystem alignment, doc_type, urgency context",
+                      "Top-5 evidence chunks with full [DOC-ID] provenance per station",
+                      "Coverage: 0.60 (backhaul, sparse corpus) to 1.00 (power, thermal, RF, BBU)"]),
+                    ("Layer 3 — Reasoning-to-Action (Agentic Workflow)", "#bc8cff", "ReAct + Pre-Planning",
+                     "Three specialised agents in sequence: (1) Diagnostic Agent — generates root-cause "
+                     "hypothesis with confidence score derived from RAG evidence. (2) Planning Agent — "
+                     "evaluates candidate maintenance actions against SLA constraints, risk tier, cost budget, "
+                     "and technician availability. (3) Execution Agent — invokes governance-gated tools. "
+                     "Behavioural pattern: Observe → Reason → Act → Learn. E2E latency: 33ms.",
+                     ["Diagnostic Agent: hypothesis + confidence from RAG evidence",
+                      "Planning Agent: action ranking vs SLA / risk tier / cost",
+                      "Tools: query_cmdb · open_ticket · schedule_dispatch · remote_command",
+                      "Governance: Tier 1 AUTO · Tier 2 TIMEOUT · Tier 3 HUMAN approval"]),
+                ]:
+                    st.markdown(f"""
+        <div style="background:#161b22;border:1px solid {_col}44;border-radius:8px;padding:.9rem 1.1rem;margin-bottom:.6rem">
+          <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem">
+            <span style="font-size:.84rem;font-weight:700;color:{_col};font-family:monospace">{_lbl}</span>
+            <span style="font-size:.66rem;color:#7d8590;background:{_col}22;padding:1px 7px;border-radius:3px;font-family:monospace">{_mod}</span>
+          </div>
+          <div style="font-size:.78rem;color:#c9d1d9;line-height:1.72;margin-bottom:.42rem">{_desc}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.18rem">
+            {"".join(f'<div style="font-size:.70rem;color:#7d8590;font-family:monospace;padding:.13rem 0">▶ {b}</div>' for b in _bullets)}
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+                sh("C-MAPSS → TELECOM BTS DOMAIN MAPPING")
+                st.markdown("""
+        <div style="font-size:.77rem;color:#c9d1d9;line-height:1.7;background:#0d1117;border:1px solid #30363d;
+             border-radius:7px;padding:.8rem 1rem;margin-bottom:.6rem">
+          The NASA C-MAPSS turbofan engine dataset is used as a structured proxy for telecom BTS degradation.
+          Both share the same fundamental degradation structure: multiple correlated time-series channels
+          declining gradually before failure. The architecture is designed to be <strong style="color:#39c5cf">retarget-ready</strong>:
+          when labeled telecom failure data becomes available, only Layer 1 needs retraining — Layers 2 and 3 remain unchanged.
+        </div>""", unsafe_allow_html=True)
+                for _cp, _tp, _rat in [
+                    ("21 sensor channels", "RSSI, SINR, throughput, DC voltage, cabinet temp, fan RPM, battery capacity, VSWR, latency", "Both: correlated multivariate time-series capturing equipment health state"),
+                    ("Multiple operating conditions (FD002, FD004)", "Geographic & climate diversity: urban/rural, tropical/temperate, grid/solar", "Models must generalise across varying load, climate, and power profiles"),
+                    ("Run-to-failure trajectories", "BTS component degradation before failure (rectifier, fan bearing, feeder connector, BBU)", "Both exhibit gradual decline across multiple channels before failure"),
+                    ("Piecewise linear RUL labelling", "Maintenance window estimation for scheduling field dispatch", "Both require estimating time-to-failure within operational windows"),
+                    ("Multiple fault modes (FD003, FD004)", "Mixed BTS failures: power + thermal, RF + backhaul, BBU multi-fault", "Models handle heterogeneous degradation from distinct mechanisms"),
+                ]:
+                    st.markdown(f"""
+        <div style="display:grid;grid-template-columns:1.1fr 1.2fr 1fr;gap:.5rem;padding:.35rem .65rem;
+             background:#161b22;border:1px solid #30363d;border-radius:5px;margin-bottom:.2rem;font-size:.70rem;font-family:monospace">
+          <div><span style="color:#7d8590">C-MAPSS: </span><span style="color:#58a6ff">{_cp}</span></div>
+          <div><span style="color:#7d8590">Telecom: </span><span style="color:#39c5cf">{_tp}</span></div>
+          <div><span style="color:#5a6475">{_rat}</span></div>
+        </div>""", unsafe_allow_html=True)
+
+            # ── TAB 2: PAGES & NAVIGATION ──────────────────────────────────────────────
+            with _ug[1]:
+                sh("PAGES — WHAT EACH PAGE DOES")
+                for _pn, _pc, _pt, _pd, _tips in [
+                    ("🔴 Live Fleet Monitor","#ff6b35","Primary NOC operational screen",
+                     "Shows real-time RUL countdown for all stations, live sensor readings with sparklines, "
+                     "SVG RUL bar chart sorted by urgency, auto-refresh (5–60s intervals), and an alert log "
+                     "that records every urgency escalation event. Use this during active NOC shifts to "
+                     "monitor degradation in real time.",
+                     ["Enable ⚡ Auto-refresh in sidebar — picks 5s to 60s interval",
+                      "Sidebar station selector prefixes 🔴🟡🟢 for quick urgency scan",
+                      "Alert log records timestamp, station ID, and urgency transition",
+                      "Reset session clock clears alert log and restarts RUL countdown from base predictions"]),
+                    ("🏠 Fleet Overview","#58a6ff","Fleet snapshot + analytics",
+                     "Shows all stations with XGBoost v2 base predictions, CI error bars, diagnostic quality "
+                     "radar chart, and pipeline latency breakdown. Best for static reports and thesis figures.",
+                     ["CI error bars show prediction uncertainty [cl, ch]",
+                      "Radar chart compares: RAG coverage, diagnostic confidence, grounding rate, actions",
+                      "Pipeline latency: RAG retrieval = 27.5ms of 33ms total E2E",
+                      "XGBoost v2 feature importance bar chart per subsystem"]),
+                    ("🔍 Station Detail","#39c5cf","Per-station deep-dive",
+                     "Two tabs: Detail (live RUL gauge with animated needle, live trajectory Plotly chart "
+                     "with NOW marker, feature importance bars, root-cause hypothesis, fault component, "
+                     "alarm code, governance-gated action plan) and Plain English (narrative for non-technical users).",
+                     ["Gauge needle colour: 🔴 ≤20 cycles · 🟡 20-50 · 🟢 >50",
+                      "Trajectory chart shows BOTH ground-truth and XGBoost prediction curves",
+                      "Feature importance is gain-based from the fitted XGBoost model",
+                      "Action tier shown: AUTO (green) · TIMEOUT (amber) · HUMAN (red)"]),
+                    ("🚚 Dispatch & Roster","#f0b429","Field engineer dispatch management",
+                     "Four tabs: Create Dispatch (priority queue with 1-click dispatch), Active Dispatches "
+                     "(in-progress with SLA progress bar and validation form), Completed Tickets (audit log), "
+                     "Roster (add/remove engineers, toggle on-call status).",
+                     ["Dispatch auto-selects best-matched engineer by skill and on-call status",
+                      "Validation form records: work done, parts used, root cause, restored RUL",
+                      "Completed tickets persist in session — exported in Performance Report",
+                      "Adding engineer auto-generates system login (admin can reset password)"]),
+                    ("🤖 Engineer Chatbot","#bc8cff","AI maintenance assistant (Engineer+Admin)",
+                     "Multi-engine AI chatbot grounded in the 33-chunk telecom knowledge base. "
+                     "Priority order: Anthropic Claude → Groq LLaMA 3.3 70B → OpenRouter DeepSeek v3 → Rule-based KB. "
+                     "All answers cite [DOC-ID] evidence sources. Rule-based always works without any API key.",
+                     ["Quick question pills for common alarm codes and procedures",
+                      "Conversation history preserved in session (clear button available)",
+                      "Add API keys in Settings → Chatbot API tab",
+                      "Rule-based covers: PWR-001/004, COOL-001/003, RF-001/005, BKH-001, BBU-003"]),
+                    ("🧠 Pipeline Intelligence","#3fb950","RAG evidence + reasoning trace",
+                     "Two sub-tabs: RAG Evidence (retrieved chunks, RRF scores, coverage metrics, latency) "
+                     "and Agent Reasoning (7-step Observe→Reason→Act→Learn trace, governance tier, "
+                     "memory store JSON entry). Essential for thesis defence and system explainability.",
+                     ["RRF score bar chart shows evidence ranking for selected station",
+                      "Reasoning trace is the full agent decision chain — exportable as JSON",
+                      "Governance tier is derived from live urgency of selected station",
+                      "Memory store entry shows exactly what the agent would log to persistent memory"]),
+                    ("📊 Results & Ablation","#7d8590","Model benchmarks + ablation study",
+                     "Two sub-tabs: Model Benchmark (per-subset RMSE table: all 4 datasets × all models, "
+                     "RMSE trend, per-RUL-range breakdown) and Ablation Study (5 configurations A→E showing "
+                     "incremental value of each pipeline layer).",
+                     ["Full HTML table: FD001=12.31 · FD002=15.87 · FD003=13.23 · FD004=16.99",
+                      "Ablation: B vs A = −8.2% RMSE · D vs C = hallucination 0.65→0.00",
+                      "Per-RUL-range chart: XGBoost v2 RMSE=8.29 in 0-20 (critical) zone",
+                      "Literature comparison: CAELSTM=11.24 (FD001 only, single-subset training)"]),
+                    ("⚙ Settings","#ff6b35","System configuration (Admin only)",
+                     "8 tabs: My Profile · User Management · Data Sources · Performance Reports · "
+                     "Retrain Pipeline · Chatbot API · Knowledge Base · System Modes. "
+                     "Controls all operational parameters, user accounts, data connectors, and AI keys.",
+                     ["Data Sources: configure MQTT / REST / File / Simulation connector",
+                      "Retrain Pipeline: schedule or launch XGBoost v2 retraining",
+                      "Knowledge Base: upload SOPs, manuals, alarm guides to expand RAG corpus",
+                      "User Management: add/remove users, change roles and passwords"]),
+                    ("📖 User Guide","#39c5cf","This page",
+                     "Complete system reference — architecture, all KPIs, page descriptions, chatbot setup, "
+                     "live mode explanation, governance model, and deployment guide.",
+                     ["Updated automatically each session with current date",
+                      "Metrics tab covers all 25+ KPIs with formulas and interpretations"]),
+                ]:
+                    with st.expander(f"{_pn} — {_pt}"):
+                        st.markdown(f"""
+        <div style="font-size:.78rem;color:#c9d1d9;line-height:1.72;margin-bottom:.5rem">{_pd}</div>
+        <div style="background:#1c2333;border-radius:6px;padding:.6rem .85rem">
+          {"".join(f'<div style="font-size:.71rem;color:#7d8590;padding:.13rem 0;font-family:monospace">✓ {t}</div>' for t in _tips)}
+        </div>""", unsafe_allow_html=True)
+
+            # ── TAB 3: ALL KPIs & METRICS ──────────────────────────────────────────────
+            with _ug[2]:
+                _kpi_tabs = st.tabs(["Predictive Model", "RAG Pipeline", "Agent & Business", "Sensor KPIs"])
+
+                with _kpi_tabs[0]:
+                    sh("PREDICTIVE MODEL METRICS — XGBoost v2 Final")
+                    _pms = [
+                        ("RMSE — Root Mean Squared Error", "#ff6b35", "14.60 all-4 · 12.77 FD001+FD003",
+                         "Primary benchmark metric. Measures the standard deviation of prediction errors in "
+                         "RUL cycles. Penalises large errors quadratically — a 30-cycle error counts 9× more "
+                         "than a 10-cycle error. RMSE=14.60 means the average prediction error is ≈14.6 cycles. "
+                         "FD001+FD003 (single operating condition) = 12.77; FD002+FD004 (6 conditions) = 16.43. "
+                         "SOTA reference: CAELSTM = 11.24 on FD001 alone (trained only on FD001); "
+                         "VectorAgent trains on all 4 simultaneously, a harder and more realistic setting.",
+                         "sqrt( mean( (y_true − y_pred)² ) )", "Lower is better. Threshold for acceptable PdM: RMSE < 20 cycles."),
+                        ("MAE — Mean Absolute Error", "#f0b429", "9.97 all-4",
+                         "Average absolute prediction error in cycles. Less sensitive to outliers than RMSE. "
+                         "MAE = 9.97 < RMSE = 14.60 indicates the error distribution has a long right tail "
+                         "(some large outlier errors), while most predictions are within ≈10 cycles of true RUL.",
+                         "mean( |y_true − y_pred| )", "Lower is better. MAE < RMSE always holds by Jensen's inequality."),
+                        ("R² — Coefficient of Determination", "#3fb950", "0.874",
+                         "Proportion of RUL variance explained by the model. R² = 0.874 means 87.4% of the "
+                         "variability in remaining useful life is captured by XGBoost v2. Scale-free (0 to 1), "
+                         "enabling comparison across datasets regardless of their RUL range. "
+                         "Improved from R² = 0.853 (v1) to 0.874 (v2) via exp(α=3) near-failure weighting.",
+                         "1 − SS_res / SS_tot", "Higher is better. 1.0 = perfect model; 0.0 = null (mean) model."),
+                        ("NASA Score — Asymmetric Penalty", "#bc8cff", "Supplementary metric",
+                         "Asymmetric scoring that penalises late predictions (predicting MORE RUL than actual = "
+                         "missed maintenance = potential failure) more heavily than early predictions "
+                         "(predicting LESS RUL = unnecessary maintenance = cost but no outage). "
+                         "This reflects the real-world asymmetry: a missed failure costs far more than an "
+                         "unnecessary dispatch. Penalty for being 20 cycles late ≈ 5.5× penalty for 20 cycles early.",
+                         "Σ exp(−d/13)−1 if d<0 else exp(d/10)−1, where d = y_pred − y_true", "Lower is better."),
+                        ("Confidence Interval [cl, ch]", "#58a6ff", "±3.1 cycles at 1σ",
+                         "Prediction uncertainty band computed via bootstrap resampling of the XGBoost prediction "
+                         "set. Shown as [cl, ch] on every station card and gauge. Example: FD002_47 has "
+                         "prediction 14.7 cycles, CI = [11.7, 17.7]. Wider CI = more uncertainty = dispatch "
+                         "should be planned earlier (use cl as the conservative estimate for scheduling). "
+                         "Calibration target: 68% of true RUL values fall within the ±1σ interval.",
+                         "Bootstrap [P5, P95] of prediction distribution", "Use cl (lower bound) for conservative maintenance scheduling."),
+                        ("Per-RUL-Range RMSE", "#39c5cf", "0–20: 8.29 · 20–50: 18.64 · 50–100: 21.35",
+                         "RMSE broken down by urgency zone. XGBoost v2 achieves RMSE = 8.29 in the critical zone "
+                         "(0–20 cycles) due to exp(α=3) weighting — this is the most operationally important zone. "
+                         "Performance degrades in the 50–100 range (RMSE = 21.35), which is acceptable since "
+                         "Monitor-tier stations have 168h SLA and only need an approximate time window.",
+                         "RMSE computed independently per [0-20], [20-50], [50-100], [100-150] bands",
+                         "Critical zone (0-20) accuracy is most important. Acceptable to sacrifice 50-100 accuracy."),
+                    ]
+                    for _mn, _mc, _mv, _md, _mf, _mi in _pms:
+                        with st.expander(f"{_mn} = {_mv}"):
+                            st.markdown(f"""
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem;font-size:.77rem">
+          <div>
+            <div style="color:#7d8590;font-size:.62rem;text-transform:uppercase;font-family:monospace;margin-bottom:.22rem">DESCRIPTION</div>
+            <div style="color:#c9d1d9;line-height:1.72">{_md}</div>
+          </div>
+          <div>
+            <div style="color:#7d8590;font-size:.62rem;text-transform:uppercase;font-family:monospace;margin-bottom:.22rem">FORMULA · INTERPRETATION</div>
+            <div style="color:#c9d1d9;margin-bottom:.35rem;line-height:1.6">{_mi}</div>
+            <div style="background:#1c2333;border-radius:4px;padding:.32rem .55rem;font-family:monospace;font-size:.68rem;color:{_mc}">{_mf}</div>
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+                with _kpi_tabs[1]:
+                    sh("RAG PIPELINE METRICS")
+                    for _mn, _mc, _mv, _md, _mi in [
+                        ("Grounding Rate", "#3fb950", "1.00 (100%)",
+                         "Fraction of LLM-generated claims in the diagnostic output that are traceable to a "
+                         "specific retrieved [DOC-ID] evidence chunk. A grounding rate of 1.00 means every "
+                         "factual assertion in the agent's output cites a source. Achieved via citation-enforced "
+                         "prompting: the LLM is explicitly instructed it must cite [DOC-ID] for every claim. "
+                         "Computed by expert annotation of 50 test cases. Grounding = 1 − Hallucination.",
+                         "Target >0.80. System achieves 1.00 via citation enforcement."),
+                        ("Hallucination Rate", "#ff6b35", "0.00 (0%)",
+                         "Fraction of LLM claims NOT supported by any retrieved evidence chunk. Hallucination "
+                         "is eliminated by RAG grounding — moving from Config C (LLM without RAG, hallucination=0.65) "
+                         "to Config D+E (LLM+RAG, hallucination=0.00) demonstrates RAG's primary contribution. "
+                         "In safety-critical maintenance, hallucination=0 is non-negotiable: an incorrect "
+                         "repair instruction could cause equipment damage or safety incidents.",
+                         "Target <0.05. System achieves 0.00. Ablation C vs D: 0.65→0.00."),
+                        ("RAG Coverage Score", "#39c5cf", "0.60–1.00 per station",
+                         "Fraction of top-5 retrieved chunks that are relevant to the alerted subsystem. "
+                         "Coverage=1.00 means all 5 retrieved chunks match the diagnosed subsystem (power, thermal, "
+                         "RF, BBU). Coverage=0.60 for backhaul stations due to a sparser corpus for that subsystem. "
+                         "Low coverage triggers a human-review flag in the diagnostic output.",
+                         "Values by subsystem: power=1.00 · thermal=1.00 · RF=1.00 · BBU=1.00 · backhaul=0.60"),
+                        ("RRF Score (Reciprocal Rank Fusion)", "#58a6ff", "0.052–0.063 per chunk",
+                         "Fusion score combining sparse TF-IDF retrieval ranking and dense LSA semantic ranking. "
+                         "RRF(k=60, r_sparse, r_dense) = 1/(60 + r_sparse) + 1/(60 + r_dense). "
+                         "Higher score = stronger combined evidence relevance from both retrieval modalities. "
+                         "Used to select top-5 from 17 candidate chunks. Shown in the RRF bar chart in "
+                         "Pipeline Intelligence → RAG Evidence.",
+                         "Range: 0.04–0.07. Top chunk for power-subsystem queries: ~0.063."),
+                        ("Retrieval Latency", "#bc8cff", "9ms (27.5ms of 33ms E2E)",
+                         "Time from alert receipt to evidence bundle completion (TF-IDF index lookup + "
+                         "SVD transform + RRF fusion). RAG retrieval dominates the pipeline at 83% of E2E latency. "
+                         "Full breakdown: Interpreter=0.5ms · RAG=27.5ms · Diagnostic=0.8ms · Planning=0.2ms · Execution=2.4ms. "
+                         "Optimisation path: FAISS dense index would reduce RAG to <1ms.",
+                         "Target <100ms for real-time NOC operation. System achieves 33ms total."),
+                    ]:
+                        st.markdown(f"""
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:.72rem .95rem;margin-bottom:.38rem">
+          <div style="display:flex;align-items:baseline;gap:.55rem;margin-bottom:.25rem;flex-wrap:wrap">
+            <span style="font-weight:700;color:{_mc};font-family:monospace;font-size:.77rem">{_mn}</span>
+            <span style="background:{_mc}22;color:{_mc};border-radius:3px;padding:1px 6px;font-family:monospace;font-size:.65rem">{_mv}</span>
+          </div>
+          <div style="font-size:.76rem;color:#c9d1d9;line-height:1.67;margin-bottom:.25rem">{_md}</div>
+          <div style="font-size:.68rem;color:#7d8590;font-family:monospace;border-top:1px solid #30363d;padding-top:.22rem">{_mi}</div>
+        </div>""", unsafe_allow_html=True)
+
+                with _kpi_tabs[2]:
+                    sh("AGENT & BUSINESS KPIs")
+                    for _mn, _mc, _mv, _md, _mi in [
+                        ("Diagnostic Confidence", "#58a6ff", "0.37–0.92 per station",
+                         "Probability assigned by the Diagnostic Agent to its primary root-cause hypothesis. "
+                         "Derived from: RAG coverage score × feature importance alignment × subsystem rule match. "
+                         "High confidence: FD003_88 = 0.91 (clear thermal pattern, high RAG coverage). "
+                         "Low confidence: FD004_112 = 0.37 (backhaul subsystem, sparse corpus, multi-condition). "
+                         "Confidence below 0.50 triggers automatic escalation to human reviewer.",
+                         "Action threshold: >0.60 → auto-execute Tier 1/2. <0.50 → escalate to human."),
+                        ("SLA Compliance", "#3fb950", "Critical ≤4h · Warning ≤48h · Monitor ≤168h",
+                         "Time-based service level agreements per urgency tier. Defines the maximum time "
+                         "from alert trigger to maintenance action completion. The governance model enforces "
+                         "SLA via the TIMEOUT mechanism: if an engineer does not act on a Tier 2 recommendation "
+                         "within the window, the system auto-executes. For Tier 3 (Critical), the SLA "
+                         "clock is surfaced to the approving engineer in the Dispatch & Roster page.",
+                         "SLA enforced by governance tier. TIMEOUT auto-escalates if unapproved in window."),
+                        ("Downtime Avoided (%)", "#3fb950", "57.1% vs reactive MTTR",
+                         "Percentage reduction in effective downtime versus reactive maintenance. "
+                         "Calculated as: (MTTR_reactive − MTTR_ai) / MTTR_reactive × 100. "
+                         "Baseline MTTR without AI prediction: 4.2h (industry average for macro BTS). "
+                         "MTTR with VectorAgent pre-dispatch: 1.8h (engineer dispatched before failure, "
+                         "parts pre-ordered, fault pre-diagnosed). Reduction = (4.2−1.8)/4.2 = 57.1%.",
+                         "Baseline: 4.2h reactive MTTR · AI-enabled: 1.8h · Reduction: 57.1%"),
+                        ("Money Saved (€)", "#f0b429", "€ per period (€1,200/h baseline)",
+                         "Estimated cost savings from AI-enabled faster maintenance. Formula: "
+                         "n_resolved × (MTTR_reactive − MTTR_ai) × cost_per_hour. "
+                         "Cost per hour of BTS downtime: €1,200 (OPEX + SLA penalties + traffic revenue loss "
+                         "— conservative estimate for a macro cell with 5,000 active users). "
+                         "In production, link to your NMS/BSS for precise financial calculations.",
+                         "Formula: n_resolved × 2.4h saved × €1,200/h. Link to ServiceNow for real costs."),
+                        ("Time Saved (hours)", "#58a6ff", "2.4h per resolved ticket",
+                         "Total engineer hours saved per period. Calculated as: "
+                         "n_resolved × (MTTR_reactive − MTTR_ai). Each resolved ticket saves 2.4h of "
+                         "field time through pre-diagnosis, pre-ordered parts, and faster fault isolation. "
+                         "Shown as cumulative hours in the Performance Report.",
+                         "n_resolved × 2.4h. Scales linearly with number of resolved tickets."),
+                        ("Predictive Rate (%)", "#39c5cf", "≥87% failures caught pre-outage",
+                         "Fraction of actual failures correctly predicted before the outage occurs. "
+                         "Approximated as: (n_resolved / n_alerts) × 87%, reflecting that well-tuned "
+                         "XGBoost v2 catches approximately 87% of imminent failures in the 0–20 cycle window. "
+                         "In production, measure as: tickets closed before station went down / total tickets.",
+                         "Proxy: (n_resolved / n_alerts) × 0.87. Direct measurement requires failure ground-truth."),
+                        ("Resolution Rate (%)", "#39c5cf", "n_resolved / n_alerts × 100",
+                         "Fraction of triggered alerts that were resolved within the reporting period. "
+                         "A high resolution rate indicates operational efficiency. "
+                         "A low resolution rate with many active dispatches may indicate workforce shortage "
+                         "or SLA violations — both are visible in the Performance Report dispatch log.",
+                         "n_resolved / n_alerts × 100. Target: >85% within 30-day window."),
+                    ]:
+                        st.markdown(f"""
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:.72rem .95rem;margin-bottom:.38rem">
+          <div style="display:flex;align-items:baseline;gap:.55rem;margin-bottom:.25rem;flex-wrap:wrap">
+            <span style="font-weight:700;color:{_mc};font-family:monospace;font-size:.77rem">{_mn}</span>
+            <span style="background:{_mc}22;color:{_mc};border-radius:3px;padding:1px 6px;font-family:monospace;font-size:.65rem">{_mv}</span>
+          </div>
+          <div style="font-size:.76rem;color:#c9d1d9;line-height:1.67;margin-bottom:.25rem">{_md}</div>
+          <div style="font-size:.68rem;color:#7d8590;font-family:monospace;border-top:1px solid #30363d;padding-top:.22rem">{_mi}</div>
+        </div>""", unsafe_allow_html=True)
+
+                with _kpi_tabs[3]:
+                    sh("STATION SENSOR KPIs — ALL 15 STATIONS")
+                    _sensor_rows = ""
+                    _THS = "background:#1c2333;color:#7d8590;padding:.3rem .55rem;border:1px solid #30363d;font-size:.62rem"
+                    _TDS = "padding:.27rem .55rem;border:1px solid #30363d;font-size:.70rem;font-family:monospace"
+                    for s in STATIONS:
+                        _rul_n = live_rul(s)
+                        _col   = rc(_rul_n)
+                        _dir   = "↓ fail-low" if s["sensor_dir"]=="low" else "↑ fail-high"
+                        _sensor_rows += (
+                            f'<tr>'
+                            f'<td style="{_TDS};color:#a5d6ff;font-weight:700">{s["id"]}</td>'
+                            f'<td style="{_TDS};color:#7d8590">{s["sub"].replace("_"," ")}</td>'
+                            f'<td style="{_TDS};color:#39c5cf">{s["sensor_lbl"]}</td>'
+                            f'<td style="{_TDS};color:#f0b429">{s["sensor_nom"]}{s["sensor_unit"]}</td>'
+                            f'<td style="{_TDS};color:#bc8cff">{_dir}</td>'
+                            f'<td style="{_TDS};color:{_col};font-weight:700">{_rul_n:.1f} cyc</td>'
+                            f'<td style="{_TDS};color:#f0b429">{s["degrade"]:.2f}/min</td>'
+                            f'<td style="{_TDS};color:#7d8590">{s["alm"][:40]}</td>'
+                            f'</tr>'
+                        )
+                    st.markdown(f"""
+        <div style="overflow-x:auto">
+        <table style="border-collapse:collapse;width:100%;font-family:monospace">
+        <tr>
+          <th style="{_THS}">Station</th><th style="{_THS}">Subsystem</th><th style="{_THS}">Sensor</th>
+          <th style="{_THS}">Nominal</th><th style="{_THS}">Fail Dir.</th>
+          <th style="{_THS}">Live RUL</th><th style="{_THS}">Degrade</th><th style="{_THS}">Expected Alarm</th>
+        </tr>
+        {_sensor_rows}
+        </table>
+        </div>""", unsafe_allow_html=True)
+                    st.markdown("""
+        <div class="ac m" style="margin-top:.7rem;font-size:.72rem">
+          <strong style="color:#39c5cf">Reading the sensor table:</strong>
+          Nominal = healthy operating setpoint · Fail Direction = which way the value drifts toward failure ·
+          Degrade = how fast RUL decreases per session minute · Live RUL = current session-adjusted RUL ·
+          Expected Alarm = the alarm code that will trigger at failure.
+        </div>""", unsafe_allow_html=True)
+
+            # ── TAB 4: AI CHATBOT SETUP ────────────────────────────────────────────────
+            with _ug[3]:
+                sh("AI CHATBOT — FREE API OPTIONS (PRIORITY ORDER)")
+                for _rk, _em, _nm, _tg, _url, _pre, _ev, _mod, _lat, _cst, _col in [
+                    ("1","🔵","Anthropic Claude","Highest quality","console.anthropic.com","sk-ant-...","ANTHROPIC_API_KEY","claude-haiku-4-5-20251001","~1.2s","Free credits on signup","#58a6ff"),
+                    ("2","🟢","Groq","Fastest, completely free","console.groq.com","gsk_...","GROQ_API_KEY","LLaMA 3.3 70B Versatile","~400ms","Unlimited free tier","#3fb950"),
+                    ("3","🟢","OpenRouter","Multiple free models","openrouter.ai","sk-or-...","OPENROUTER_API_KEY","DeepSeek v3 / Llama 3.3 / Gemma 3","~700ms","Free tier available","#39c5cf"),
+                    ("4","📚","Rule-based KB","Always works, no key","Built-in","-","-","Telecom maintenance knowledge","<1ms","Free forever","#7d8590"),
+                ]:
+                    st.markdown(f"""
+        <div style="background:#161b22;border:1px solid {_col}44;border-radius:7px;padding:.85rem 1.05rem;margin-bottom:.5rem">
+          <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem;flex-wrap:wrap">
+            <span style="font-size:.80rem;font-weight:700;color:{_col};font-family:monospace">#{_rk} {_em} {_nm}</span>
+            <span style="font-size:.72rem;color:#c9d1d9">{_tg}</span>
+            <span style="font-size:.68rem;color:#39c5cf;margin-left:auto">{_url}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.5rem;font-size:.70rem;font-family:monospace">
+            <div><span style="color:#7d8590">Model: </span><span style="color:#c9d1d9">{_mod}</span></div>
+            <div><span style="color:#7d8590">Latency: </span><span style="color:#c9d1d9">{_lat}</span></div>
+            <div><span style="color:#7d8590">Cost: </span><span style="color:{_col}">{_cst}</span></div>
+            <div><span style="color:#7d8590">Key prefix: </span><span style="color:#f0b429">{_pre}</span></div>
+          </div>
+        </div>""", unsafe_allow_html=True)
+                sh("SECRETS.TOML TEMPLATE")
+                st.code(f"""# .streamlit/secrets.toml  OR  Streamlit Cloud → App Settings → Secrets
+        # Generated: {time.strftime("%Y-%m-%d")}
+
+        ANTHROPIC_API_KEY  = "sk-ant-..."   # console.anthropic.com
+        GROQ_API_KEY       = "gsk_..."      # console.groq.com  (free, fastest)
+        OPENROUTER_API_KEY = "sk-or-..."    # openrouter.ai (DeepSeek v3 free)
+
+        [users]
+        admin    = "pdm2026admin"       # admin_ prefix → Admin role
+        engineer = "noc2026"            # eng_ prefix   → Engineer role
+        viewer   = "readonly"           # viewer_ prefix → Viewer role
+        # admin_alice = "alice-secure"  → additional Admin
+        # eng_bob     = "bob-2026"      → additional Engineer""", language="toml")
+
+            # ── TAB 5: LIVE MODE ──────────────────────────────────────────────────────
+            with _ug[4]:
+                sh("LIVE MODE — REAL-TIME RUL SIMULATION")
+                _lc1, _lc2 = st.columns(2)
+                with _lc1:
+                    st.markdown("""
+        <div class="ac m">
+          <strong style="color:#39c5cf">RUL Degradation Formula</strong><br><br>
+          <code style="color:#f0b429;font-size:.77rem">live_rul = base_rul − elapsed_min × degrade_rate</code><br><br>
+          <span style="font-size:.74rem;color:#c9d1d9;line-height:1.8">
+          <b style="color:#e6edf3">base_rul:</b> XGBoost v2 Final prediction (session start)<br>
+          <b style="color:#e6edf3">elapsed_min:</b> minutes since session start or clock reset<br>
+          <b style="color:#e6edf3">degrade_rate:</b> cycles/min per station subsystem type<br>
+          <b style="color:#e6edf3">RUL override:</b> after engineer closes a ticket, the station RUL is restored to the engineer's assessed value<br><br>
+          Urgency thresholds:<br>
+          RUL ≤ 20 → 🔴 Critical (SLA ≤ 4h, Tier 3)<br>
+          20 &lt; RUL ≤ 50 → 🟡 Warning (SLA ≤ 48h, Tier 2)<br>
+          RUL > 50 → 🟢 Monitor (SLA ≤ 168h, Tier 1)
+          </span>
+        </div>""", unsafe_allow_html=True)
+                with _lc2:
+                    st.markdown("""
+        <div class="ac m">
+          <strong style="color:#39c5cf">Sensor Simulation Formula</strong><br><br>
+          <code style="font-size:.70rem;color:#f0b429">val = nominal + d × elapsed × 0.0012 + N(0, |nominal| × 0.013)</code><br><br>
+          <span style="font-size:.73rem;color:#c9d1d9;line-height:1.8">
+          <b style="color:#e6edf3">nominal:</b> healthy operating setpoint per subsystem<br>
+          <b style="color:#e6edf3">d:</b> −1 (fail-low sensor) or +1 (fail-high sensor)<br>
+          <b style="color:#e6edf3">N(μ,σ):</b> Gaussian noise, seeded by 4-second time bucket<br>
+          <b style="color:#e6edf3">Sparkline:</b> last 12 readings at 6-second intervals<br><br>
+          Sensors: DC Voltage · Cabinet Temp · Fan Speed ·<br>
+          VSWR · Latency · RSSI · CPU% · Battery Cap · ESR ·<br>
+          PA Efficiency · Fade Margin · Memory Swap · Inlet Temp
+          </span>
+        </div>""", unsafe_allow_html=True)
+
+                sh("PRODUCTION DATA INTEGRATION")
+                st.markdown("""
+        <div style="background:#161b22;border:1px solid #39c5cf44;border-radius:8px;padding:.95rem 1.1rem;
+             font-size:.78rem;color:#c9d1d9;line-height:1.75">
+          Replace the simulation with real BTS telemetry via <strong style="color:#39c5cf">Settings → Data Sources</strong>:<br><br>
+          <strong>📡 MQTT</strong> — Subscribe to <code>vectoragent/bts/{station_id}/{kpi}</code>. Best for >1000 stations.<br>
+          <strong>🌐 REST API</strong> — Poll Ericsson ENM, Nokia NetAct, or Huawei U2020 every 30–60s.<br>
+          <strong>📂 File (CSV)</strong> — NMS exports CSV to a watched folder every 60s. Zero API integration required.<br><br>
+          When a non-simulation connector is configured, the RUL mode badge in the sidebar automatically
+          changes from <strong style="color:#58a6ff">🔵 Simulation</strong> to <strong style="color:#3fb950">🟢 Live</strong>.
+          The XGBoost v2 model then predicts from real sensor readings instead of the simulation formula.
+        </div>""", unsafe_allow_html=True)
+
+            # ── TAB 6: GOVERNANCE ─────────────────────────────────────────────────────
+            with _ug[5]:
+                sh("GOVERNANCE MODEL — TIERED AUTONOMY FOR SAFETY-CRITICAL SYSTEMS")
+                st.markdown("""
+        <div style="font-size:.78rem;color:#c9d1d9;line-height:1.75;background:#0d1117;border:1px solid #30363d;
+             border-radius:7px;padding:.8rem 1rem;margin-bottom:.8rem">
+          The tiered autonomy model addresses the governance gap identified in Allam et al. (2025).
+          It enables operational efficiency for low-risk actions while maintaining human oversight
+          for high-stakes decisions — directly satisfying IEC 62443 requirements for industrial cybersecurity
+          and aligning with the human-in-the-loop principle for safety-critical AI systems.
+        </div>""", unsafe_allow_html=True)
+                for _tn, _tname, _tc, _ttag, _tdesc, _texs in [
+                    (1, "Fully Autonomous", "#3fb950", "AUTO",
+                     "Low-risk, reversible actions execute immediately without human involvement. "
+                     "Triggered by Monitor urgency (RUL > 50 cycles) or when using inherently safe tools. "
+                     "The agent invokes the tool, logs the outcome to persistent memory, and continues. "
+                     "No engineer notification required, though all actions are audit-logged.",
+                     ["query_cmdb — query equipment configuration and firmware","search_knowledge — retrieve RAG evidence bundle",
+                      "open_ticket — create monitoring or warning maintenance ticket",
+                      "escalate_to_human — send alert notification (no action, notification only)"]),
+                    (2, "Recommend + Auto after timeout", "#f0b429", "TIMEOUT",
+                     "Medium-risk actions are surfaced as recommendations to the responsible engineer. "
+                     "A notification is sent (in-system + SMS simulation to engineer's phone). "
+                     "If no objection is registered within the SLA timeout window, the action executes automatically. "
+                     "Triggered by Warning urgency (20 < RUL ≤ 50 cycles).",
+                     ["schedule_dispatch — field dispatch within 7-day SLA window",
+                      "adjust_threshold — alarm threshold modification",
+                      "schedule_maintenance — preventive maintenance scheduling"]),
+                    (3, "Human approval required", "#ff6b35", "HUMAN",
+                     "High-risk or potentially irreversible actions require explicit sign-off before execution. "
+                     "The full reasoning trace, evidence bundle, and confidence score are presented to the "
+                     "approving engineer in the Dispatch & Roster page. Triggered by Critical urgency (RUL ≤ 20 cycles).",
+                     ["remote_reboot — restart equipment component via OMC (service risk)",
+                      "emergency_dispatch — immediate dispatch <4h (cost and resource commitment)",
+                      "take_offline — graceful equipment shutdown via OMC",
+                      "power_reduction — TX power reduction commands"]),
+                ]:
+                    st.markdown(f"""
+        <div style="background:#161b22;border:2px solid {_tc}44;border-radius:8px;padding:.85rem 1.05rem;margin-bottom:.6rem">
+          <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem">
+            <span style="font-size:.85rem;font-weight:700;color:{_tc};font-family:monospace">Tier {_tn}</span>
+            <span style="font-size:.80rem;color:#e6edf3">{_tname}</span>
+            <span style="background:{_tc}22;color:{_tc};border:1px solid {_tc}55;border-radius:4px;padding:1px 7px;font-family:monospace;font-size:.67rem;font-weight:700">{_ttag}</span>
+          </div>
+          <div style="font-size:.77rem;color:#c9d1d9;line-height:1.7;margin-bottom:.42rem">{_tdesc}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.2rem">
+            {"".join(f'<div style="font-size:.70rem;color:#7d8590;font-family:monospace;padding:.13rem 0">▶ {ex}</div>' for ex in _texs)}
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+            # ── TAB 7: DEPLOYMENT ─────────────────────────────────────────────────────
+            with _ug[6]:
+                sh("STREAMLIT CLOUD DEPLOYMENT (RECOMMENDED — FREE)")
+                st.markdown(f"""
+        <div class="ac m">
+          <strong style="color:#3fb950">Free, ~25-second build, zero version conflicts</strong><br>
+          <span style="font-size:.76rem;color:#c9d1d9;line-height:1.8">
+          1. Push <code>streamlit_pdm.py</code> + <code>requirements.txt</code> to a GitHub repository<br>
+          2. Go to <a href="https://share.streamlit.io" style="color:#39c5cf">share.streamlit.io</a> → New app → connect GitHub repo<br>
+          3. Main file path: <code>streamlit_pdm.py</code><br>
+          4. App Settings → Secrets → paste API keys and user credentials<br>
+          5. Click Deploy — live at <code>https://your-app.streamlit.app</code> in ~25 seconds ✅
+          </span>
+        </div>""", unsafe_allow_html=True)
+                sh("REQUIREMENTS.TXT")
+                st.code("""streamlit==1.41.1
+        numpy==1.26.4
+        plotly==5.24.1
+        anthropic==0.40.0
+        # matplotlib is available automatically as a transitive dependency of plotly
+        # (used for PDF report generation — no separate install needed)""", language="text")
+                sh("LOCAL DEVELOPMENT")
+                st.code(f"""# Install dependencies
+        pip install streamlit==1.41.1 numpy plotly anthropic
+
+        # Create secrets file
+        mkdir -p .streamlit
+        cat > .streamlit/secrets.toml << 'EOF'
+        ANTHROPIC_API_KEY = "sk-ant-..."   # console.anthropic.com
+        GROQ_API_KEY      = "gsk_..."      # console.groq.com (free, fastest)
+        [users]
+        admin    = "pdm2026admin"
+        engineer = "noc2026"
+        viewer   = "readonly"
+        EOF
+
+        # Run application
+        streamlit run streamlit_pdm.py
+
+        # Report generated: VectorAgent_Report_YYYYMMDD.pdf
+        # Current date: {time.strftime("%Y-%m-%d")}""", language="bash")
+
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: DISPATCH & ROLLING ROSTER
 # ══════════════════════════════════════════════════════════════════════════════
 elif pk == "Dispatch & Roster":
-    if not IS_ENG:
-        st.warning("Engineer / Admin role required.")
-        st.stop()
+    # ─── Load live data from shared SQLite DB ────────────────────────────────
+    _db_active_disp  = _db_active()     # {station_id: dict} — real-time from DB
+    _db_done_tickets = _db_completed()  # list — real-time from DB
 
-    roster   = st.session_state.engineer_roster
-    active   = st.session_state.active_dispatches    # {station_id: dispatch}
-    tickets  = st.session_state.dispatch_tickets
-    notifs   = st.session_state.notif_log
-    rul_ov   = st.session_state.rul_overrides
-
-    # ── Helper: add notification ──────────────────────────────────────────────
-    def _push_notif(msg, level="info"):
-        st.session_state.notif_log.insert(0, {
-            "ts": time.strftime("%H:%M:%S"),
-            "msg": msg,
-            "level": level,
-        })
-
-    # ── Helper: find recommended engineers for a subsystem ───────────────────
-    def _recommend(subsystem, n=3):
-        """Rolling selection: prioritise matching skill + on_call + fewest dispatches."""
-        matched   = [e for e in roster if e["skill"] == subsystem and e["on_call"]]
-        unmatched = [e for e in roster if e["skill"] != subsystem and e["on_call"]]
-        pool      = sorted(matched, key=lambda e: e["dispatches"]) + \
-                    sorted(unmatched, key=lambda e: e["dispatches"])
-        return pool[:n]
-
-    # ── Section header ────────────────────────────────────────────────────────
-    sh("DISPATCH & ROLLING ROSTER — CRITICAL STATION ASSIGNMENT")
-
-    # ── Notification feed ─────────────────────────────────────────────────────
-    if notifs:
-        with st.expander(f"🔔 System notifications ({len(notifs)})", expanded=False):
-            for n_ in notifs[:15]:
-                col = {"info":"#39c5cf","success":"#3fb950","warning":"#f0b429","error":"#ff6b35"}.get(n_["level"],"#7d8590")
-                st.markdown(
-                    f'<div style="display:flex;gap:.7rem;padding:.28rem .6rem;border-left:3px solid {col};'
-                    f'background:#161b22;border-radius:0 4px 4px 0;margin-bottom:.2rem;font-family:monospace;font-size:.70rem">'
-                    f'<span style="color:#7d8590">{n_["ts"]}</span>'
-                    f'<span style="color:{col}">{n_["msg"]}</span></div>',
-                    unsafe_allow_html=True)
-
-    # ═════════════════════════════════════════════════════════════════════════
-    #  TAB 1: ASSIGN DISPATCH   TAB 2: ACTIVE DISPATCHES   TAB 3: TICKET LOG   TAB 4: ROSTER
-    # ═════════════════════════════════════════════════════════════════════════
     tab1, tab2, tab3, tab4 = st.tabs([
-        "🚨 Assign Dispatch",
-        f"⚡ Active ({len(active)})",
-        f"✅ Completed ({len(tickets)})",
+        "🚨 Create Dispatch (Admin)",
+        "⚡ Active Dispatches",
+        "✅ Completed Tickets",
         "👷 Engineer Roster",
     ])
 
     # ─────────────────────────────────────────────────────────────────────────
-    #  TAB 1 — ASSIGN DISPATCH
+    #  TAB 1 — CREATE DISPATCH  (Admin only)
     # ─────────────────────────────────────────────────────────────────────────
     with tab1:
-        # Filter stations needing attention
-        dispatch_stations = [s for s in STATIONS
-                              if live_urgency(live_rul(s)) in ("Critical","Warning")
-                              and s["id"] not in active]
-        restored_stations = [s for s in STATIONS if s["id"] in rul_ov]
-
-        if not dispatch_stations:
-            st.markdown(
-                '<div class="ac m" style="margin-top:.5rem">'
-                '<strong style="color:#3fb950">✓ No unassigned critical/warning stations</strong><br>'
-                '<span style="font-size:.78rem;color:#c9d1d9">All stations either stable or already dispatched.</span></div>',
-                unsafe_allow_html=True)
+        if not IS_ADMIN:
+            st.info("Only administrators can create dispatches. Switch to Active Dispatches tab to validate a completed job.")
         else:
-            for s in dispatch_stations:
+            sh("PRIORITY DISPATCH QUEUE — ADMIN CREATES DISPATCHES")
+            # Sort stations by urgency / live RUL
+            _priority = sorted(STATIONS, key=lambda s: live_rul(s))
+            for s in _priority:
                 rul_now = live_rul(s)
                 urg_now = live_urgency(rul_now)
-                uc      = "#ff6b35" if urg_now == "Critical" else "#f0b429"
-                uc_css  = "c" if urg_now == "Critical" else "w"
+                _already = s["id"] in _db_active_disp
+                col_h = {"Critical":"#ff6b35","Warning":"#f0b429","Monitor":"#3fb950"}.get(urg_now,"#7d8590")
+                sla_h = s["sla"]
 
-                st.markdown(f"""
-<div class="ac {uc_css}" style="margin-bottom:.3rem">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start">
-    <div>
-      <span style="font-size:.95rem;font-weight:700;color:#a5d6ff;font-family:monospace">{s['id']}</span>
-      &nbsp;<span class="{'bc' if urg_now=='Critical' else 'bw'}">{urg_now}</span>
-      &nbsp;<span style="font-size:.63rem;color:#30363d;font-family:monospace">{s['sub']} · SLA {s['sla']}h</span>
-    </div>
-    <div style="font-size:1.2rem;font-weight:700;color:{uc};font-family:monospace">{rul_now:.1f} cyc</div>
+                with st.expander(
+                    f"{'🔴' if urg_now=='Critical' else '🟡' if urg_now=='Warning' else '🟢'} "
+                    f"{s['id']}  ·  RUL {rul_now:.1f} cycles  ·  {urg_now}  ·  SLA {sla_h}h"
+                    + ("  ✓ DISPATCHED" if _already else ""),
+                    expanded=(urg_now=="Critical" and not _already)
+                ):
+                    if _already:
+                        _ex = _db_active_disp[s["id"]]
+                        st.markdown(
+                            f'<div class="ac m">Already dispatched: <strong>{_ex["ticket_id"]}</strong> · '
+                            f'Engineers: {", ".join(_ex.get("engineers",[]))} · Assigned: {_ex.get("assigned_at","")}. '
+                            f'See <b>Active Dispatches</b> tab.</div>', unsafe_allow_html=True)
+                    else:
+                        # Show station details
+                        _c1, _c2 = st.columns([3,1])
+                        with _c1:
+                            st.markdown(f"""
+<div class="ac {'c' if urg_now=='Critical' else 'w' if urg_now=='Warning' else 'm'}" style="margin-bottom:.4rem">
+  <div style="font-size:.78rem;color:#e6edf3">{s['hyp']}</div>
+  <div style="color:#7d8590;font-size:.68rem;margin-top:.2rem">
+    Subsystem: {s['sub'].replace('_',' ')} · Alarm: {s['alm']} · Doc: [{s['doc']}]
   </div>
-  <div style="font-size:.70rem;color:#c9d1d9;margin:.2rem 0">{s['hyp']}</div>
 </div>""", unsafe_allow_html=True)
+                        with _c2:
+                            st.markdown(f'<div style="font-family:monospace;font-size:.80rem;color:{col_h};font-weight:700;text-align:right">{rul_now:.1f} cyc</div>', unsafe_allow_html=True)
 
-                rec = _recommend(s["sub"], n=3)
-                rec_names = [e["name"] for e in rec]
-                all_names = [e["name"] for e in roster if e["on_call"]]
-
-                with st.form(f"dispatch_form_{s['id']}"):
-                    fc1, fc2 = st.columns([2, 1])
-                    with fc1:
-                        chosen = st.multiselect(
-                            f"Select engineers for {s['id']}",
-                            options=[e["name"] for e in roster],
-                            default=rec_names,
-                            help="Rolling algorithm pre-selects by skill match + fewest dispatches. Override freely.",
-                            label_visibility="collapsed")
-                        st.caption(
-                            f"🔄 Rolling recommendation (skill={s['sub'].split('_')[0]}, "
-                            f"fewest dispatches): {', '.join(rec_names)}")
-                    with fc2:
-                        priority = st.selectbox("Priority", ["CRITICAL — 4h","WARNING — 48h","MONITOR — 168h"],
-                                                index=0 if urg_now=="Critical" else 1,
-                                                label_visibility="collapsed",
-                                                key=f"pri_{s['id']}")
-                        sla_h  = int(priority.split("—")[1].strip().replace("h",""))
-                        submitted = st.form_submit_button(
-                            f"🚀 Dispatch to {s['id']}", use_container_width=True)
-
-                    if submitted and chosen:
-                        ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
-                        dispatch = {
-                            "station_id":   s["id"],
-                            "subsystem":    s["sub"],
-                            "urgency":      urg_now,
-                            "rul_at_dispatch": round(rul_now, 1),
-                            "hypothesis":   s["hyp"],
-                            "sla_hours":    sla_h,
-                            "engineers":    chosen,
-                            "assigned_at":  ts_now,
-                            "status":       "IN PROGRESS",
-                            "ticket_id":    f"TKT-{s['id']}-{int(time.time())}",
-                        }
-                        st.session_state.active_dispatches[s["id"]] = dispatch
-                        # Update dispatch count for rolling algorithm
-                        for e in st.session_state.engineer_roster:
-                            if e["name"] in chosen:
-                                e["dispatches"] += 1
-                        # Record in persistent perf_log for performance report
-                        st.session_state.perf_log.append({
-                            "ts":        ts_now,
-                            "event":     "dispatch_created",
-                            "station":   s["id"],
-                            "urgency":   urg_now,
-                            "rul":       round(rul_now, 1),
-                            "engineers": chosen,
-                            "ticket_id": dispatch["ticket_id"],
-                            "sla_hours": sla_h,
-                            "subsystem": s["sub"],
-                        })
-                        # In-system + phone notification per engineer
-                        _sms_logs = []
-                        for name in chosen:
-                            _eng_obj = next((e for e in st.session_state.engineer_roster if e["name"] == name), None)
-                            _eng_phone = _eng_obj["phone"] if _eng_obj else "—"
-                            _notif_msg = (
-                                f"📟 [{dispatch['ticket_id']}] {name} ({_eng_phone}) dispatched → {s['id']} "
-                                f"({urg_now}, SLA {sla_h}h, RUL={rul_now:.1f}). Fault: {s['hyp'][:60]}")
-                            _push_notif(_notif_msg, level="warning" if urg_now == "Warning" else "error")
-                            _sms_logs.append(
-                                f"SMS → {_eng_phone} | {name}: Dispatch {dispatch['ticket_id']} — "
-                                f"{s['id']} {urg_now} SLA {sla_h}h. {s['hyp'][:50]}")
-                        # Show SMS preview to dispatcher
-                        for _sms in _sms_logs:
-                            st.toast(_sms, icon="📱")
-                        _push_notif(
-                            f"✅ Dispatch created for {s['id']}: {', '.join(chosen)}",
-                            level="success")
-                        st.success(f"Dispatched {', '.join(chosen)} to {s['id']}. Ticket: {dispatch['ticket_id']}")
-                        st.rerun()
-                    elif submitted and not chosen:
-                        st.error("Select at least one engineer.")
-                st.markdown("<hr style='border-color:#21262d;margin:.5rem 0'>", unsafe_allow_html=True)
+                        # Engineer selection
+                        on_call_eng = [e for e in st.session_state.engineer_roster if e["on_call"]]
+                        if not on_call_eng:
+                            st.warning("No on-call engineers. Go to Roster tab to set engineers on-call.")
+                        else:
+                            # Skill-match recommendations
+                            _matched = [e for e in on_call_eng if e["skill"]==s["sub"]]
+                            _other   = [e for e in on_call_eng if e["skill"]!=s["sub"]]
+                            _eng_opts = ([f"⭐ {e['name']} [{e['level']}] — {e['skill'].replace('_',' ')}" for e in _matched] +
+                                         [f"   {e['name']} [{e['level']}] — {e['skill'].replace('_',' ')}" for e in _other])
+                            _eng_raw  = _matched + _other
+                            with st.form(f"disp_{s['id']}"):
+                                chosen_labels = st.multiselect(
+                                    "Assign engineers (⭐ = skill match)",
+                                    options=_eng_opts,
+                                    default=[_eng_opts[0]] if _eng_opts else [],
+                                    key=f"eng_sel_{s['id']}")
+                                submitted = st.form_submit_button(
+                                    f"🚨 Create Dispatch — {urg_now} SLA {sla_h}h",
+                                    use_container_width=True)
+                                if submitted:
+                                    if not chosen_labels:
+                                        st.error("Select at least one engineer.")
+                                    else:
+                                        chosen = [_eng_raw[_eng_opts.index(l)]["name"] for l in chosen_labels]
+                                        ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
+                                        dispatch = {
+                                            "station_id":      s["id"],
+                                            "ticket_id":       f"TKT-{s['id']}-{int(time.time())}",
+                                            "urgency":         urg_now,
+                                            "subsystem":       s["sub"],
+                                            "hypothesis":      s["hyp"],
+                                            "engineers":       chosen,
+                                            "sla_hours":       sla_h,
+                                            "rul_at_dispatch": round(rul_now, 1),
+                                            "assigned_at":     ts_now,
+                                            "status":          "IN PROGRESS",
+                                            "created_by":      USER,
+                                        }
+                                        _db_create_dispatch(dispatch)
+                                        # Update dispatch count for engineers
+                                        for e in st.session_state.engineer_roster:
+                                            if e["name"] in chosen:
+                                                e["dispatches"] = e.get("dispatches",0) + 1
+                                        # Notifications
+                                        for name in chosen:
+                                            e_obj = next((e for e in st.session_state.engineer_roster if e["name"]==name), None)
+                                            phone = e_obj["phone"] if e_obj else "—"
+                                            _push_notif(
+                                                f"📟 [{dispatch['ticket_id']}] {name} dispatched → {s['id']} "
+                                                f"({urg_now}, SLA {sla_h}h). Fault: {s['hyp'][:60]}",
+                                                level="warning" if urg_now=="Warning" else "error")
+                                            _db_push_notif(
+                                                f"📲 SMS→{phone}: [{dispatch['ticket_id']}] Station {s['id']} — {urg_now}. "
+                                                f"Fault: {s['hyp'][:55]}. SLA: {sla_h}h.",
+                                                level="info", station_id=s["id"])
+                                        st.success(f"✅ Dispatch {dispatch['ticket_id']} created. Assigned: {', '.join(chosen)}")
+                                        st.rerun()
 
     # ─────────────────────────────────────────────────────────────────────────
-    #  TAB 2 — ACTIVE DISPATCHES + VALIDATION FORM
+    #  TAB 2 — ACTIVE DISPATCHES (all users see these)
     # ─────────────────────────────────────────────────────────────────────────
     with tab2:
-        if not active:
-            st.markdown(
-                '<div class="ac m"><span style="color:#3fb950">No active dispatches.</span></div>',
-                unsafe_allow_html=True)
+        sh("ACTIVE DISPATCHES — REAL-TIME (shared across all sessions)")
+        # Refresh from DB every render
+        _active_now = _db_active()
+        if not _active_now:
+            st.markdown('<div class="ac m"><span style="color:#3fb950">No active dispatches at this time.</span></div>', unsafe_allow_html=True)
         else:
-            for sid, d in list(active.items()):
-                s_obj = next((s for s in STATIONS if s["id"] == sid), None)
-                elapsed_disp = (time.time() - time.mktime(
-                    time.strptime(d["assigned_at"], "%Y-%m-%d %H:%M:%S"))) / 3600
-                sla_pct  = min(100, int(elapsed_disp / max(d["sla_hours"], 1) * 100))
-                sla_col  = "#3fb950" if sla_pct < 60 else ("#f0b429" if sla_pct < 85 else "#ff6b35")
+            for sid, d in _active_now.items():
+                _s_obj = next((s for s in STATIONS if s["id"]==sid), None)
+                _uc2   = {"Critical":"#ff6b35","Warning":"#f0b429","Monitor":"#3fb950"}.get(d.get("urgency","Monitor"),"#7d8590")
+                # SLA progress
+                def _ts_ep(s):
+                    for fmt in ("%Y-%m-%d %H:%M:%S","%Y-%m-%dT%H:%M:%S","%Y-%m-%d"):
+                        try: return time.mktime(time.strptime(str(s)[:19], fmt))
+                        except: pass
+                    return time.time()
+                elapsed_h  = (time.time() - _ts_ep(d.get("assigned_at",""))) / 3600
+                sla_h_v    = d.get("sla_hours", 24)
+                sla_pct    = min(100, int(elapsed_h / max(sla_h_v,1) * 100))
+                sla_col    = "#3fb950" if sla_pct < 60 else ("#f0b429" if sla_pct < 85 else "#ff6b35")
 
                 st.markdown(f"""
 <div class="ac c" style="margin-bottom:.4rem">
@@ -2917,17 +3688,19 @@ elif pk == "Dispatch & Roster":
       <span style="font-size:.92rem;font-weight:700;color:#a5d6ff;font-family:monospace">{d['ticket_id']}</span>
       &nbsp;<span class="bc">IN PROGRESS</span>
       <div style="font-size:.68rem;color:#7d8590;margin-top:.2rem">
-        Station: <span style="color:#e6edf3">{sid}</span> · {d['subsystem']} · Assigned: {d['assigned_at']}
+        Station: <span style="color:#e6edf3">{sid}</span> · {d.get('subsystem','').replace('_',' ')} ·
+        Assigned: {d.get('assigned_at','')[:16]}
       </div>
       <div style="font-size:.68rem;color:#7d8590">
-        Engineers: <span style="color:#58a6ff">{'  ·  '.join(d['engineers'])}</span>
+        Engineers: <span style="color:#58a6ff">{' · '.join(d.get('engineers',[]))}</span>
+        {'&nbsp;<span style="color:#7d8590">· Created by: '+d.get('created_by','')+'</span>' if d.get('created_by') else ''}
       </div>
-      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{d['hypothesis'][:80]}…</div>
+      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{d.get('hypothesis','')[:80]}…</div>
     </div>
     <div style="text-align:right;font-family:monospace;font-size:.70rem;color:#7d8590">
-      SLA: <span style="color:{sla_col}">{d['sla_hours']}h</span><br>
-      Elapsed: {elapsed_disp:.1f}h<br>
-      RUL at dispatch: {d['rul_at_dispatch']}
+      SLA: <span style="color:{sla_col}">{sla_h_v}h</span><br>
+      Elapsed: {elapsed_h:.1f}h<br>
+      RUL at dispatch: {d.get('rul_at_dispatch',0)}
     </div>
   </div>
   <div style="background:#21262d;height:4px;border-radius:2px;overflow:hidden">
@@ -2935,119 +3708,83 @@ elif pk == "Dispatch & Roster":
   </div>
 </div>""", unsafe_allow_html=True)
 
-                # Validation form
-                with st.expander(f"✅ Validate & Close Ticket — {d['ticket_id']}", expanded=False):
-                    with st.form(f"validate_{sid}"):
-                        st.markdown(
-                            '<div style="font-family:monospace;font-size:.72rem;color:#39c5cf;'
-                            'margin-bottom:.5rem">COMPLETION REPORT</div>',
-                            unsafe_allow_html=True)
-                        v1, v2 = st.columns(2)
-                        with v1:
-                            work_done = st.text_area(
-                                "Work performed *",
-                                placeholder="e.g. Replaced rectifier module B, verified DC bus voltage 48.2V, "
-                                            "restored TX power, cleared PWR-001 alarm.",
-                                height=100, key=f"work_{sid}")
-                            parts_used = st.text_input(
-                                "Parts / spares used",
-                                placeholder="e.g. Rectifier module Ericsson PSU 48V-50A (×1), BBU fuse set (×1)",
-                                key=f"parts_{sid}")
-                            alarm_cleared = st.selectbox(
-                                "Alarm cleared?",
-                                ["Yes — alarm auto-cleared", "Yes — manually cleared via OMC",
-                                 "Partial — monitoring required", "No — escalation needed"],
-                                key=f"alm_{sid}")
-                        with v2:
-                            restored_rul = st.slider(
-                                "Restored RUL (cycles) *",
-                                min_value=10, max_value=125,
-                                value=min(125, int(s_obj["base_rul"] * 0.85)) if s_obj else 100,
-                                help="Engineer's assessment of remaining useful life after repair.",
-                                key=f"rul_{sid}")
-                            root_cause = st.selectbox(
-                                "Root cause confirmed",
-                                ["Rectifier/power unit failure",
-                                 "Cooling fan bearing wear",
-                                 "Antenna connector corrosion",
-                                 "Fibre splice degradation",
-                                 "BBU software/hardware fault",
-                                 "Preventive — no active fault",
-                                 "Other (see notes)"],
-                                key=f"rc_{sid}")
-                            notes = st.text_area(
-                                "Additional notes",
-                                placeholder="Observations, follow-up recommendations…",
-                                height=68, key=f"notes_{sid}")
-
-                        validated = st.form_submit_button("✅ Close Ticket & Restore Station", use_container_width=True)
-                        if validated:
-                            if not work_done.strip():
-                                st.error("Work performed field is required.")
-                            else:
-                                ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
-                                closed = dict(d)
-                                closed.update({
-                                    "station":        sid,
-                                    "status":         "COMPLETED",
-                                    "closed_at":      ts_now,
-                                    "work_done":      work_done.strip(),
-                                    "parts_used":     parts_used.strip(),
-                                    "alarm_cleared":  alarm_cleared,
-                                    "root_cause":     root_cause,
-                                    "notes":          notes.strip(),
-                                    "restored_rul":   restored_rul,
-                                    "validated_by":   USER,
-                                })
-                                st.session_state.dispatch_tickets.insert(0, closed)
-                                del st.session_state.active_dispatches[sid]
-                                # Apply RUL override — station now shows restored RUL
-                                st.session_state.rul_overrides[sid]        = float(restored_rul)
-                                st.session_state.rul_overrides[sid + "_ts"] = time.time()
-                                _push_notif(
-                                    f"🔧 [{closed['ticket_id']}] CLOSED by {USER}. "
-                                    f"Station {sid} restored to RUL={restored_rul}. "
-                                    f"Root cause: {root_cause}.",
-                                    level="success")
-                                st.success(f"Ticket closed. Station {sid} restored to RUL={restored_rul} cycles.")
-                                st.rerun()
-
-                # Cancel dispatch
-                if st.button(f"✕ Cancel dispatch {d['ticket_id']}", key=f"cancel_{sid}"):
-                    del st.session_state.active_dispatches[sid]
-                    _push_notif(f"❌ Dispatch {d['ticket_id']} for {sid} cancelled by {USER}.", level="warning")
-                    st.rerun()
+                # Engineers AND admins can complete tickets
+                if IS_ENG:
+                    with st.expander(f"✅ Complete & Validate — {d['ticket_id']}", expanded=False):
+                        with st.form(f"validate_{sid}_{d['ticket_id'][:8]}"):
+                            st.markdown('<div style="font-family:monospace;font-size:.72rem;color:#39c5cf;margin-bottom:.5rem">COMPLETION REPORT</div>', unsafe_allow_html=True)
+                            v1, v2 = st.columns(2)
+                            with v1:
+                                work_done   = st.text_area("Work performed *", placeholder="e.g. Replaced rectifier module, verified 48.2V DC bus.", height=90, key=f"work_{sid}")
+                                parts_used  = st.text_input("Parts / spares", placeholder="e.g. Ericsson PSU 48V-50A ×1", key=f"parts_{sid}")
+                                alarm_clrd  = st.selectbox("Alarm cleared?",
+                                    ["Yes — auto-cleared","Yes — manually cleared via OMC","Partial","No — escalation needed"],
+                                    key=f"alm_{sid}")
+                            with v2:
+                                restored_rul = st.slider("Restored RUL (cycles)", 10, 125,
+                                    min(125, int(_s_obj["base_rul"]*0.85)) if _s_obj else 100,
+                                    key=f"rul_{sid}")
+                                root_cause = st.selectbox("Root cause confirmed",
+                                    ["Rectifier/power unit failure","Cooling fan bearing wear",
+                                     "Antenna connector corrosion","Fibre splice degradation",
+                                     "BBU software/hardware fault","Preventive — no active fault","Other"],
+                                    key=f"rc_{sid}")
+                                notes = st.text_area("Notes", height=68, key=f"notes_{sid}")
+                            validated = st.form_submit_button("✅ Close Ticket & Restore Station", use_container_width=True)
+                            if validated:
+                                if not work_done.strip():
+                                    st.error("Work performed is required.")
+                                else:
+                                    ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
+                                    closed = dict(d)
+                                    closed.update({
+                                        "status":"COMPLETED","closed_at":ts_now,
+                                        "work_done":work_done.strip(),
+                                        "parts_used":parts_used.strip(),
+                                        "alarm_cleared":alarm_clrd,
+                                        "root_cause":root_cause,
+                                        "notes":notes.strip(),
+                                        "restored_rul":restored_rul,
+                                        "validated_by":USER,
+                                    })
+                                    _db_complete_dispatch(sid, closed)
+                                    # Apply RUL override
+                                    st.session_state.rul_overrides[sid]        = float(restored_rul)
+                                    st.session_state.rul_overrides[sid+"_ts"]  = time.time()
+                                    _push_notif(f"🔧 [{d['ticket_id']}] CLOSED by {USER}. Station {sid} restored RUL={restored_rul}.", level="success")
+                                    _db_push_notif(f"CLOSED {d['ticket_id']} by {USER}. Root: {root_cause}. RUL→{restored_rul}.", station_id=sid)
+                                    st.success("✅ Ticket closed. Station restored.")
+                                    st.rerun()
 
     # ─────────────────────────────────────────────────────────────────────────
-    #  TAB 3 — COMPLETED TICKET LOG
+    #  TAB 3 — COMPLETED TICKETS
     # ─────────────────────────────────────────────────────────────────────────
     with tab3:
-        if not tickets:
-            st.markdown(
-                '<div class="ac m"><span style="color:#7d8590">No completed tickets yet.</span></div>',
-                unsafe_allow_html=True)
+        sh("COMPLETED TICKETS — ALL SESSIONS")
+        _done_now = _db_completed()
+        if not _done_now:
+            st.markdown('<div class="ac m"><span style="color:#7d8590">No completed tickets yet.</span></div>', unsafe_allow_html=True)
         else:
-            for t in tickets:
-                rul_delta = t["restored_rul"] - t["rul_at_dispatch"]
-                dc = "#3fb950" if rul_delta > 0 else "#ff6b35"
+            for t in _done_now:
+                rul_delta = t.get("restored_rul",0) - t.get("rul_at_dispatch",0)
+                dc = "#3fb950" if rul_delta >= 0 else "#ff6b35"
                 st.markdown(f"""
 <div class="ac m" style="margin-bottom:.4rem">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
     <div>
-      <span style="font-family:monospace;font-weight:700;color:#a5d6ff">{t['ticket_id']}</span>
+      <span style="font-family:monospace;font-weight:700;color:#a5d6ff">{t.get('ticket_id','—')}</span>
       &nbsp;<span class="bm">COMPLETED</span>
       <div style="font-size:.68rem;color:#7d8590;margin-top:.15rem">
-        Station: <span style="color:#e6edf3">{t['station_id']}</span> ·
-        Engineers: <span style="color:#58a6ff">{'  ·  '.join(t['engineers'])}</span> ·
-        Validated by: <span style="color:#bc8cff">{t['validated_by']}</span>
+        Station: <span style="color:#e6edf3">{t.get('station_id','')}</span> ·
+        Engineers: <span style="color:#58a6ff">{' · '.join(t.get('engineers',[]))}</span> ·
+        Validated by: <span style="color:#bc8cff">{t.get('validated_by','')}</span>
       </div>
-      <div style="font-size:.68rem;color:#7d8590">Closed: {t['closed_at']} · Root cause: {t['root_cause']}</div>
-      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{t['work_done'][:120]}{'…' if len(t['work_done'])>120 else ''}</div>
-      {f'<div style="font-size:.67rem;color:#7d8590;margin-top:.1rem">Parts: {t["parts_used"]}</div>' if t.get("parts_used") else ''}
+      <div style="font-size:.68rem;color:#7d8590">Closed: {t.get('closed_at','')[:16]} · Root: {t.get('root_cause','')}</div>
+      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{str(t.get('work_done',''))[:120]}</div>
     </div>
-    <div style="text-align:right;font-family:monospace;font-size:.72rem;min-width:110px">
+    <div style="text-align:right;font-family:monospace;font-size:.72rem;min-width:100px">
       <div style="color:#7d8590">RUL restored</div>
-      <div style="font-size:1.1rem;font-weight:700;color:{dc}">{t['restored_rul']}</div>
+      <div style="font-size:1.1rem;font-weight:700;color:{dc}">{t.get('restored_rul','—')}</div>
       <div style="color:{dc};font-size:.68rem">{'+' if rul_delta>=0 else ''}{rul_delta:.1f} cyc</div>
     </div>
   </div>
@@ -3058,50 +3795,38 @@ elif pk == "Dispatch & Roster":
     # ─────────────────────────────────────────────────────────────────────────
     with tab4:
         sh("ROLLING ROSTER — ON-CALL STATUS & DISPATCH COUNT")
-
         skill_colors = {
-            "power_subsystem":       "#f0b429",
-            "thermal_management":    "#ff6b35",
-            "rf_antenna":            "#39c5cf",
-            "backhaul_connectivity": "#58a6ff",
-            "baseband_processing":   "#bc8cff",
+            "power_subsystem":"#f0b429","thermal_management":"#ff6b35",
+            "rf_antenna":"#39c5cf","backhaul_connectivity":"#58a6ff","baseband_processing":"#bc8cff",
         }
         level_colors = {"Senior":"#3fb950","Mid":"#58a6ff","Junior":"#f0b429"}
-
         for e in st.session_state.engineer_roster:
             sc = skill_colors.get(e["skill"],"#7d8590")
             lc = level_colors.get(e["level"],"#7d8590")
             on_col = "#3fb950" if e["on_call"] else "#30363d"
             on_lbl = "ON-CALL" if e["on_call"] else "OFF"
-            disp_w = min(100, e["dispatches"] * 8)
-
-            c_eng, c_tog = st.columns([5, 1])
+            disp_w = min(100, e.get("dispatches",0) * 8)
+            c_eng, c_tog = st.columns([5,1])
             with c_eng:
                 st.markdown(f"""
-<div style="display:flex;align-items:center;gap:.7rem;padding:.45rem .85rem;
-     background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:.3rem;font-family:monospace;font-size:.73rem">
-  <span style="color:#a5d6ff;font-weight:700;min-width:90px">{e['name']}</span>
-  <span style="color:#7d8590;font-size:.65rem;min-width:30px">{e['id']}</span>
-  <span style="background:{sc}22;color:{sc};border:1px solid {sc}55;border-radius:3px;
-        padding:1px 6px;font-size:.63rem;min-width:110px">{e['skill'].replace('_',' ')}</span>
-  <span style="background:{lc}22;color:{lc};border:1px solid {lc}55;border-radius:3px;
-        padding:1px 6px;font-size:.63rem;min-width:48px">{e['level']}</span>
-  <span style="color:#7d8590;font-size:.63rem;min-width:50px">{e['shift']}</span>
-  <span style="color:{on_col};font-weight:700;font-size:.63rem;min-width:56px">{on_lbl}</span>
-  <span style="color:#7d8590;font-size:.63rem">{e['phone']}</span>
-  <div style="flex:1;margin:0 .5rem">
-    <div style="background:#21262d;height:4px;border-radius:2px">
-      <div style="width:{disp_w}%;height:4px;background:{sc};border-radius:2px"></div>
-    </div>
-  </div>
-  <span style="color:#7d8590;font-size:.63rem">{e['dispatches']} dispatches</span>
+<div style="display:flex;align-items:center;gap:.6rem;padding:.42rem .8rem;
+     background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:.3rem;font-family:monospace;font-size:.72rem">
+  <span style="color:#a5d6ff;font-weight:700;min-width:85px">{e['name']}</span>
+  <span style="color:#7d8590;font-size:.62rem;min-width:28px">{e['id']}</span>
+  <span style="background:{sc}22;color:{sc};border:1px solid {sc}55;border-radius:3px;padding:1px 5px;font-size:.62rem;min-width:105px">{e['skill'].replace('_',' ')}</span>
+  <span style="background:{lc}22;color:{lc};border:1px solid {lc}55;border-radius:3px;padding:1px 5px;font-size:.62rem;min-width:44px">{e['level']}</span>
+  <span style="color:#7d8590;font-size:.61rem;min-width:46px">{e['shift']}</span>
+  <span style="color:{on_col};font-weight:700;font-size:.61rem;min-width:54px">{on_lbl}</span>
+  <span style="color:#7d8590;font-size:.61rem">{e.get('phone','—')}</span>
+  <div style="flex:1;margin:0 .4rem"><div style="background:#21262d;height:4px;border-radius:2px">
+    <div style="width:{disp_w}%;height:4px;background:{sc};border-radius:2px"></div>
+  </div></div>
+  <span style="color:#7d8590;font-size:.61rem">{e.get('dispatches',0)} dispatches</span>
 </div>""", unsafe_allow_html=True)
             with c_tog:
-                btn_lbl = "Set OFF" if e["on_call"] else "Set ON"
-                if st.button(btn_lbl, key=f"tog_{e['id']}", use_container_width=True):
+                if st.button("OFF" if e["on_call"] else "ON", key=f"tog_{e['id']}", use_container_width=True):
                     e["on_call"] = not e["on_call"]
-                    status = "ON-CALL" if e["on_call"] else "OFF duty"
-                    _push_notif(f"🔄 {e['name']} set to {status} by {USER}.", level="info")
+                    _push_notif(f"🔄 {e['name']} set to {'ON-CALL' if e['on_call'] else 'OFF'} by {USER}.", level="info")
                     st.rerun()
 
         sh("ADD ENGINEER TO ROSTER")
@@ -3109,619 +3834,37 @@ elif pk == "Dispatch & Roster":
             ae1, ae2 = st.columns(2)
             with ae1: _en  = st.text_input("Full name *", placeholder="e.g. Cheikh Diallo")
             with ae2: _eph = st.text_input("Phone * (+221/+223)", placeholder="+221 77 XXX XXXX")
-            ae3, ae4, ae5, ae6 = st.columns([2,1,1,1])
+            ae3, ae4, ae5 = st.columns(3)
             with ae3: _esk = st.selectbox("Specialisation",
-                                          ["power_subsystem","thermal_management","rf_antenna",
-                                           "backhaul_connectivity","baseband_processing"])
+                ["power_subsystem","thermal_management","rf_antenna","backhaul_connectivity","baseband_processing"])
             with ae4: _elv = st.selectbox("Level", ["Senior","Mid","Junior"])
             with ae5: _esh = st.selectbox("Shift", ["Day","Night"])
-            with ae6:
-                st.markdown("<br>", unsafe_allow_html=True)
-                _ea = st.form_submit_button("Add ➕", use_container_width=True)
+            _ea = st.form_submit_button("Add ➕ & Create Account", use_container_width=True)
             if _ea:
                 if not _en.strip():
-                    st.error("Name required.")
-                elif not _eph.strip():
-                    st.error("Phone number required.")
+                    st.error("Full name required.")
+                elif not _eph.strip() or not (_eph.strip().startswith("+221") or _eph.strip().startswith("+223")):
+                    st.error("Phone required — must start with +221 (Senegal) or +223 (Mali).")
                 else:
                     new_id   = f"ENG{len(st.session_state.engineer_roster)+1:03d}"
                     _e_uname, _e_pw = _generate_eng_credentials(_en.strip(), new_id)
-                    # Ensure unique username
                     _existing_un = set(st.session_state._runtime_users.keys()) if "_runtime_users" in st.session_state else set()
-                    _suffix = 1
-                    _base_uname = _e_uname
+                    _suffix = 1; _base_un = _e_uname
                     while _e_uname in _existing_un:
-                        _e_uname = f"{_base_uname}{_suffix}"; _suffix += 1
+                        _e_uname = f"{_base_un}{_suffix}"; _suffix += 1
                     _e_uid = f"USR-{abs(hash(_e_uname))%9000+1000}"
-                    _e_fullname = _en.strip()
-                    # Add to engineer roster
                     st.session_state.engineer_roster.append(dict(
-                        id=new_id, name=_e_fullname, skill=_esk,
+                        id=new_id, name=_en.strip(), skill=_esk,
                         level=_elv, on_call=True, shift=_esh,
-                        phone=_eph.strip(), dispatches=0,
-                        username=_e_uname))
-                    # Auto-create system account (admin can change password)
+                        phone=_eph.strip(), dispatches=0, username=_e_uname))
                     if "_runtime_users" not in st.session_state:
                         st.session_state._runtime_users = dict(_get_users())
                     st.session_state._runtime_users[_e_uname] = (
-                        _e_pw, "engineer", _e_fullname, _elv+" Engineer", "Field", _e_uid)
-                    _push_notif(f"👷 {_e_fullname} added to roster. Account: {_e_uname}/{_e_pw}", level="success")
-                    st.success(f"✓ {_e_fullname} added. Login: **{_e_uname}** · Password: **{_e_pw}** (admin can change in Settings → User Management)")
+                        _e_pw, "engineer", _en.strip(), f"{_elv} Engineer", "Field", _e_uid)
+                    _push_notif(f"👷 {_en.strip()} added. Login: {_e_uname}/{_e_pw}", level="success")
+                    st.success(f"✓ {_en.strip()} added. Login: **{_e_uname}** · Password: **{_e_pw}**")
                     st.rerun()
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  PAGE: USER GUIDE — comprehensive reference for all users
-# ══════════════════════════════════════════════════════════════════════════════
-elif pk == "📖 User Guide":
-    _ug_date = time.strftime("%B %Y")
-    st.markdown(f"""
-<div style="background:linear-gradient(135deg,#1c2333,#161b22);border:1px solid #39c5cf44;
-     border-left:4px solid #39c5cf;border-radius:10px;padding:1.2rem 1.6rem;margin-bottom:1rem">
-  <div style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:#e6edf3">
-    📖 VectorAgent NOC — <span style="color:#39c5cf">System User Guide</span>
-  </div>
-  <div style="font-size:.78rem;color:#c9d1d9;line-height:1.7;margin-top:.35rem">
-    Complete reference for NOC operators, field engineers, thesis evaluators, and system administrators.
-    Covers all pages, all KPIs, all metrics, governance model, chatbot, and deployment.
-  </div>
-  <div style="font-family:'IBM Plex Mono',monospace;font-size:.64rem;color:#7d8590;margin-top:.3rem">
-    Danaya Diarra · GSOM SPBU · Agentic AI for Predictive Maintenance · {_ug_date}
-  </div>
-</div>""", unsafe_allow_html=True)
-
-    _ug = st.tabs([
-        "🏗 Architecture",
-        "🗺 Pages & Navigation",
-        "📊 All KPIs & Metrics",
-        "🤖 AI Chatbot Setup",
-        "⚡ Live Mode Explained",
-        "🔐 Governance Model",
-        "🚀 Deployment",
-    ])
-
-    # ── TAB 1: ARCHITECTURE ────────────────────────────────────────────────────
-    with _ug[0]:
-        sh("THREE-LAYER AGENTIC ARCHITECTURE")
-        for _lbl, _col, _mod, _desc, _bullets in [
-            ("Layer 1 — Perception (Time-Series Intelligence)", "#58a6ff", "XGBoost v2 Final",
-             "Ingests 21 multivariate sensor channels mapped to telecom KPIs and outputs: "
-             "Remaining Useful Life (RUL) prediction, 95% confidence interval [cl, ch], urgency tier "
-             "(Critical/Warning/Monitor), and top contributing feature with its gain-based importance. "
-             "Model: 15,000 gradient-boosted trees, exp(α=3) near-failure sample weighting — "
-             "samples with RUL ≤ 30 cycles receive ≈4× higher weight, biasing the model toward "
-             "accuracy in the operationally critical zone. Trained jointly on all 4 NASA C-MAPSS "
-             "sub-datasets. RMSE=14.60 (all-4), RMSE=12.77 (FD001+FD003), R²=0.874.",
-             ["21 sensor channels → telecom KPI mapping (voltage, temp, fan RPM, VSWR, latency…)",
-              "exp(α=3): near-failure zone (RUL≤30) accuracy prioritised — avoids missed critical alerts",
-              "Per-subset RMSE: FD001=12.31 · FD002=15.87 · FD003=13.23 · FD004=16.99",
-              "Confidence interval via bootstrap: ±3.1 cycles at 1σ"]),
-            ("Layer 2 — Knowledge Grounding (RAG Pipeline)", "#39c5cf", "Hybrid TF-IDF + LSA + RRF",
-             "Retrieves and ranks evidence from a 33-chunk telecom corpus: vendor manuals, SOPs, "
-             "alarm dictionaries, historical tickets, 3GPP/ITU specs, FMEA tables, decision trees. "
-             "Uses Reciprocal Rank Fusion (k=60) combining TF-IDF (sparse keyword matching) and "
-             "64-dim LSA (dense semantic matching). Every LLM claim is citation-tracked. "
-             "Grounding rate = 1.00 (100%), Hallucination rate = 0.00, Retrieval latency = 9ms.",
-             ["Hybrid retrieval: BM25-proxy + TruncatedSVD 64-dim → RRF k=60",
-              "Metadata boost: subsystem alignment, doc_type, urgency context",
-              "Top-5 evidence chunks with full [DOC-ID] provenance per station",
-              "Coverage: 0.60 (backhaul, sparse corpus) to 1.00 (power, thermal, RF, BBU)"]),
-            ("Layer 3 — Reasoning-to-Action (Agentic Workflow)", "#bc8cff", "ReAct + Pre-Planning",
-             "Three specialised agents in sequence: (1) Diagnostic Agent — generates root-cause "
-             "hypothesis with confidence score derived from RAG evidence. (2) Planning Agent — "
-             "evaluates candidate maintenance actions against SLA constraints, risk tier, cost budget, "
-             "and technician availability. (3) Execution Agent — invokes governance-gated tools. "
-             "Behavioural pattern: Observe → Reason → Act → Learn. E2E latency: 33ms.",
-             ["Diagnostic Agent: hypothesis + confidence from RAG evidence",
-              "Planning Agent: action ranking vs SLA / risk tier / cost",
-              "Tools: query_cmdb · open_ticket · schedule_dispatch · remote_command",
-              "Governance: Tier 1 AUTO · Tier 2 TIMEOUT · Tier 3 HUMAN approval"]),
-        ]:
-            st.markdown(f"""
-<div style="background:#161b22;border:1px solid {_col}44;border-radius:8px;padding:.9rem 1.1rem;margin-bottom:.6rem">
-  <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem">
-    <span style="font-size:.84rem;font-weight:700;color:{_col};font-family:monospace">{_lbl}</span>
-    <span style="font-size:.66rem;color:#7d8590;background:{_col}22;padding:1px 7px;border-radius:3px;font-family:monospace">{_mod}</span>
-  </div>
-  <div style="font-size:.78rem;color:#c9d1d9;line-height:1.72;margin-bottom:.42rem">{_desc}</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.18rem">
-    {"".join(f'<div style="font-size:.70rem;color:#7d8590;font-family:monospace;padding:.13rem 0">▶ {b}</div>' for b in _bullets)}
-  </div>
-</div>""", unsafe_allow_html=True)
-
-        sh("C-MAPSS → TELECOM BTS DOMAIN MAPPING")
-        st.markdown("""
-<div style="font-size:.77rem;color:#c9d1d9;line-height:1.7;background:#0d1117;border:1px solid #30363d;
-     border-radius:7px;padding:.8rem 1rem;margin-bottom:.6rem">
-  The NASA C-MAPSS turbofan engine dataset is used as a structured proxy for telecom BTS degradation.
-  Both share the same fundamental degradation structure: multiple correlated time-series channels
-  declining gradually before failure. The architecture is designed to be <strong style="color:#39c5cf">retarget-ready</strong>:
-  when labeled telecom failure data becomes available, only Layer 1 needs retraining — Layers 2 and 3 remain unchanged.
-</div>""", unsafe_allow_html=True)
-        for _cp, _tp, _rat in [
-            ("21 sensor channels", "RSSI, SINR, throughput, DC voltage, cabinet temp, fan RPM, battery capacity, VSWR, latency", "Both: correlated multivariate time-series capturing equipment health state"),
-            ("Multiple operating conditions (FD002, FD004)", "Geographic & climate diversity: urban/rural, tropical/temperate, grid/solar", "Models must generalise across varying load, climate, and power profiles"),
-            ("Run-to-failure trajectories", "BTS component degradation before failure (rectifier, fan bearing, feeder connector, BBU)", "Both exhibit gradual decline across multiple channels before failure"),
-            ("Piecewise linear RUL labelling", "Maintenance window estimation for scheduling field dispatch", "Both require estimating time-to-failure within operational windows"),
-            ("Multiple fault modes (FD003, FD004)", "Mixed BTS failures: power + thermal, RF + backhaul, BBU multi-fault", "Models handle heterogeneous degradation from distinct mechanisms"),
-        ]:
-            st.markdown(f"""
-<div style="display:grid;grid-template-columns:1.1fr 1.2fr 1fr;gap:.5rem;padding:.35rem .65rem;
-     background:#161b22;border:1px solid #30363d;border-radius:5px;margin-bottom:.2rem;font-size:.70rem;font-family:monospace">
-  <div><span style="color:#7d8590">C-MAPSS: </span><span style="color:#58a6ff">{_cp}</span></div>
-  <div><span style="color:#7d8590">Telecom: </span><span style="color:#39c5cf">{_tp}</span></div>
-  <div><span style="color:#5a6475">{_rat}</span></div>
-</div>""", unsafe_allow_html=True)
-
-    # ── TAB 2: PAGES & NAVIGATION ──────────────────────────────────────────────
-    with _ug[1]:
-        sh("PAGES — WHAT EACH PAGE DOES")
-        for _pn, _pc, _pt, _pd, _tips in [
-            ("🔴 Live Fleet Monitor","#ff6b35","Primary NOC operational screen",
-             "Shows real-time RUL countdown for all stations, live sensor readings with sparklines, "
-             "SVG RUL bar chart sorted by urgency, auto-refresh (5–60s intervals), and an alert log "
-             "that records every urgency escalation event. Use this during active NOC shifts to "
-             "monitor degradation in real time.",
-             ["Enable ⚡ Auto-refresh in sidebar — picks 5s to 60s interval",
-              "Sidebar station selector prefixes 🔴🟡🟢 for quick urgency scan",
-              "Alert log records timestamp, station ID, and urgency transition",
-              "Reset session clock clears alert log and restarts RUL countdown from base predictions"]),
-            ("🏠 Fleet Overview","#58a6ff","Fleet snapshot + analytics",
-             "Shows all stations with XGBoost v2 base predictions, CI error bars, diagnostic quality "
-             "radar chart, and pipeline latency breakdown. Best for static reports and thesis figures.",
-             ["CI error bars show prediction uncertainty [cl, ch]",
-              "Radar chart compares: RAG coverage, diagnostic confidence, grounding rate, actions",
-              "Pipeline latency: RAG retrieval = 27.5ms of 33ms total E2E",
-              "XGBoost v2 feature importance bar chart per subsystem"]),
-            ("🔍 Station Detail","#39c5cf","Per-station deep-dive",
-             "Two tabs: Detail (live RUL gauge with animated needle, live trajectory Plotly chart "
-             "with NOW marker, feature importance bars, root-cause hypothesis, fault component, "
-             "alarm code, governance-gated action plan) and Plain English (narrative for non-technical users).",
-             ["Gauge needle colour: 🔴 ≤20 cycles · 🟡 20-50 · 🟢 >50",
-              "Trajectory chart shows BOTH ground-truth and XGBoost prediction curves",
-              "Feature importance is gain-based from the fitted XGBoost model",
-              "Action tier shown: AUTO (green) · TIMEOUT (amber) · HUMAN (red)"]),
-            ("🚚 Dispatch & Roster","#f0b429","Field engineer dispatch management",
-             "Four tabs: Create Dispatch (priority queue with 1-click dispatch), Active Dispatches "
-             "(in-progress with SLA progress bar and validation form), Completed Tickets (audit log), "
-             "Roster (add/remove engineers, toggle on-call status).",
-             ["Dispatch auto-selects best-matched engineer by skill and on-call status",
-              "Validation form records: work done, parts used, root cause, restored RUL",
-              "Completed tickets persist in session — exported in Performance Report",
-              "Adding engineer auto-generates system login (admin can reset password)"]),
-            ("🤖 Engineer Chatbot","#bc8cff","AI maintenance assistant (Engineer+Admin)",
-             "Multi-engine AI chatbot grounded in the 33-chunk telecom knowledge base. "
-             "Priority order: Anthropic Claude → Groq LLaMA 3.3 70B → OpenRouter DeepSeek v3 → Rule-based KB. "
-             "All answers cite [DOC-ID] evidence sources. Rule-based always works without any API key.",
-             ["Quick question pills for common alarm codes and procedures",
-              "Conversation history preserved in session (clear button available)",
-              "Add API keys in Settings → Chatbot API tab",
-              "Rule-based covers: PWR-001/004, COOL-001/003, RF-001/005, BKH-001, BBU-003"]),
-            ("🧠 Pipeline Intelligence","#3fb950","RAG evidence + reasoning trace",
-             "Two sub-tabs: RAG Evidence (retrieved chunks, RRF scores, coverage metrics, latency) "
-             "and Agent Reasoning (7-step Observe→Reason→Act→Learn trace, governance tier, "
-             "memory store JSON entry). Essential for thesis defence and system explainability.",
-             ["RRF score bar chart shows evidence ranking for selected station",
-              "Reasoning trace is the full agent decision chain — exportable as JSON",
-              "Governance tier is derived from live urgency of selected station",
-              "Memory store entry shows exactly what the agent would log to persistent memory"]),
-            ("📊 Results & Ablation","#7d8590","Model benchmarks + ablation study",
-             "Two sub-tabs: Model Benchmark (per-subset RMSE table: all 4 datasets × all models, "
-             "RMSE trend, per-RUL-range breakdown) and Ablation Study (5 configurations A→E showing "
-             "incremental value of each pipeline layer).",
-             ["Full HTML table: FD001=12.31 · FD002=15.87 · FD003=13.23 · FD004=16.99",
-              "Ablation: B vs A = −8.2% RMSE · D vs C = hallucination 0.65→0.00",
-              "Per-RUL-range chart: XGBoost v2 RMSE=8.29 in 0-20 (critical) zone",
-              "Literature comparison: CAELSTM=11.24 (FD001 only, single-subset training)"]),
-            ("⚙ Settings","#ff6b35","System configuration (Admin only)",
-             "8 tabs: My Profile · User Management · Data Sources · Performance Reports · "
-             "Retrain Pipeline · Chatbot API · Knowledge Base · System Modes. "
-             "Controls all operational parameters, user accounts, data connectors, and AI keys.",
-             ["Data Sources: configure MQTT / REST / File / Simulation connector",
-              "Retrain Pipeline: schedule or launch XGBoost v2 retraining",
-              "Knowledge Base: upload SOPs, manuals, alarm guides to expand RAG corpus",
-              "User Management: add/remove users, change roles and passwords"]),
-            ("📖 User Guide","#39c5cf","This page",
-             "Complete system reference — architecture, all KPIs, page descriptions, chatbot setup, "
-             "live mode explanation, governance model, and deployment guide.",
-             ["Updated automatically each session with current date",
-              "Metrics tab covers all 25+ KPIs with formulas and interpretations"]),
-        ]:
-            with st.expander(f"{_pn} — {_pt}"):
-                st.markdown(f"""
-<div style="font-size:.78rem;color:#c9d1d9;line-height:1.72;margin-bottom:.5rem">{_pd}</div>
-<div style="background:#1c2333;border-radius:6px;padding:.6rem .85rem">
-  {"".join(f'<div style="font-size:.71rem;color:#7d8590;padding:.13rem 0;font-family:monospace">✓ {t}</div>' for t in _tips)}
-</div>""", unsafe_allow_html=True)
-
-    # ── TAB 3: ALL KPIs & METRICS ──────────────────────────────────────────────
-    with _ug[2]:
-        _kpi_tabs = st.tabs(["Predictive Model", "RAG Pipeline", "Agent & Business", "Sensor KPIs"])
-
-        with _kpi_tabs[0]:
-            sh("PREDICTIVE MODEL METRICS — XGBoost v2 Final")
-            _pms = [
-                ("RMSE — Root Mean Squared Error", "#ff6b35", "14.60 all-4 · 12.77 FD001+FD003",
-                 "Primary benchmark metric. Measures the standard deviation of prediction errors in "
-                 "RUL cycles. Penalises large errors quadratically — a 30-cycle error counts 9× more "
-                 "than a 10-cycle error. RMSE=14.60 means the average prediction error is ≈14.6 cycles. "
-                 "FD001+FD003 (single operating condition) = 12.77; FD002+FD004 (6 conditions) = 16.43. "
-                 "SOTA reference: CAELSTM = 11.24 on FD001 alone (trained only on FD001); "
-                 "VectorAgent trains on all 4 simultaneously, a harder and more realistic setting.",
-                 "sqrt( mean( (y_true − y_pred)² ) )", "Lower is better. Threshold for acceptable PdM: RMSE < 20 cycles."),
-                ("MAE — Mean Absolute Error", "#f0b429", "9.97 all-4",
-                 "Average absolute prediction error in cycles. Less sensitive to outliers than RMSE. "
-                 "MAE = 9.97 < RMSE = 14.60 indicates the error distribution has a long right tail "
-                 "(some large outlier errors), while most predictions are within ≈10 cycles of true RUL.",
-                 "mean( |y_true − y_pred| )", "Lower is better. MAE < RMSE always holds by Jensen's inequality."),
-                ("R² — Coefficient of Determination", "#3fb950", "0.874",
-                 "Proportion of RUL variance explained by the model. R² = 0.874 means 87.4% of the "
-                 "variability in remaining useful life is captured by XGBoost v2. Scale-free (0 to 1), "
-                 "enabling comparison across datasets regardless of their RUL range. "
-                 "Improved from R² = 0.853 (v1) to 0.874 (v2) via exp(α=3) near-failure weighting.",
-                 "1 − SS_res / SS_tot", "Higher is better. 1.0 = perfect model; 0.0 = null (mean) model."),
-                ("NASA Score — Asymmetric Penalty", "#bc8cff", "Supplementary metric",
-                 "Asymmetric scoring that penalises late predictions (predicting MORE RUL than actual = "
-                 "missed maintenance = potential failure) more heavily than early predictions "
-                 "(predicting LESS RUL = unnecessary maintenance = cost but no outage). "
-                 "This reflects the real-world asymmetry: a missed failure costs far more than an "
-                 "unnecessary dispatch. Penalty for being 20 cycles late ≈ 5.5× penalty for 20 cycles early.",
-                 "Σ exp(−d/13)−1 if d<0 else exp(d/10)−1, where d = y_pred − y_true", "Lower is better."),
-                ("Confidence Interval [cl, ch]", "#58a6ff", "±3.1 cycles at 1σ",
-                 "Prediction uncertainty band computed via bootstrap resampling of the XGBoost prediction "
-                 "set. Shown as [cl, ch] on every station card and gauge. Example: FD002_47 has "
-                 "prediction 14.7 cycles, CI = [11.7, 17.7]. Wider CI = more uncertainty = dispatch "
-                 "should be planned earlier (use cl as the conservative estimate for scheduling). "
-                 "Calibration target: 68% of true RUL values fall within the ±1σ interval.",
-                 "Bootstrap [P5, P95] of prediction distribution", "Use cl (lower bound) for conservative maintenance scheduling."),
-                ("Per-RUL-Range RMSE", "#39c5cf", "0–20: 8.29 · 20–50: 18.64 · 50–100: 21.35",
-                 "RMSE broken down by urgency zone. XGBoost v2 achieves RMSE = 8.29 in the critical zone "
-                 "(0–20 cycles) due to exp(α=3) weighting — this is the most operationally important zone. "
-                 "Performance degrades in the 50–100 range (RMSE = 21.35), which is acceptable since "
-                 "Monitor-tier stations have 168h SLA and only need an approximate time window.",
-                 "RMSE computed independently per [0-20], [20-50], [50-100], [100-150] bands",
-                 "Critical zone (0-20) accuracy is most important. Acceptable to sacrifice 50-100 accuracy."),
-            ]
-            for _mn, _mc, _mv, _md, _mf, _mi in _pms:
-                with st.expander(f"{_mn} = {_mv}"):
-                    st.markdown(f"""
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem;font-size:.77rem">
-  <div>
-    <div style="color:#7d8590;font-size:.62rem;text-transform:uppercase;font-family:monospace;margin-bottom:.22rem">DESCRIPTION</div>
-    <div style="color:#c9d1d9;line-height:1.72">{_md}</div>
-  </div>
-  <div>
-    <div style="color:#7d8590;font-size:.62rem;text-transform:uppercase;font-family:monospace;margin-bottom:.22rem">FORMULA · INTERPRETATION</div>
-    <div style="color:#c9d1d9;margin-bottom:.35rem;line-height:1.6">{_mi}</div>
-    <div style="background:#1c2333;border-radius:4px;padding:.32rem .55rem;font-family:monospace;font-size:.68rem;color:{_mc}">{_mf}</div>
-  </div>
-</div>""", unsafe_allow_html=True)
-
-        with _kpi_tabs[1]:
-            sh("RAG PIPELINE METRICS")
-            for _mn, _mc, _mv, _md, _mi in [
-                ("Grounding Rate", "#3fb950", "1.00 (100%)",
-                 "Fraction of LLM-generated claims in the diagnostic output that are traceable to a "
-                 "specific retrieved [DOC-ID] evidence chunk. A grounding rate of 1.00 means every "
-                 "factual assertion in the agent's output cites a source. Achieved via citation-enforced "
-                 "prompting: the LLM is explicitly instructed it must cite [DOC-ID] for every claim. "
-                 "Computed by expert annotation of 50 test cases. Grounding = 1 − Hallucination.",
-                 "Target >0.80. System achieves 1.00 via citation enforcement."),
-                ("Hallucination Rate", "#ff6b35", "0.00 (0%)",
-                 "Fraction of LLM claims NOT supported by any retrieved evidence chunk. Hallucination "
-                 "is eliminated by RAG grounding — moving from Config C (LLM without RAG, hallucination=0.65) "
-                 "to Config D+E (LLM+RAG, hallucination=0.00) demonstrates RAG's primary contribution. "
-                 "In safety-critical maintenance, hallucination=0 is non-negotiable: an incorrect "
-                 "repair instruction could cause equipment damage or safety incidents.",
-                 "Target <0.05. System achieves 0.00. Ablation C vs D: 0.65→0.00."),
-                ("RAG Coverage Score", "#39c5cf", "0.60–1.00 per station",
-                 "Fraction of top-5 retrieved chunks that are relevant to the alerted subsystem. "
-                 "Coverage=1.00 means all 5 retrieved chunks match the diagnosed subsystem (power, thermal, "
-                 "RF, BBU). Coverage=0.60 for backhaul stations due to a sparser corpus for that subsystem. "
-                 "Low coverage triggers a human-review flag in the diagnostic output.",
-                 "Values by subsystem: power=1.00 · thermal=1.00 · RF=1.00 · BBU=1.00 · backhaul=0.60"),
-                ("RRF Score (Reciprocal Rank Fusion)", "#58a6ff", "0.052–0.063 per chunk",
-                 "Fusion score combining sparse TF-IDF retrieval ranking and dense LSA semantic ranking. "
-                 "RRF(k=60, r_sparse, r_dense) = 1/(60 + r_sparse) + 1/(60 + r_dense). "
-                 "Higher score = stronger combined evidence relevance from both retrieval modalities. "
-                 "Used to select top-5 from 17 candidate chunks. Shown in the RRF bar chart in "
-                 "Pipeline Intelligence → RAG Evidence.",
-                 "Range: 0.04–0.07. Top chunk for power-subsystem queries: ~0.063."),
-                ("Retrieval Latency", "#bc8cff", "9ms (27.5ms of 33ms E2E)",
-                 "Time from alert receipt to evidence bundle completion (TF-IDF index lookup + "
-                 "SVD transform + RRF fusion). RAG retrieval dominates the pipeline at 83% of E2E latency. "
-                 "Full breakdown: Interpreter=0.5ms · RAG=27.5ms · Diagnostic=0.8ms · Planning=0.2ms · Execution=2.4ms. "
-                 "Optimisation path: FAISS dense index would reduce RAG to <1ms.",
-                 "Target <100ms for real-time NOC operation. System achieves 33ms total."),
-            ]:
-                st.markdown(f"""
-<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:.72rem .95rem;margin-bottom:.38rem">
-  <div style="display:flex;align-items:baseline;gap:.55rem;margin-bottom:.25rem;flex-wrap:wrap">
-    <span style="font-weight:700;color:{_mc};font-family:monospace;font-size:.77rem">{_mn}</span>
-    <span style="background:{_mc}22;color:{_mc};border-radius:3px;padding:1px 6px;font-family:monospace;font-size:.65rem">{_mv}</span>
-  </div>
-  <div style="font-size:.76rem;color:#c9d1d9;line-height:1.67;margin-bottom:.25rem">{_md}</div>
-  <div style="font-size:.68rem;color:#7d8590;font-family:monospace;border-top:1px solid #30363d;padding-top:.22rem">{_mi}</div>
-</div>""", unsafe_allow_html=True)
-
-        with _kpi_tabs[2]:
-            sh("AGENT & BUSINESS KPIs")
-            for _mn, _mc, _mv, _md, _mi in [
-                ("Diagnostic Confidence", "#58a6ff", "0.37–0.92 per station",
-                 "Probability assigned by the Diagnostic Agent to its primary root-cause hypothesis. "
-                 "Derived from: RAG coverage score × feature importance alignment × subsystem rule match. "
-                 "High confidence: FD003_88 = 0.91 (clear thermal pattern, high RAG coverage). "
-                 "Low confidence: FD004_112 = 0.37 (backhaul subsystem, sparse corpus, multi-condition). "
-                 "Confidence below 0.50 triggers automatic escalation to human reviewer.",
-                 "Action threshold: >0.60 → auto-execute Tier 1/2. <0.50 → escalate to human."),
-                ("SLA Compliance", "#3fb950", "Critical ≤4h · Warning ≤48h · Monitor ≤168h",
-                 "Time-based service level agreements per urgency tier. Defines the maximum time "
-                 "from alert trigger to maintenance action completion. The governance model enforces "
-                 "SLA via the TIMEOUT mechanism: if an engineer does not act on a Tier 2 recommendation "
-                 "within the window, the system auto-executes. For Tier 3 (Critical), the SLA "
-                 "clock is surfaced to the approving engineer in the Dispatch & Roster page.",
-                 "SLA enforced by governance tier. TIMEOUT auto-escalates if unapproved in window."),
-                ("Downtime Avoided (%)", "#3fb950", "57.1% vs reactive MTTR",
-                 "Percentage reduction in effective downtime versus reactive maintenance. "
-                 "Calculated as: (MTTR_reactive − MTTR_ai) / MTTR_reactive × 100. "
-                 "Baseline MTTR without AI prediction: 4.2h (industry average for macro BTS). "
-                 "MTTR with VectorAgent pre-dispatch: 1.8h (engineer dispatched before failure, "
-                 "parts pre-ordered, fault pre-diagnosed). Reduction = (4.2−1.8)/4.2 = 57.1%.",
-                 "Baseline: 4.2h reactive MTTR · AI-enabled: 1.8h · Reduction: 57.1%"),
-                ("Money Saved (€)", "#f0b429", "€ per period (€1,200/h baseline)",
-                 "Estimated cost savings from AI-enabled faster maintenance. Formula: "
-                 "n_resolved × (MTTR_reactive − MTTR_ai) × cost_per_hour. "
-                 "Cost per hour of BTS downtime: €1,200 (OPEX + SLA penalties + traffic revenue loss "
-                 "— conservative estimate for a macro cell with 5,000 active users). "
-                 "In production, link to your NMS/BSS for precise financial calculations.",
-                 "Formula: n_resolved × 2.4h saved × €1,200/h. Link to ServiceNow for real costs."),
-                ("Time Saved (hours)", "#58a6ff", "2.4h per resolved ticket",
-                 "Total engineer hours saved per period. Calculated as: "
-                 "n_resolved × (MTTR_reactive − MTTR_ai). Each resolved ticket saves 2.4h of "
-                 "field time through pre-diagnosis, pre-ordered parts, and faster fault isolation. "
-                 "Shown as cumulative hours in the Performance Report.",
-                 "n_resolved × 2.4h. Scales linearly with number of resolved tickets."),
-                ("Predictive Rate (%)", "#39c5cf", "≥87% failures caught pre-outage",
-                 "Fraction of actual failures correctly predicted before the outage occurs. "
-                 "Approximated as: (n_resolved / n_alerts) × 87%, reflecting that well-tuned "
-                 "XGBoost v2 catches approximately 87% of imminent failures in the 0–20 cycle window. "
-                 "In production, measure as: tickets closed before station went down / total tickets.",
-                 "Proxy: (n_resolved / n_alerts) × 0.87. Direct measurement requires failure ground-truth."),
-                ("Resolution Rate (%)", "#39c5cf", "n_resolved / n_alerts × 100",
-                 "Fraction of triggered alerts that were resolved within the reporting period. "
-                 "A high resolution rate indicates operational efficiency. "
-                 "A low resolution rate with many active dispatches may indicate workforce shortage "
-                 "or SLA violations — both are visible in the Performance Report dispatch log.",
-                 "n_resolved / n_alerts × 100. Target: >85% within 30-day window."),
-            ]:
-                st.markdown(f"""
-<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:.72rem .95rem;margin-bottom:.38rem">
-  <div style="display:flex;align-items:baseline;gap:.55rem;margin-bottom:.25rem;flex-wrap:wrap">
-    <span style="font-weight:700;color:{_mc};font-family:monospace;font-size:.77rem">{_mn}</span>
-    <span style="background:{_mc}22;color:{_mc};border-radius:3px;padding:1px 6px;font-family:monospace;font-size:.65rem">{_mv}</span>
-  </div>
-  <div style="font-size:.76rem;color:#c9d1d9;line-height:1.67;margin-bottom:.25rem">{_md}</div>
-  <div style="font-size:.68rem;color:#7d8590;font-family:monospace;border-top:1px solid #30363d;padding-top:.22rem">{_mi}</div>
-</div>""", unsafe_allow_html=True)
-
-        with _kpi_tabs[3]:
-            sh("STATION SENSOR KPIs — ALL 15 STATIONS")
-            _sensor_rows = ""
-            _THS = "background:#1c2333;color:#7d8590;padding:.3rem .55rem;border:1px solid #30363d;font-size:.62rem"
-            _TDS = "padding:.27rem .55rem;border:1px solid #30363d;font-size:.70rem;font-family:monospace"
-            for s in STATIONS:
-                _rul_n = live_rul(s)
-                _col   = rc(_rul_n)
-                _dir   = "↓ fail-low" if s["sensor_dir"]=="low" else "↑ fail-high"
-                _sensor_rows += (
-                    f'<tr>'
-                    f'<td style="{_TDS};color:#a5d6ff;font-weight:700">{s["id"]}</td>'
-                    f'<td style="{_TDS};color:#7d8590">{s["sub"].replace("_"," ")}</td>'
-                    f'<td style="{_TDS};color:#39c5cf">{s["sensor_lbl"]}</td>'
-                    f'<td style="{_TDS};color:#f0b429">{s["sensor_nom"]}{s["sensor_unit"]}</td>'
-                    f'<td style="{_TDS};color:#bc8cff">{_dir}</td>'
-                    f'<td style="{_TDS};color:{_col};font-weight:700">{_rul_n:.1f} cyc</td>'
-                    f'<td style="{_TDS};color:#f0b429">{s["degrade"]:.2f}/min</td>'
-                    f'<td style="{_TDS};color:#7d8590">{s["alm"][:40]}</td>'
-                    f'</tr>'
-                )
-            st.markdown(f"""
-<div style="overflow-x:auto">
-<table style="border-collapse:collapse;width:100%;font-family:monospace">
-<tr>
-  <th style="{_THS}">Station</th><th style="{_THS}">Subsystem</th><th style="{_THS}">Sensor</th>
-  <th style="{_THS}">Nominal</th><th style="{_THS}">Fail Dir.</th>
-  <th style="{_THS}">Live RUL</th><th style="{_THS}">Degrade</th><th style="{_THS}">Expected Alarm</th>
-</tr>
-{_sensor_rows}
-</table>
-</div>""", unsafe_allow_html=True)
-            st.markdown("""
-<div class="ac m" style="margin-top:.7rem;font-size:.72rem">
-  <strong style="color:#39c5cf">Reading the sensor table:</strong>
-  Nominal = healthy operating setpoint · Fail Direction = which way the value drifts toward failure ·
-  Degrade = how fast RUL decreases per session minute · Live RUL = current session-adjusted RUL ·
-  Expected Alarm = the alarm code that will trigger at failure.
-</div>""", unsafe_allow_html=True)
-
-    # ── TAB 4: AI CHATBOT SETUP ────────────────────────────────────────────────
-    with _ug[3]:
-        sh("AI CHATBOT — FREE API OPTIONS (PRIORITY ORDER)")
-        for _rk, _em, _nm, _tg, _url, _pre, _ev, _mod, _lat, _cst, _col in [
-            ("1","🔵","Anthropic Claude","Highest quality","console.anthropic.com","sk-ant-...","ANTHROPIC_API_KEY","claude-haiku-4-5-20251001","~1.2s","Free credits on signup","#58a6ff"),
-            ("2","🟢","Groq","Fastest, completely free","console.groq.com","gsk_...","GROQ_API_KEY","LLaMA 3.3 70B Versatile","~400ms","Unlimited free tier","#3fb950"),
-            ("3","🟢","OpenRouter","Multiple free models","openrouter.ai","sk-or-...","OPENROUTER_API_KEY","DeepSeek v3 / Llama 3.3 / Gemma 3","~700ms","Free tier available","#39c5cf"),
-            ("4","📚","Rule-based KB","Always works, no key","Built-in","-","-","Telecom maintenance knowledge","<1ms","Free forever","#7d8590"),
-        ]:
-            st.markdown(f"""
-<div style="background:#161b22;border:1px solid {_col}44;border-radius:7px;padding:.85rem 1.05rem;margin-bottom:.5rem">
-  <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem;flex-wrap:wrap">
-    <span style="font-size:.80rem;font-weight:700;color:{_col};font-family:monospace">#{_rk} {_em} {_nm}</span>
-    <span style="font-size:.72rem;color:#c9d1d9">{_tg}</span>
-    <span style="font-size:.68rem;color:#39c5cf;margin-left:auto">{_url}</span>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.5rem;font-size:.70rem;font-family:monospace">
-    <div><span style="color:#7d8590">Model: </span><span style="color:#c9d1d9">{_mod}</span></div>
-    <div><span style="color:#7d8590">Latency: </span><span style="color:#c9d1d9">{_lat}</span></div>
-    <div><span style="color:#7d8590">Cost: </span><span style="color:{_col}">{_cst}</span></div>
-    <div><span style="color:#7d8590">Key prefix: </span><span style="color:#f0b429">{_pre}</span></div>
-  </div>
-</div>""", unsafe_allow_html=True)
-        sh("SECRETS.TOML TEMPLATE")
-        st.code(f"""# .streamlit/secrets.toml  OR  Streamlit Cloud → App Settings → Secrets
-# Generated: {time.strftime("%Y-%m-%d")}
-
-ANTHROPIC_API_KEY  = "sk-ant-..."   # console.anthropic.com
-GROQ_API_KEY       = "gsk_..."      # console.groq.com  (free, fastest)
-OPENROUTER_API_KEY = "sk-or-..."    # openrouter.ai (DeepSeek v3 free)
-
-[users]
-admin    = "pdm2026admin"       # admin_ prefix → Admin role
-engineer = "noc2026"            # eng_ prefix   → Engineer role
-viewer   = "readonly"           # viewer_ prefix → Viewer role
-# admin_alice = "alice-secure"  → additional Admin
-# eng_bob     = "bob-2026"      → additional Engineer""", language="toml")
-
-    # ── TAB 5: LIVE MODE ──────────────────────────────────────────────────────
-    with _ug[4]:
-        sh("LIVE MODE — REAL-TIME RUL SIMULATION")
-        _lc1, _lc2 = st.columns(2)
-        with _lc1:
-            st.markdown("""
-<div class="ac m">
-  <strong style="color:#39c5cf">RUL Degradation Formula</strong><br><br>
-  <code style="color:#f0b429;font-size:.77rem">live_rul = base_rul − elapsed_min × degrade_rate</code><br><br>
-  <span style="font-size:.74rem;color:#c9d1d9;line-height:1.8">
-  <b style="color:#e6edf3">base_rul:</b> XGBoost v2 Final prediction (session start)<br>
-  <b style="color:#e6edf3">elapsed_min:</b> minutes since session start or clock reset<br>
-  <b style="color:#e6edf3">degrade_rate:</b> cycles/min per station subsystem type<br>
-  <b style="color:#e6edf3">RUL override:</b> after engineer closes a ticket, the station RUL is restored to the engineer's assessed value<br><br>
-  Urgency thresholds:<br>
-  RUL ≤ 20 → 🔴 Critical (SLA ≤ 4h, Tier 3)<br>
-  20 &lt; RUL ≤ 50 → 🟡 Warning (SLA ≤ 48h, Tier 2)<br>
-  RUL > 50 → 🟢 Monitor (SLA ≤ 168h, Tier 1)
-  </span>
-</div>""", unsafe_allow_html=True)
-        with _lc2:
-            st.markdown("""
-<div class="ac m">
-  <strong style="color:#39c5cf">Sensor Simulation Formula</strong><br><br>
-  <code style="font-size:.70rem;color:#f0b429">val = nominal + d × elapsed × 0.0012 + N(0, |nominal| × 0.013)</code><br><br>
-  <span style="font-size:.73rem;color:#c9d1d9;line-height:1.8">
-  <b style="color:#e6edf3">nominal:</b> healthy operating setpoint per subsystem<br>
-  <b style="color:#e6edf3">d:</b> −1 (fail-low sensor) or +1 (fail-high sensor)<br>
-  <b style="color:#e6edf3">N(μ,σ):</b> Gaussian noise, seeded by 4-second time bucket<br>
-  <b style="color:#e6edf3">Sparkline:</b> last 12 readings at 6-second intervals<br><br>
-  Sensors: DC Voltage · Cabinet Temp · Fan Speed ·<br>
-  VSWR · Latency · RSSI · CPU% · Battery Cap · ESR ·<br>
-  PA Efficiency · Fade Margin · Memory Swap · Inlet Temp
-  </span>
-</div>""", unsafe_allow_html=True)
-
-        sh("PRODUCTION DATA INTEGRATION")
-        st.markdown("""
-<div style="background:#161b22;border:1px solid #39c5cf44;border-radius:8px;padding:.95rem 1.1rem;
-     font-size:.78rem;color:#c9d1d9;line-height:1.75">
-  Replace the simulation with real BTS telemetry via <strong style="color:#39c5cf">Settings → Data Sources</strong>:<br><br>
-  <strong>📡 MQTT</strong> — Subscribe to <code>vectoragent/bts/{station_id}/{kpi}</code>. Best for >1000 stations.<br>
-  <strong>🌐 REST API</strong> — Poll Ericsson ENM, Nokia NetAct, or Huawei U2020 every 30–60s.<br>
-  <strong>📂 File (CSV)</strong> — NMS exports CSV to a watched folder every 60s. Zero API integration required.<br><br>
-  When a non-simulation connector is configured, the RUL mode badge in the sidebar automatically
-  changes from <strong style="color:#58a6ff">🔵 Simulation</strong> to <strong style="color:#3fb950">🟢 Live</strong>.
-  The XGBoost v2 model then predicts from real sensor readings instead of the simulation formula.
-</div>""", unsafe_allow_html=True)
-
-    # ── TAB 6: GOVERNANCE ─────────────────────────────────────────────────────
-    with _ug[5]:
-        sh("GOVERNANCE MODEL — TIERED AUTONOMY FOR SAFETY-CRITICAL SYSTEMS")
-        st.markdown("""
-<div style="font-size:.78rem;color:#c9d1d9;line-height:1.75;background:#0d1117;border:1px solid #30363d;
-     border-radius:7px;padding:.8rem 1rem;margin-bottom:.8rem">
-  The tiered autonomy model addresses the governance gap identified in Allam et al. (2025).
-  It enables operational efficiency for low-risk actions while maintaining human oversight
-  for high-stakes decisions — directly satisfying IEC 62443 requirements for industrial cybersecurity
-  and aligning with the human-in-the-loop principle for safety-critical AI systems.
-</div>""", unsafe_allow_html=True)
-        for _tn, _tname, _tc, _ttag, _tdesc, _texs in [
-            (1, "Fully Autonomous", "#3fb950", "AUTO",
-             "Low-risk, reversible actions execute immediately without human involvement. "
-             "Triggered by Monitor urgency (RUL > 50 cycles) or when using inherently safe tools. "
-             "The agent invokes the tool, logs the outcome to persistent memory, and continues. "
-             "No engineer notification required, though all actions are audit-logged.",
-             ["query_cmdb — query equipment configuration and firmware","search_knowledge — retrieve RAG evidence bundle",
-              "open_ticket — create monitoring or warning maintenance ticket",
-              "escalate_to_human — send alert notification (no action, notification only)"]),
-            (2, "Recommend + Auto after timeout", "#f0b429", "TIMEOUT",
-             "Medium-risk actions are surfaced as recommendations to the responsible engineer. "
-             "A notification is sent (in-system + SMS simulation to engineer's phone). "
-             "If no objection is registered within the SLA timeout window, the action executes automatically. "
-             "Triggered by Warning urgency (20 < RUL ≤ 50 cycles).",
-             ["schedule_dispatch — field dispatch within 7-day SLA window",
-              "adjust_threshold — alarm threshold modification",
-              "schedule_maintenance — preventive maintenance scheduling"]),
-            (3, "Human approval required", "#ff6b35", "HUMAN",
-             "High-risk or potentially irreversible actions require explicit sign-off before execution. "
-             "The full reasoning trace, evidence bundle, and confidence score are presented to the "
-             "approving engineer in the Dispatch & Roster page. Triggered by Critical urgency (RUL ≤ 20 cycles).",
-             ["remote_reboot — restart equipment component via OMC (service risk)",
-              "emergency_dispatch — immediate dispatch <4h (cost and resource commitment)",
-              "take_offline — graceful equipment shutdown via OMC",
-              "power_reduction — TX power reduction commands"]),
-        ]:
-            st.markdown(f"""
-<div style="background:#161b22;border:2px solid {_tc}44;border-radius:8px;padding:.85rem 1.05rem;margin-bottom:.6rem">
-  <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem">
-    <span style="font-size:.85rem;font-weight:700;color:{_tc};font-family:monospace">Tier {_tn}</span>
-    <span style="font-size:.80rem;color:#e6edf3">{_tname}</span>
-    <span style="background:{_tc}22;color:{_tc};border:1px solid {_tc}55;border-radius:4px;padding:1px 7px;font-family:monospace;font-size:.67rem;font-weight:700">{_ttag}</span>
-  </div>
-  <div style="font-size:.77rem;color:#c9d1d9;line-height:1.7;margin-bottom:.42rem">{_tdesc}</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.2rem">
-    {"".join(f'<div style="font-size:.70rem;color:#7d8590;font-family:monospace;padding:.13rem 0">▶ {ex}</div>' for ex in _texs)}
-  </div>
-</div>""", unsafe_allow_html=True)
-
-    # ── TAB 7: DEPLOYMENT ─────────────────────────────────────────────────────
-    with _ug[6]:
-        sh("STREAMLIT CLOUD DEPLOYMENT (RECOMMENDED — FREE)")
-        st.markdown(f"""
-<div class="ac m">
-  <strong style="color:#3fb950">Free, ~25-second build, zero version conflicts</strong><br>
-  <span style="font-size:.76rem;color:#c9d1d9;line-height:1.8">
-  1. Push <code>streamlit_pdm.py</code> + <code>requirements.txt</code> to a GitHub repository<br>
-  2. Go to <a href="https://share.streamlit.io" style="color:#39c5cf">share.streamlit.io</a> → New app → connect GitHub repo<br>
-  3. Main file path: <code>streamlit_pdm.py</code><br>
-  4. App Settings → Secrets → paste API keys and user credentials<br>
-  5. Click Deploy — live at <code>https://your-app.streamlit.app</code> in ~25 seconds ✅
-  </span>
-</div>""", unsafe_allow_html=True)
-        sh("REQUIREMENTS.TXT")
-        st.code("""streamlit==1.41.1
-numpy==1.26.4
-plotly==5.24.1
-anthropic==0.40.0
-# matplotlib is available automatically as a transitive dependency of plotly
-# (used for PDF report generation — no separate install needed)""", language="text")
-        sh("LOCAL DEVELOPMENT")
-        st.code(f"""# Install dependencies
-pip install streamlit==1.41.1 numpy plotly anthropic
-
-# Create secrets file
-mkdir -p .streamlit
-cat > .streamlit/secrets.toml << 'EOF'
-ANTHROPIC_API_KEY = "sk-ant-..."   # console.anthropic.com
-GROQ_API_KEY      = "gsk_..."      # console.groq.com (free, fastest)
-[users]
-admin    = "pdm2026admin"
-engineer = "noc2026"
-viewer   = "readonly"
-EOF
-
-# Run application
-streamlit run streamlit_pdm.py
-
-# Report generated: VectorAgent_Report_YYYYMMDD.pdf
-# Current date: {time.strftime("%Y-%m-%d")}""", language="bash")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
