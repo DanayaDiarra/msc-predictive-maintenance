@@ -1,7 +1,4 @@
-"""
-OrchestrAI NOC — v6 (Production Edition)
-Agentic AI for Predictive Maintenance | GSOM SPBU | 2026
-"""
+"""OrchestrAI NOC"""
 
 import sys, os, re, json, time, math
 from pathlib import Path
@@ -18,11 +15,15 @@ os.chdir(_HERE)
 import streamlit as st
 
 st.set_page_config(
-    page_title="VectorAgent NOC",
+    page_title="OrchestrAI NOC",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+# Override og:description / meta description so shared links show a clean subtitle
+st.markdown(
+    '<meta name="description" content="OrchestrAI NOC — Agentic AI for Predictive Maintenance">',
+    unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  GLOBAL CSS
@@ -122,13 +123,33 @@ div[data-testid="stColumn"] .stButton>button{width:100%!important;height:auto!im
     linear-gradient(160deg, #0b0f1a 0%, #0d1117 40%, #0a1020 100%);
   background-attachment: fixed;
 }
-/* ── Icon nav buttons: tiny arrow, flush style ── */
-section[data-testid="stSidebar"] .stButton > button {
-  height:28px!important;min-height:28px!important;
-  padding:0 .4rem!important;font-size:.65rem!important;
-  color:var(--muted)!important;border:none!important;
-  background:transparent!important;margin-top:-36px!important;
-  opacity:0!important;width:100%!important;
+/* ── Sidebar nav: full-width styled pill buttons ── */
+div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+  div.element-container:has(div[data-testid="stButton"]) > div[data-testid="stButton"] > button {
+  background: transparent !important;
+  border: none !important;
+  border-left: 3px solid transparent !important;
+  border-radius: 5px !important;
+  color: var(--muted) !important;
+  font-family: var(--mono) !important;
+  font-size: .72rem !important;
+  font-weight: 400 !important;
+  text-align: left !important;
+  padding: .42rem .7rem .42rem .6rem !important;
+  margin-bottom: .05rem !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 34px !important;
+  line-height: 1.35 !important;
+  transition: background .14s ease, color .14s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: .5rem !important;
+}
+div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+  div.element-container:has(div[data-testid="stButton"]) > div[data-testid="stButton"] > button:hover {
+  background: #1c2333 !important;
+  color: var(--fg) !important;
 }
 </style>""", unsafe_allow_html=True)
 
@@ -714,133 +735,6 @@ def pdk():
                 margin=dict(l=36, r=16, t=36, b=36))
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  PERSISTENT DISPATCH STORE — shared across ALL browser sessions
-#  Uses SQLite (preferred) with JSON file fallback.
-#  All dispatches created/updated by ANY user are immediately visible to ALL.
-# ══════════════════════════════════════════════════════════════════════════════
-import sqlite3 as _sqlite3
-
-_DISPATCH_DB   = Path(_HERE) / "data" / "dispatches.db"
-_DISPATCH_JSON = Path(_HERE) / "data" / "dispatches.json"
-_DISPATCH_DB.parent.mkdir(parents=True, exist_ok=True)
-
-def _db_connect():
-    """Open SQLite connection with WAL mode for concurrent access."""
-    try:
-        con = _sqlite3.connect(str(_DISPATCH_DB), check_same_thread=False, timeout=10)
-        con.execute("PRAGMA journal_mode=WAL")
-        con.execute("""CREATE TABLE IF NOT EXISTS dispatches (
-            ticket_id TEXT PRIMARY KEY,
-            station_id TEXT, status TEXT, urgency TEXT,
-            assigned_at TEXT, closed_at TEXT,
-            engineers TEXT, subsystem TEXT, sla_hours INTEGER,
-            rul_at_dispatch REAL, hypothesis TEXT,
-            work_done TEXT, parts_used TEXT, root_cause TEXT,
-            notes TEXT, restored_rul REAL, validated_by TEXT,
-            created_by TEXT, station TEXT,
-            data_json TEXT
-        )""")
-        con.commit()
-        return con
-    except Exception:
-        return None
-
-def _store_dispatch(d: dict):
-    """Write or update a dispatch record. Falls back to JSON."""
-    try:
-        con = _db_connect()
-        if con:
-            con.execute("""INSERT OR REPLACE INTO dispatches
-                (ticket_id, station_id, status, urgency, assigned_at, closed_at,
-                 engineers, subsystem, sla_hours, rul_at_dispatch, hypothesis,
-                 work_done, parts_used, root_cause, notes, restored_rul,
-                 validated_by, created_by, station, data_json)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
-                d.get("ticket_id",""), d.get("station_id", d.get("station","")),
-                d.get("status",""), d.get("urgency",""),
-                d.get("assigned_at",""), d.get("closed_at",""),
-                json.dumps(d.get("engineers",[])),
-                d.get("subsystem",""), d.get("sla_hours",0),
-                d.get("rul_at_dispatch",0), d.get("hypothesis",""),
-                d.get("work_done",""), d.get("parts_used",""),
-                d.get("root_cause",""), d.get("notes",""),
-                d.get("restored_rul",0), d.get("validated_by",""),
-                d.get("created_by",""), d.get("station", d.get("station_id","")),
-                json.dumps(d)
-            ))
-            con.commit(); con.close()
-            return True
-    except Exception:
-        pass
-    # JSON fallback
-    try:
-        all_d = _load_all_dispatches()
-        all_d[d.get("ticket_id","")] = d
-        _DISPATCH_JSON.write_text(json.dumps(all_d, indent=2))
-        return True
-    except Exception:
-        return False
-
-def _load_all_dispatches() -> dict:
-    """Load all dispatches. Returns {ticket_id: dispatch_dict}."""
-    try:
-        con = _db_connect()
-        if con:
-            rows = con.execute(
-                "SELECT ticket_id, data_json FROM dispatches ORDER BY assigned_at DESC"
-            ).fetchall()
-            con.close()
-            result = {}
-            for tid, djson in rows:
-                try:
-                    d = json.loads(djson)
-                    # Ensure engineers is a list
-                    if isinstance(d.get("engineers"), str):
-                        try: d["engineers"] = json.loads(d["engineers"])
-                        except: d["engineers"] = [d["engineers"]]
-                    result[tid] = d
-                except Exception:
-                    pass
-            return result
-    except Exception:
-        pass
-    # JSON fallback
-    try:
-        if _DISPATCH_JSON.exists():
-            return json.loads(_DISPATCH_JSON.read_text())
-    except Exception:
-        pass
-    return {}
-
-def _delete_dispatch(ticket_id: str):
-    """Remove a dispatch (used on cancel)."""
-    try:
-        con = _db_connect()
-        if con:
-            con.execute("DELETE FROM dispatches WHERE ticket_id=?", (ticket_id,))
-            con.commit(); con.close()
-            return
-    except Exception:
-        pass
-    try:
-        all_d = _load_all_dispatches()
-        all_d.pop(ticket_id, None)
-        _DISPATCH_JSON.write_text(json.dumps(all_d, indent=2))
-    except Exception:
-        pass
-
-def _sync_session_from_db():
-    """Pull latest dispatch state from DB into session_state.
-    Called at the top of Dispatch & Roster page to ensure freshness."""
-    all_d = _load_all_dispatches()
-    active  = {d["station_id"]: d for d in all_d.values()
-               if d.get("status") == "IN PROGRESS" and d.get("station_id")}
-    tickets = [d for d in all_d.values() if d.get("status") == "COMPLETED"]
-    tickets.sort(key=lambda x: x.get("closed_at",""), reverse=True)
-    st.session_state.active_dispatches = active
-    st.session_state.dispatch_tickets  = tickets
-
 # ── PDF Report Generator (matplotlib — no extra pip needed) ─────────────────
 def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
                          resolution_pct, downtime_pct, money_saved,
@@ -871,7 +765,7 @@ def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
         ax.axis("off")
 
         # Logo text
-        ax.text(0.05, 0.92, "VectorAgent", fontsize=28, fontweight="bold",
+        ax.text(0.05, 0.92, "OrchestrAI", fontsize=28, fontweight="bold",
                 color="#39c5cf", transform=ax.transAxes, fontfamily="monospace")
         ax.text(0.31, 0.92, "NOC", fontsize=18, fontweight="light",
                 color="#7d8590", transform=ax.transAxes, fontfamily="monospace")
@@ -1005,10 +899,10 @@ def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
 
         # ── PDF metadata ──────────────────────────────────────────────────────
         d = pdf.infodict()
-        d["Title"]   = f"VectorAgent NOC Performance Report — {period_label}"
+        d["Title"]   = f"OrchestrAI NOC Performance Report — {period_label}"
         d["Author"]  = generated_by
         d["Subject"] = "Agentic AI Predictive Maintenance · GSOM SPBU"
-        d["Creator"] = "VectorAgent NOC · Danaya Diarra"
+        d["Creator"] = "OrchestrAI NOC · Danaya Diarra"
 
     buf.seek(0)
     return buf.getvalue(), None
@@ -1191,23 +1085,41 @@ with st.sidebar:
         st.session_state.nav_page = all_pages[0]
     if st.session_state.nav_page not in all_pages:
         st.session_state.nav_page = all_pages[0]
+    # ── Per-button active state CSS (coloured left border + bg) ─────────────
+    _active_css = "<style>"
+    for _pg_a in all_pages:
+        _ico_url_a, _ico_col_a = _SVG_ICONS.get(_pg_a, ("", "#7d8590"))
+        if st.session_state.nav_page == _pg_a:
+            _pg_key_a = "nav_" + "".join(c for c in _pg_a if c.isalnum() or c in "_- ")[:30]
+            _active_css += (
+                f"div[data-testid=\"stSidebar\"] button[kind=\"secondary\"][data-testid=\"{_pg_key_a}\"],"
+                f"div[data-testid=\"stSidebar\"] button[data-testid=\"{_pg_key_a}\"]"
+                f"{{background:#1c2333!important;"
+                f"border-left:3px solid {_ico_col_a}!important;"
+                f"color:#e6edf3!important;font-weight:700!important;}}"
+            )
+    _active_css += "</style>"
+    st.markdown(_active_css, unsafe_allow_html=True)
+
+    # ── Render one styled button per page ────────────────────────────────────
+    # Map page name → SVG icon rendered as a small base64 img in the label
     for _pg in all_pages:
         _ico_url, _ico_col = _SVG_ICONS.get(_pg, ("", "#7d8590"))
-        _is_act = st.session_state.nav_page == _pg
-        _bg2  = "#1c2333" if _is_act else "transparent"
-        _bd2  = f"border-left:3px solid {_ico_col}" if _is_act else "border-left:3px solid transparent"
-        _tc2  = "#e6edf3" if _is_act else "#7d8590"
-        _fw2  = "600" if _is_act else "400"
-        st.markdown(f"""
-<div style="display:flex;align-items:center;gap:.55rem;padding:.42rem .7rem .42rem .5rem;
-     margin-bottom:.08rem;border-radius:5px;{_bd2};background:{_bg2}">
-  <img src="{_ico_url}" width="15" height="15" style="opacity:{'1' if _is_act else '.5'};flex-shrink:0"/>
-  <span style="font-family:'IBM Plex Mono',monospace;font-size:.71rem;
-        font-weight:{_fw2};color:{_tc2}">{_pg.replace("📖 ","")}</span>
-</div>""", unsafe_allow_html=True)
-        # Use a clean key (strip emoji/spaces)
-        _pg_key = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:30]
-        if st.button("▸", key=_pg_key, use_container_width=True, help=_pg.replace("📖 ","")):
+        _pg_clean = _pg.replace("📖 ", "")
+        _pg_key   = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:30]
+        _is_act   = st.session_state.nav_page == _pg
+        # Build label: SVG icon (as HTML img) + page name — rendered inside button via markdown
+        # Streamlit buttons support plain text only, so we use a markdown trick:
+        # inject a per-button <style> that shows the icon as a ::before pseudo-element
+        _ico_opacity = "1" if _is_act else "0.5"
+        st.markdown(
+            f"<style>button[data-testid=\"{_pg_key}\"]::before{{"
+            f"content:'';display:inline-block;width:15px;height:15px;margin-right:6px;"
+            f"background-image:url('{_ico_url}');background-size:contain;"
+            f"background-repeat:no-repeat;background-position:center;"
+            f"opacity:{_ico_opacity};vertical-align:middle;flex-shrink:0;}}</style>",
+            unsafe_allow_html=True)
+        if st.button(_pg_clean, key=_pg_key, use_container_width=True):
             st.session_state.nav_page = _pg
             st.rerun()
     page = st.session_state.nav_page
@@ -1243,7 +1155,7 @@ with st.sidebar:
                 generated_by=FULL_NAME)
             if _pdf_bytes:
                 st.session_state["_sb_pdf"] = _pdf_bytes
-                st.session_state["_sb_pdf_name"] = f"VectorAgent_Report_{time.strftime('%Y%m%d_%H%M')}.pdf"
+                st.session_state["_sb_pdf_name"] = f"OrchestrAI_Report_{time.strftime('%Y%m%d_%H%M')}.pdf"
             else:
                 st.warning(f"PDF unavailable: {_pdf_err}.")
         if st.session_state.get("_sb_pdf"):
@@ -2525,7 +2437,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                         active_dispatches=st.session_state.active_dispatches,
                         generated_by=FULL_NAME)
                 if _pdf_bytes:
-                    _pdf_fname = f"VectorAgent_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.pdf"
+                    _pdf_fname = f"OrchestrAI_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.pdf"
                     st.session_state["_tab_pdf"] = _pdf_bytes
                     st.session_state["_tab_pdf_name"] = _pdf_fname
                     st.success(f"✓ PDF ready — {len(_pdf_bytes)//1024} KB")
@@ -2539,7 +2451,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
             import io as _io, csv as _csv
             _buf2 = _io.StringIO()
             _w2   = _csv.writer(_buf2)
-            _w2.writerow(["VectorAgent NOC — Performance Report", _period,
+            _w2.writerow(["OrchestrAI NOC — Performance Report", _period,
                           time.strftime("%Y-%m-%d %H:%M"), f"By: {FULL_NAME}"])
             _w2.writerow([])
             _w2.writerow(["KPI", "Value"])
@@ -2563,7 +2475,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                               _da2.get("assigned_at","")[:16],
                               ";".join(_da2.get("engineers",[])), "IN PROGRESS"])
             _csv_bytes2 = _buf2.getvalue().encode("utf-8")
-            _csv_fname  = f"VectorAgent_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.csv"
+            _csv_fname  = f"OrchestrAI_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.csv"
             st.download_button("📊 Download CSV (backup)", data=_csv_bytes2,
                                file_name=_csv_fname, mime="text/csv",
                                use_container_width=True, key="dl_csv_report")
@@ -2894,9 +2806,8 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                        "and planning_agent.py are in the same folder and all dependencies are installed.")
 
         sh("SECRETS TEMPLATE")
-        # Note: the caption below is shown only in Settings (admin-only page, not publicly visible)
-        st.caption("Admin reference — configure in Streamlit Cloud → App Settings → Secrets (not visible to public users)")
-        st.code("""[users]
+        st.code("""# .streamlit/secrets.toml  OR  Streamlit Cloud → App Settings → Secrets
+[users]
 # username = "password"   (prefix: admin_ / eng_ / viewer_ sets role)
 admin    = "your-admin-password"
 engineer = "your-engineer-password"
@@ -2917,9 +2828,6 @@ elif pk == "Dispatch & Roster":
     if not IS_ENG:
         st.warning("Engineer / Admin role required.")
         st.stop()
-
-    # ── Sync from persistent store every page load (all users see same state) ──
-    _sync_session_from_db()
 
     roster   = st.session_state.engineer_roster
     active   = st.session_state.active_dispatches    # {station_id: dispatch}
@@ -2962,11 +2870,9 @@ elif pk == "Dispatch & Roster":
     # ═════════════════════════════════════════════════════════════════════════
     #  TAB 1: ASSIGN DISPATCH   TAB 2: ACTIVE DISPATCHES   TAB 3: TICKET LOG   TAB 4: ROSTER
     # ═════════════════════════════════════════════════════════════════════════
-    # Tab labels adapt to role: admins can create dispatches, engineers can only complete them
-    _tab1_label = "🚨 Create Dispatch" if IS_ADMIN else "🚨 Active Dispatches"
     tab1, tab2, tab3, tab4 = st.tabs([
-        _tab1_label,
-        f"✏️ My Tasks ({sum(1 for d in active.values() if USER in d.get('engineers',[]) or IS_ADMIN)})" if not IS_ADMIN else f"⚡ All Active ({len(active)})",
+        "🚨 Assign Dispatch",
+        f"⚡ Active ({len(active)})",
         f"✅ Completed ({len(tickets)})",
         "👷 Engineer Roster",
     ])
@@ -2975,137 +2881,128 @@ elif pk == "Dispatch & Roster":
     #  TAB 1 — ASSIGN DISPATCH
     # ─────────────────────────────────────────────────────────────────────────
     with tab1:
-        if not IS_ADMIN:
-            # Engineers see their own assigned active dispatches here
-            sh("YOUR ASSIGNED DISPATCHES")
-            my_active = {sid: d for sid, d in active.items()
-                         if USER in d.get("engineers", [])}
-            if not my_active:
-                st.info("No dispatches currently assigned to you. Your supervisor will assign one when needed.")
-            else:
-                for _sid2, _d2 in my_active.items():
-                    _uc2  = "#ff6b35" if _d2.get("urgency") == "Critical" else "#f0b429"
-                    _cls2 = "c" if _d2.get("urgency") == "Critical" else "w"
-                    _html2 = (
-                        f'<div class="ac {_cls2}" style="margin-bottom:.4rem">'
-                        f'<strong style="color:#a5d6ff">{_sid2}</strong>'
-                        f'&nbsp;<span style="color:{_uc2}">{_d2.get("urgency","")}</span>'
-                        f'&nbsp;<span style="color:#7d8590;font-size:.68rem">{_d2.get("hypothesis","")[:70]}</span>'
-                        f'<div style="font-size:.67rem;color:#7d8590;margin-top:.25rem">'
-                        f'Ticket: {_d2.get("ticket_id","")} · SLA: {_d2.get("sla_hours","")}h'
-                        f' · Assigned: {str(_d2.get("assigned_at",""))[:16]}</div></div>'
-                    )
-                    st.markdown(_html2, unsafe_allow_html=True)
-            st.caption("To complete a dispatch, go to tab ✏️ My Tasks → fill the validation form → Submit.")
-        else:
-            # Admin creates dispatches
-            # Filter stations needing attention
-            dispatch_stations = [s for s in STATIONS
-                                  if live_urgency(live_rul(s)) in ("Critical","Warning")
-                                  and s["id"] not in active]
-            restored_stations = [s for s in STATIONS if s["id"] in rul_ov]
+        # Filter stations needing attention
+        dispatch_stations = [s for s in STATIONS
+                              if live_urgency(live_rul(s)) in ("Critical","Warning")
+                              and s["id"] not in active]
+        restored_stations = [s for s in STATIONS if s["id"] in rul_ov]
 
-            if not dispatch_stations:
-                st.markdown(
-                    '<div class="ac m" style="margin-top:.5rem">'
-                    '<strong style="color:#3fb950">✓ No unassigned critical/warning stations</strong><br>'
-                    '<span style="font-size:.78rem;color:#c9d1d9">All stations either stable or already dispatched.</span></div>',
-                    unsafe_allow_html=True)
-            else:
-                for s in dispatch_stations:
-                    rul_now = live_rul(s)
-                    urg_now = live_urgency(rul_now)
-                    uc      = "#ff6b35" if urg_now == "Critical" else "#f0b429"
-                    uc_css  = "c" if urg_now == "Critical" else "w"
-                    _bc_cls = "bc" if urg_now == "Critical" else "bw"
-                    st.markdown(
-                        f'<div class="ac {uc_css}" style="margin-bottom:.3rem">'
-                        f'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
-                        f'<div><span style="font-size:.95rem;font-weight:700;color:#a5d6ff;font-family:monospace">{s["id"]}</span>'
-                        f'&nbsp;<span class="{_bc_cls}">{urg_now}</span>'
-                        f'&nbsp;<span style="font-size:.63rem;color:#7d8590;font-family:monospace">{s["sub"]} · SLA {s["sla"]}h</span></div>'
-                        f'<div style="font-size:1.2rem;font-weight:700;color:{uc};font-family:monospace">{rul_now:.1f} cyc</div></div>'
-                        f'<div style="font-size:.70rem;color:#c9d1d9;margin:.2rem 0">{s["hyp"]}</div></div>',
-                        unsafe_allow_html=True)
-                    rec       = _recommend(s["sub"], n=3)
-                    rec_names = [e["name"] for e in rec]
-                    with st.form(f"dispatch_form_{s['id']}"):
-                        fc1, fc2 = st.columns([2, 1])
-                        with fc1:
-                            chosen = st.multiselect(
-                                f"Select engineers for {s['id']}",
-                                options=[e["name"] for e in roster],
-                                default=rec_names,
-                                help="Rolling algorithm pre-selects by skill match + fewest dispatches.",
-                                label_visibility="collapsed")
-                            st.caption(f"🔄 Recommended: {', '.join(rec_names)}")
-                        with fc2:
-                            priority = st.selectbox(
-                                "Priority", ["CRITICAL — 4h","WARNING — 48h","MONITOR — 168h"],
-                                index=0 if urg_now=="Critical" else 1,
-                                label_visibility="collapsed",
-                                key=f"pri_{s['id']}")
-                            sla_h     = int(priority.split("—")[1].strip().replace("h",""))
-                            submitted = st.form_submit_button(
-                                f"🚀 Dispatch to {s['id']}", use_container_width=True)
-                        if submitted and chosen:
-                            ts_now   = time.strftime("%Y-%m-%dT%H:%M:%S")
-                            dispatch = {
-                                "ticket_id":       f"TKT-{s['id']}-{int(time.time())}",
-                                "station_id":      s["id"], "station": s["id"],
-                                "subsystem":       s["sub"], "urgency": urg_now,
-                                "rul_at_dispatch": round(rul_now, 1),
-                                "hypothesis":      s["hyp"], "sla_hours": sla_h,
-                                "engineers":       chosen, "assigned_at": ts_now,
-                                "status":          "IN PROGRESS",
-                                "created_by":      USER,
-                            }
-                            # ── Persist to DB (shared across all users) ─────
-                            _store_dispatch(dispatch)
-                            _sync_session_from_db()
-                            # Update dispatch counts for rolling algorithm
-                            for _e in st.session_state.engineer_roster:
-                                if _e["name"] in chosen:
-                                    _e["dispatches"] += 1
-                            # Perf log
-                            st.session_state.perf_log.append({
-                                "ts": ts_now, "event": "dispatch_created",
-                                "station": s["id"], "urgency": urg_now,
-                                "rul": round(rul_now,1), "engineers": chosen,
-                                "ticket_id": dispatch["ticket_id"],
-                                "sla_hours": sla_h, "subsystem": s["sub"],
-                            })
-                            # In-system + SMS notifications
-                            for _name in chosen:
-                                _eobj = next((e for e in st.session_state.engineer_roster if e["name"]==_name), None)
-                                _ph   = _eobj["phone"] if _eobj else "—"
-                                _push_notif(
-                                    f"📟 [{dispatch['ticket_id']}] {_name} ({_ph}) → {s['id']} "
-                                    f"({urg_now}, SLA {sla_h}h). {s['hyp'][:55]}",
-                                    level="error" if urg_now=="Critical" else "warning")
-                                st.toast(f"SMS → {_ph} | {_name}: {dispatch['ticket_id']} assigned", icon="📱")
-                            _push_notif(f"✅ Dispatch created for {s['id']}: {', '.join(chosen)}", level="success")
-                            st.success(f"Dispatched {', '.join(chosen)} → {s['id']}. Ticket: {dispatch['ticket_id']}")
-                            st.rerun()
-                        elif submitted and not chosen:
-                            st.error("Select at least one engineer.")
-                    st.markdown("<hr style='border-color:#21262d;margin:.5rem 0'>", unsafe_allow_html=True)
+        if not dispatch_stations:
+            st.markdown(
+                '<div class="ac m" style="margin-top:.5rem">'
+                '<strong style="color:#3fb950">✓ No unassigned critical/warning stations</strong><br>'
+                '<span style="font-size:.78rem;color:#c9d1d9">All stations either stable or already dispatched.</span></div>',
+                unsafe_allow_html=True)
+        else:
+            for s in dispatch_stations:
+                rul_now = live_rul(s)
+                urg_now = live_urgency(rul_now)
+                uc      = "#ff6b35" if urg_now == "Critical" else "#f0b429"
+                uc_css  = "c" if urg_now == "Critical" else "w"
+
+                st.markdown(f"""
+<div class="ac {uc_css}" style="margin-bottom:.3rem">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <span style="font-size:.95rem;font-weight:700;color:#a5d6ff;font-family:monospace">{s['id']}</span>
+      &nbsp;<span class="{'bc' if urg_now=='Critical' else 'bw'}">{urg_now}</span>
+      &nbsp;<span style="font-size:.63rem;color:#30363d;font-family:monospace">{s['sub']} · SLA {s['sla']}h</span>
+    </div>
+    <div style="font-size:1.2rem;font-weight:700;color:{uc};font-family:monospace">{rul_now:.1f} cyc</div>
+  </div>
+  <div style="font-size:.70rem;color:#c9d1d9;margin:.2rem 0">{s['hyp']}</div>
+</div>""", unsafe_allow_html=True)
+
+                rec = _recommend(s["sub"], n=3)
+                rec_names = [e["name"] for e in rec]
+                all_names = [e["name"] for e in roster if e["on_call"]]
+
+                with st.form(f"dispatch_form_{s['id']}"):
+                    fc1, fc2 = st.columns([2, 1])
+                    with fc1:
+                        chosen = st.multiselect(
+                            f"Select engineers for {s['id']}",
+                            options=[e["name"] for e in roster],
+                            default=rec_names,
+                            help="Rolling algorithm pre-selects by skill match + fewest dispatches. Override freely.",
+                            label_visibility="collapsed")
+                        st.caption(
+                            f"🔄 Rolling recommendation (skill={s['sub'].split('_')[0]}, "
+                            f"fewest dispatches): {', '.join(rec_names)}")
+                    with fc2:
+                        priority = st.selectbox("Priority", ["CRITICAL — 4h","WARNING — 48h","MONITOR — 168h"],
+                                                index=0 if urg_now=="Critical" else 1,
+                                                label_visibility="collapsed",
+                                                key=f"pri_{s['id']}")
+                        sla_h  = int(priority.split("—")[1].strip().replace("h",""))
+                        submitted = st.form_submit_button(
+                            f"🚀 Dispatch to {s['id']}", use_container_width=True)
+
+                    if submitted and chosen:
+                        ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
+                        dispatch = {
+                            "station_id":   s["id"],
+                            "subsystem":    s["sub"],
+                            "urgency":      urg_now,
+                            "rul_at_dispatch": round(rul_now, 1),
+                            "hypothesis":   s["hyp"],
+                            "sla_hours":    sla_h,
+                            "engineers":    chosen,
+                            "assigned_at":  ts_now,
+                            "status":       "IN PROGRESS",
+                            "ticket_id":    f"TKT-{s['id']}-{int(time.time())}",
+                        }
+                        st.session_state.active_dispatches[s["id"]] = dispatch
+                        # Update dispatch count for rolling algorithm
+                        for e in st.session_state.engineer_roster:
+                            if e["name"] in chosen:
+                                e["dispatches"] += 1
+                        # Record in persistent perf_log for performance report
+                        st.session_state.perf_log.append({
+                            "ts":        ts_now,
+                            "event":     "dispatch_created",
+                            "station":   s["id"],
+                            "urgency":   urg_now,
+                            "rul":       round(rul_now, 1),
+                            "engineers": chosen,
+                            "ticket_id": dispatch["ticket_id"],
+                            "sla_hours": sla_h,
+                            "subsystem": s["sub"],
+                        })
+                        # In-system + phone notification per engineer
+                        _sms_logs = []
+                        for name in chosen:
+                            _eng_obj = next((e for e in st.session_state.engineer_roster if e["name"] == name), None)
+                            _eng_phone = _eng_obj["phone"] if _eng_obj else "—"
+                            _notif_msg = (
+                                f"📟 [{dispatch['ticket_id']}] {name} ({_eng_phone}) dispatched → {s['id']} "
+                                f"({urg_now}, SLA {sla_h}h, RUL={rul_now:.1f}). Fault: {s['hyp'][:60]}")
+                            _push_notif(_notif_msg, level="warning" if urg_now == "Warning" else "error")
+                            _sms_logs.append(
+                                f"SMS → {_eng_phone} | {name}: Dispatch {dispatch['ticket_id']} — "
+                                f"{s['id']} {urg_now} SLA {sla_h}h. {s['hyp'][:50]}")
+                        # Show SMS preview to dispatcher
+                        for _sms in _sms_logs:
+                            st.toast(_sms, icon="📱")
+                        _push_notif(
+                            f"✅ Dispatch created for {s['id']}: {', '.join(chosen)}",
+                            level="success")
+                        st.success(f"Dispatched {', '.join(chosen)} to {s['id']}. Ticket: {dispatch['ticket_id']}")
+                        st.rerun()
+                    elif submitted and not chosen:
+                        st.error("Select at least one engineer.")
+                st.markdown("<hr style='border-color:#21262d;margin:.5rem 0'>", unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────────────────────────────────
     #  TAB 2 — ACTIVE DISPATCHES + VALIDATION FORM
     # ─────────────────────────────────────────────────────────────────────────
     with tab2:
-        # Engineers see only their own dispatches; admins see all
-        _viewable = {sid: d for sid, d in active.items()
-                     if IS_ADMIN or USER in d.get("engineers", [])}
-        if not _viewable:
-            if IS_ADMIN:
-                st.markdown('<div class="ac m"><span style="color:#3fb950">No active dispatches.</span></div>',
-                            unsafe_allow_html=True)
-            else:
-                st.info("No dispatches currently assigned to you.")
+        if not active:
+            st.markdown(
+                '<div class="ac m"><span style="color:#3fb950">No active dispatches.</span></div>',
+                unsafe_allow_html=True)
         else:
-            for sid, d in list(_viewable.items()):
+            for sid, d in list(active.items()):
                 s_obj = next((s for s in STATIONS if s["id"] == sid), None)
                 elapsed_disp = (time.time() - time.mktime(
                     time.strptime(d["assigned_at"], "%Y-%m-%d %H:%M:%S"))) / 3600
@@ -3201,9 +3098,8 @@ elif pk == "Dispatch & Roster":
                                     "restored_rul":   restored_rul,
                                     "validated_by":   USER,
                                 })
-                                # Persist COMPLETED ticket to shared DB
-                                _store_dispatch(closed)
-                                _sync_session_from_db()
+                                st.session_state.dispatch_tickets.insert(0, closed)
+                                del st.session_state.active_dispatches[sid]
                                 # Apply RUL override — station now shows restored RUL
                                 st.session_state.rul_overrides[sid]        = float(restored_rul)
                                 st.session_state.rul_overrides[sid + "_ts"] = time.time()
@@ -3216,9 +3112,8 @@ elif pk == "Dispatch & Roster":
                                 st.rerun()
 
                 # Cancel dispatch
-                if IS_ADMIN and st.button(f"✕ Cancel {d['ticket_id']}", key=f"cancel_{sid}"):
-                    _delete_dispatch(d["ticket_id"])
-                    _sync_session_from_db()
+                if st.button(f"✕ Cancel dispatch {d['ticket_id']}", key=f"cancel_{sid}"):
+                    del st.session_state.active_dispatches[sid]
                     _push_notif(f"❌ Dispatch {d['ticket_id']} for {sid} cancelled by {USER}.", level="warning")
                     st.rerun()
 
@@ -3363,7 +3258,7 @@ elif pk == "Dispatch & Roster":
         <div style="background:linear-gradient(135deg,#1c2333,#161b22);border:1px solid #39c5cf44;
              border-left:4px solid #39c5cf;border-radius:10px;padding:1.2rem 1.6rem;margin-bottom:1rem">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:#e6edf3">
-            📖 VectorAgent NOC — <span style="color:#39c5cf">System User Guide</span>
+            📖 OrchestrAI NOC — <span style="color:#39c5cf">System User Guide</span>
           </div>
           <div style="font-size:.78rem;color:#c9d1d9;line-height:1.7;margin-top:.35rem">
             Complete reference for NOC operators, field engineers, thesis evaluators, and system administrators.
@@ -3551,7 +3446,7 @@ elif pk == "Dispatch & Roster":
                          "than a 10-cycle error. RMSE=14.60 means the average prediction error is ≈14.6 cycles. "
                          "FD001+FD003 (single operating condition) = 12.77; FD002+FD004 (6 conditions) = 16.43. "
                          "SOTA reference: CAELSTM = 11.24 on FD001 alone (trained only on FD001); "
-                         "VectorAgent trains on all 4 simultaneously, a harder and more realistic setting.",
+                         "OrchestrAI trains on all 4 simultaneously, a harder and more realistic setting.",
                          "sqrt( mean( (y_true − y_pred)² ) )", "Lower is better. Threshold for acceptable PdM: RMSE < 20 cycles."),
                         ("MAE — Mean Absolute Error", "#f0b429", "9.97 all-4",
                          "Average absolute prediction error in cycles. Less sensitive to outliers than RMSE. "
@@ -3669,7 +3564,7 @@ elif pk == "Dispatch & Roster":
                          "Percentage reduction in effective downtime versus reactive maintenance. "
                          "Calculated as: (MTTR_reactive − MTTR_ai) / MTTR_reactive × 100. "
                          "Baseline MTTR without AI prediction: 4.2h (industry average for macro BTS). "
-                         "MTTR with VectorAgent pre-dispatch: 1.8h (engineer dispatched before failure, "
+                         "MTTR with OrchestrAI pre-dispatch: 1.8h (engineer dispatched before failure, "
                          "parts pre-ordered, fault pre-diagnosed). Reduction = (4.2−1.8)/4.2 = 57.1%.",
                          "Baseline: 4.2h reactive MTTR · AI-enabled: 1.8h · Reduction: 57.1%"),
                         ("Money Saved (€)", "#f0b429", "€ per period (€1,200/h baseline)",
@@ -3924,7 +3819,7 @@ elif pk == "Dispatch & Roster":
         # Run application
         streamlit run streamlit_pdm.py
 
-        # Report generated: VectorAgent_Report_YYYYMMDD.pdf
+        # Report generated: OrchestrAI_Report_YYYYMMDD.pdf
         # Current date: {time.strftime("%Y-%m-%d")}""", language="bash")
 
 
