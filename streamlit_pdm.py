@@ -1,7 +1,4 @@
-"""
-OrchestrAI NOC — v6 (Production Edition)
-Agentic AI for Predictive Maintenance | GSOM SPBU | 2026
-"""
+"""OrchestrAI NOC"""
 
 import sys, os, re, json, time, math
 from pathlib import Path
@@ -18,11 +15,15 @@ os.chdir(_HERE)
 import streamlit as st
 
 st.set_page_config(
-    page_title="VectorAgent NOC",
+    page_title="OrchestrAI NOC",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+# Override og:description / meta description so shared links show a clean subtitle
+st.markdown(
+    '<meta name="description" content="OrchestrAI NOC — Agentic AI for Predictive Maintenance">',
+    unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  GLOBAL CSS
@@ -122,43 +123,33 @@ div[data-testid="stColumn"] .stButton>button{width:100%!important;height:auto!im
     linear-gradient(160deg, #0b0f1a 0%, #0d1117 40%, #0a1020 100%);
   background-attachment: fixed;
 }
-/* ── Sidebar nav: full-width pill buttons with icons ── */
-/* Base style for ALL sidebar buttons */
-section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
-  > div.element-container div[data-testid="stButton"] > button {
+/* ── Sidebar nav: full-width styled pill buttons ── */
+div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+  div.element-container:has(div[data-testid="stButton"]) > div[data-testid="stButton"] > button {
   background: transparent !important;
   border: none !important;
   border-left: 3px solid transparent !important;
-  border-radius: 6px !important;
-  color: #7d8590 !important;
-  font-family: 'IBM Plex Mono', monospace !important;
-  font-size: .73rem !important;
+  border-radius: 5px !important;
+  color: var(--muted) !important;
+  font-family: var(--mono) !important;
+  font-size: .72rem !important;
   font-weight: 400 !important;
   text-align: left !important;
-  padding: .38rem .75rem .38rem .52rem !important;
-  margin-bottom: .04rem !important;
+  padding: .42rem .7rem .42rem .6rem !important;
+  margin-bottom: .05rem !important;
   width: 100% !important;
   height: auto !important;
-  min-height: 36px !important;
-  line-height: 1.4 !important;
-  display: flex !important;
-  align-items: center !important;
-  transition: background .12s ease, color .12s ease, border-color .12s ease !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-}
-section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
-  > div.element-container div[data-testid="stButton"] > button:hover {
-  background: #1c2333 !important;
-  color: #c9d1d9 !important;
-  border-left-color: #30363d !important;
-}
-section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
-  > div.element-container div[data-testid="stButton"] > button p {
+  min-height: 34px !important;
+  line-height: 1.35 !important;
+  transition: background .14s ease, color .14s ease !important;
   display: flex !important;
   align-items: center !important;
   gap: .5rem !important;
-  margin: 0 !important;
+}
+div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+  div.element-container:has(div[data-testid="stButton"]) > div[data-testid="stButton"] > button:hover {
+  background: #1c2333 !important;
+  color: var(--fg) !important;
 }
 </style>""", unsafe_allow_html=True)
 
@@ -774,7 +765,7 @@ def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
         ax.axis("off")
 
         # Logo text
-        ax.text(0.05, 0.92, "VectorAgent", fontsize=28, fontweight="bold",
+        ax.text(0.05, 0.92, "OrchestrAI", fontsize=28, fontweight="bold",
                 color="#39c5cf", transform=ax.transAxes, fontfamily="monospace")
         ax.text(0.31, 0.92, "NOC", fontsize=18, fontweight="light",
                 color="#7d8590", transform=ax.transAxes, fontfamily="monospace")
@@ -908,10 +899,10 @@ def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
 
         # ── PDF metadata ──────────────────────────────────────────────────────
         d = pdf.infodict()
-        d["Title"]   = f"VectorAgent NOC Performance Report — {period_label}"
+        d["Title"]   = f"OrchestrAI NOC Performance Report — {period_label}"
         d["Author"]  = generated_by
         d["Subject"] = "Agentic AI Predictive Maintenance · GSOM SPBU"
-        d["Creator"] = "VectorAgent NOC · Danaya Diarra"
+        d["Creator"] = "OrchestrAI NOC · Danaya Diarra"
 
     buf.seek(0)
     return buf.getvalue(), None
@@ -1094,46 +1085,41 @@ with st.sidebar:
         st.session_state.nav_page = all_pages[0]
     if st.session_state.nav_page not in all_pages:
         st.session_state.nav_page = all_pages[0]
-    # ── Build combined active+icon CSS for all nav buttons ─────────────────
-    _nav_css_parts = []
-    for _pg_c in all_pages:
-        _ico_url_c, _ico_col_c = _SVG_ICONS.get(_pg_c, ("", "#7d8590"))
-        _is_act_c  = (st.session_state.nav_page == _pg_c)
-        _pg_key_c  = "nav_" + "".join(c for c in _pg_c if c.isalnum() or c in "_- ")[:30]
-        _btn_sel   = (
-            f'section[data-testid="stSidebar"] button[data-testid="{_pg_key_c}"],'
-            f'section[data-testid="stSidebar"] button[kind="secondary"][aria-label="{_pg_c.replace(chr(34), chr(39))}"]'
-        )
-        # Icon via ::before using the SVG data-URL
-        _opacity_c = "1" if _is_act_c else "0.45"
-        _nav_css_parts.append(
-            f'{_btn_sel}::before{{'
-            f'content:"";display:inline-block;width:16px;height:16px;flex-shrink:0;'
-            f'background-image:url("{_ico_url_c}");'
-            f'background-size:contain;background-repeat:no-repeat;'
-            f'background-position:center;opacity:{_opacity_c};'
-            f'margin-right:.42rem;vertical-align:middle;}}'
-        )
-        if _is_act_c:
-            # Active pill: coloured left border + dark background + bright text + bold
-            _nav_css_parts.append(
-                f'{_btn_sel}{{'
-                f'background:#1c2333!important;'
-                f'border-left:3px solid {_ico_col_c}!important;'
-                f'color:#e6edf3!important;font-weight:700!important;}}'
+    # ── Per-button active state CSS (coloured left border + bg) ─────────────
+    _active_css = "<style>"
+    for _pg_a in all_pages:
+        _ico_url_a, _ico_col_a = _SVG_ICONS.get(_pg_a, ("", "#7d8590"))
+        if st.session_state.nav_page == _pg_a:
+            _pg_key_a = "nav_" + "".join(c for c in _pg_a if c.isalnum() or c in "_- ")[:30]
+            _active_css += (
+                f"div[data-testid=\"stSidebar\"] button[kind=\"secondary\"][data-testid=\"{_pg_key_a}\"],"
+                f"div[data-testid=\"stSidebar\"] button[data-testid=\"{_pg_key_a}\"]"
+                f"{{background:#1c2333!important;"
+                f"border-left:3px solid {_ico_col_a}!important;"
+                f"color:#e6edf3!important;font-weight:700!important;}}"
             )
-            _nav_css_parts.append(
-                f'{_btn_sel}::before{{opacity:1!important;}}'
-            )
-    if _nav_css_parts:
-        st.markdown("<style>" + "".join(_nav_css_parts) + "</style>",
-                    unsafe_allow_html=True)
+    _active_css += "</style>"
+    st.markdown(_active_css, unsafe_allow_html=True)
 
-    # ── Render one button per page — the rectangle IS the button ──────────
+    # ── Render one styled button per page ────────────────────────────────────
+    # Map page name → SVG icon rendered as a small base64 img in the label
     for _pg in all_pages:
-        _pg_label = _pg.replace("📖 ", "")
+        _ico_url, _ico_col = _SVG_ICONS.get(_pg, ("", "#7d8590"))
+        _pg_clean = _pg.replace("📖 ", "")
         _pg_key   = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:30]
-        if st.button(_pg_label, key=_pg_key, use_container_width=True):
+        _is_act   = st.session_state.nav_page == _pg
+        # Build label: SVG icon (as HTML img) + page name — rendered inside button via markdown
+        # Streamlit buttons support plain text only, so we use a markdown trick:
+        # inject a per-button <style> that shows the icon as a ::before pseudo-element
+        _ico_opacity = "1" if _is_act else "0.5"
+        st.markdown(
+            f"<style>button[data-testid=\"{_pg_key}\"]::before{{"
+            f"content:'';display:inline-block;width:15px;height:15px;margin-right:6px;"
+            f"background-image:url('{_ico_url}');background-size:contain;"
+            f"background-repeat:no-repeat;background-position:center;"
+            f"opacity:{_ico_opacity};vertical-align:middle;flex-shrink:0;}}</style>",
+            unsafe_allow_html=True)
+        if st.button(_pg_clean, key=_pg_key, use_container_width=True):
             st.session_state.nav_page = _pg
             st.rerun()
     page = st.session_state.nav_page
@@ -1169,7 +1155,7 @@ with st.sidebar:
                 generated_by=FULL_NAME)
             if _pdf_bytes:
                 st.session_state["_sb_pdf"] = _pdf_bytes
-                st.session_state["_sb_pdf_name"] = f"VectorAgent_Report_{time.strftime('%Y%m%d_%H%M')}.pdf"
+                st.session_state["_sb_pdf_name"] = f"OrchestrAI_Report_{time.strftime('%Y%m%d_%H%M')}.pdf"
             else:
                 st.warning(f"PDF unavailable: {_pdf_err}.")
         if st.session_state.get("_sb_pdf"):
@@ -2451,7 +2437,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                         active_dispatches=st.session_state.active_dispatches,
                         generated_by=FULL_NAME)
                 if _pdf_bytes:
-                    _pdf_fname = f"VectorAgent_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.pdf"
+                    _pdf_fname = f"OrchestrAI_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.pdf"
                     st.session_state["_tab_pdf"] = _pdf_bytes
                     st.session_state["_tab_pdf_name"] = _pdf_fname
                     st.success(f"✓ PDF ready — {len(_pdf_bytes)//1024} KB")
@@ -2465,7 +2451,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
             import io as _io, csv as _csv
             _buf2 = _io.StringIO()
             _w2   = _csv.writer(_buf2)
-            _w2.writerow(["VectorAgent NOC — Performance Report", _period,
+            _w2.writerow(["OrchestrAI NOC — Performance Report", _period,
                           time.strftime("%Y-%m-%d %H:%M"), f"By: {FULL_NAME}"])
             _w2.writerow([])
             _w2.writerow(["KPI", "Value"])
@@ -2489,7 +2475,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                               _da2.get("assigned_at","")[:16],
                               ";".join(_da2.get("engineers",[])), "IN PROGRESS"])
             _csv_bytes2 = _buf2.getvalue().encode("utf-8")
-            _csv_fname  = f"VectorAgent_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.csv"
+            _csv_fname  = f"OrchestrAI_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.csv"
             st.download_button("📊 Download CSV (backup)", data=_csv_bytes2,
                                file_name=_csv_fname, mime="text/csv",
                                use_container_width=True, key="dl_csv_report")
@@ -2820,8 +2806,8 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                        "and planning_agent.py are in the same folder and all dependencies are installed.")
 
         sh("SECRETS TEMPLATE")
-        st.caption("Add these to .streamlit/secrets.toml or Streamlit Cloud → App Settings → Secrets")
-        st.code("""[users]
+        st.code("""# .streamlit/secrets.toml  OR  Streamlit Cloud → App Settings → Secrets
+[users]
 # username = "password"   (prefix: admin_ / eng_ / viewer_ sets role)
 admin    = "your-admin-password"
 engineer = "your-engineer-password"
@@ -3272,7 +3258,7 @@ elif pk == "Dispatch & Roster":
         <div style="background:linear-gradient(135deg,#1c2333,#161b22);border:1px solid #39c5cf44;
              border-left:4px solid #39c5cf;border-radius:10px;padding:1.2rem 1.6rem;margin-bottom:1rem">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:#e6edf3">
-            📖 VectorAgent NOC — <span style="color:#39c5cf">System User Guide</span>
+            📖 OrchestrAI NOC — <span style="color:#39c5cf">System User Guide</span>
           </div>
           <div style="font-size:.78rem;color:#c9d1d9;line-height:1.7;margin-top:.35rem">
             Complete reference for NOC operators, field engineers, thesis evaluators, and system administrators.
@@ -3460,7 +3446,7 @@ elif pk == "Dispatch & Roster":
                          "than a 10-cycle error. RMSE=14.60 means the average prediction error is ≈14.6 cycles. "
                          "FD001+FD003 (single operating condition) = 12.77; FD002+FD004 (6 conditions) = 16.43. "
                          "SOTA reference: CAELSTM = 11.24 on FD001 alone (trained only on FD001); "
-                         "VectorAgent trains on all 4 simultaneously, a harder and more realistic setting.",
+                         "OrchestrAI trains on all 4 simultaneously, a harder and more realistic setting.",
                          "sqrt( mean( (y_true − y_pred)² ) )", "Lower is better. Threshold for acceptable PdM: RMSE < 20 cycles."),
                         ("MAE — Mean Absolute Error", "#f0b429", "9.97 all-4",
                          "Average absolute prediction error in cycles. Less sensitive to outliers than RMSE. "
@@ -3578,7 +3564,7 @@ elif pk == "Dispatch & Roster":
                          "Percentage reduction in effective downtime versus reactive maintenance. "
                          "Calculated as: (MTTR_reactive − MTTR_ai) / MTTR_reactive × 100. "
                          "Baseline MTTR without AI prediction: 4.2h (industry average for macro BTS). "
-                         "MTTR with VectorAgent pre-dispatch: 1.8h (engineer dispatched before failure, "
+                         "MTTR with OrchestrAI pre-dispatch: 1.8h (engineer dispatched before failure, "
                          "parts pre-ordered, fault pre-diagnosed). Reduction = (4.2−1.8)/4.2 = 57.1%.",
                          "Baseline: 4.2h reactive MTTR · AI-enabled: 1.8h · Reduction: 57.1%"),
                         ("Money Saved (€)", "#f0b429", "€ per period (€1,200/h baseline)",
@@ -3833,7 +3819,7 @@ elif pk == "Dispatch & Roster":
         # Run application
         streamlit run streamlit_pdm.py
 
-        # Report generated: VectorAgent_Report_YYYYMMDD.pdf
+        # Report generated: OrchestrAI_Report_YYYYMMDD.pdf
         # Current date: {time.strftime("%Y-%m-%d")}""", language="bash")
 
 
