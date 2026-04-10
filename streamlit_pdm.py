@@ -1,7 +1,4 @@
-"""
-OrchestrAI NOC — v6 (Production Edition)
-Agentic AI for Predictive Maintenance | GSOM SPBU | 2026
-"""
+"""OrchestrAI NOC"""
 
 import sys, os, re, json, time, math
 from pathlib import Path
@@ -18,11 +15,12 @@ os.chdir(_HERE)
 import streamlit as st
 
 st.set_page_config(
-    page_title="VectorAgent NOC",
+    page_title="OrchestrAI NOC",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+st.markdown('<meta name="description" content="OrchestrAI NOC">',unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  GLOBAL CSS
@@ -122,43 +120,47 @@ div[data-testid="stColumn"] .stButton>button{width:100%!important;height:auto!im
     linear-gradient(160deg, #0b0f1a 0%, #0d1117 40%, #0a1020 100%);
   background-attachment: fixed;
 }
-/* ── Sidebar nav: full-width pill buttons with icons ── */
-/* Base style for ALL sidebar buttons */
+/* ── Sidebar nav: styled pill rectangles ── */
 section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
-  > div.element-container div[data-testid="stButton"] > button {
-  background: transparent !important;
-  border: none !important;
-  border-left: 3px solid transparent !important;
-  border-radius: 6px !important;
-  color: #7d8590 !important;
-  font-family: 'IBM Plex Mono', monospace !important;
-  font-size: .73rem !important;
-  font-weight: 400 !important;
-  text-align: left !important;
-  padding: .38rem .75rem .38rem .52rem !important;
-  margin-bottom: .04rem !important;
-  width: 100% !important;
-  height: auto !important;
-  min-height: 36px !important;
-  line-height: 1.4 !important;
-  display: flex !important;
-  align-items: center !important;
-  transition: background .12s ease, color .12s ease, border-color .12s ease !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
+  > div.element-container > div[data-testid="stButton"] > button {
+  display:flex!important;align-items:center!important;gap:0!important;
+  background:transparent!important;
+  border:1px solid transparent!important;
+  border-radius:7px!important;
+  color:var(--muted)!important;
+  font-family:var(--mono)!important;font-size:.73rem!important;
+  font-weight:400!important;letter-spacing:.01em!important;
+  text-align:left!important;
+  padding:.45rem .8rem .45rem .55rem!important;
+  margin-bottom:.05rem!important;
+  width:100%!important;min-height:38px!important;height:auto!important;
+  line-height:1.3!important;
+  transition:background .13s,color .13s,border-color .13s!important;
 }
 section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
-  > div.element-container div[data-testid="stButton"] > button:hover {
-  background: #1c2333 !important;
-  color: #c9d1d9 !important;
-  border-left-color: #30363d !important;
+  > div.element-container > div[data-testid="stButton"] > button:hover {
+  background:#1c2333!important;
+  border-color:#1a6696!important;
+  color:#c9d1d9!important;
 }
 section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
-  > div.element-container div[data-testid="stButton"] > button p {
-  display: flex !important;
-  align-items: center !important;
-  gap: .5rem !important;
-  margin: 0 !important;
+  > div.element-container > div[data-testid="stButton"] > button:focus {
+  box-shadow:none!important;outline:none!important;
+}
+/* ── Responsive: collapse sidebar on small screens ── */
+@media(max-width:768px){
+  section[data-testid="stSidebar"]{
+    width:100vw!important;min-width:100vw!important;
+    position:fixed!important;z-index:999!important;
+    top:0!important;left:0!important;height:100vh!important;
+    overflow-y:auto!important;
+    transform:translateX(-100%)!important;
+    transition:transform .28s ease!important;
+  }
+  section[data-testid="stSidebar"].sidebar-open{
+    transform:translateX(0)!important;
+  }
+  .block-container{padding:.6rem .9rem!important;}
 }
 </style>""", unsafe_allow_html=True)
 
@@ -720,9 +722,47 @@ def svg_rul_hbar():
 # ══════════════════════════════════════════════════════════════════════════════
 #  UI HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
-def mc(label, val, sub="", color="var(--blue)", live=False):
+# ── KPI tooltip definitions ─────────────────────────────────────────────────
+_KPI_TT = {
+    "LIVE RUL":        "Remaining Useful Life: estimated cycles before maintenance. XGBoost v2 live calculation. Thresholds: ≤20 Critical · 21-50 Warning · >50 Monitor.",
+    "RUL":             "Remaining Useful Life (cycles). XGBoost v2 prediction from 21 sensor channels. Cap: 125 cycles. Lower = more urgent.",
+    "PREDICTED RUL":   "XGBoost v2 base prediction. Cycles before maintenance probability exceeds threshold. Confidence interval shown as [cl, ch].",
+    "GROUNDING":       "RAG grounding rate. Fraction of diagnostic claims backed by a retrieved document [DOC-ID]. 1.000 = fully grounded, no hallucination.",
+    "HALLUCIN.":       "Hallucination rate. Claims NOT traceable to retrieved evidence. 0.000 = zero hallucination. Formula: 1 - grounding_rate.",
+    "MEAN RUL":        "Fleet-average RUL across all stations. Formula: sum(RUL_i) / N. Lower fleet average = higher overall operational risk.",
+    "SESSION":         "Elapsed time since login. Used for live RUL: live_rul = base_rul - elapsed_min × degrade_rate_per_subsystem.",
+    "CRITICAL ALERTS": "Stations with RUL ≤ 20 cycles. SLA ≤ 4h. Governance Tier 3: human engineer approval required.",
+    "WARNING ALERTS":  "Stations with RUL 21-50 cycles. SLA ≤ 48h. Governance Tier 2: auto-execute after 6h timeout.",
+    "MONITORING":      "Stations with RUL > 50 cycles. SLA ≤ 168h. Governance Tier 1: fully autonomous.",
+    "AVG RMSE":        "Root Mean Squared Error of XGBoost v2 on C-MAPSS test set (cycles). All-4 average: 14.60. FD001=12.31, FD002=15.87, FD003=13.23, FD004=16.99.",
+    "TOTAL ALERTS":    "Total dispatch events triggered in the reporting period.",
+    "RESOLVED":        "Tickets closed with validation: work performed + root cause + restored RUL. Requires engineer sign-off.",
+    "RESOLUTION %":    "Operational efficiency: resolved / total_alerts × 100%.",
+    "DOWNTIME AVOIDED":"% downtime avoided vs reactive maintenance. Formula: (reactive_MTTR - AI_MTTR) / reactive_MTTR × 100. MTTR: 4.2h → 1.8h = 57%.",
+    "MONEY SAVED":     "Estimated savings. Formula: resolved × (4.2h - 1.8h) × €1,200/h (standard BTS downtime cost).",
+    "TIME SAVED":      "Engineer hours saved by proactive dispatch. Formula: resolved × (reactive_MTTR - AI_MTTR).",
+    "ACTIVE CASES":    "Dispatches with IN PROGRESS status. Shared via SQLite DB: visible to all users on all devices.",
+    "ISSUES RESOLVED": "Completed dispatch tickets in period. Includes root cause, work done, parts used, and restored RUL.",
+    "ALERTS TRIGGERED":"Critical/Warning urgency events that triggered a dispatch in the selected period.",
+    "RESOLUTION RATE": "resolved / alerts × 100%. Measures NOC team operational efficiency.",
+    "CONFIDENCE":      "Diagnostic Agent confidence (0-1). = base_conf × RAG_coverage × grounding. >0.75 = high confidence diagnosis.",
+    "DIAG CONFIDENCE": "Diagnostic Agent confidence (0-1). Reflects evidence quality + subsystem match + grounding rate.",
+    "RAG COVERAGE":    "Evidence coverage: fraction of top-5 RAG chunks matching the alerted subsystem. 1.00 = all evidence is subsystem-specific.",
+    "FAULT COMPONENT": "Physical component most likely failing. From XGBoost feature importance + RAG evidence chain.",
+    "ALARM CODE":      "Standard telecom alarm code (e.g. PWR-001, COOL-003, RF-001). Derived from fault hypothesis.",
+    "FAULT MECHANISM": "Root physical degradation mechanism. From Diagnostic Agent: e.g. rectifier wear, bearing fatigue, connector corrosion.",
+}
+
+def mc(label, val, sub="", color="var(--blue)", live=False, tip=""):
+    """Metric card with optional hover tooltip."""
     cls = "mc-live" if live else "mc"
-    return f'<div class="{cls}"><div class="l">{label}</div><div class="v" style="color:{color}">{val}</div><div class="s">{sub}</div></div>'
+    _tt = tip or _KPI_TT.get(label.upper(), "")
+    _tt_attr = f'title="{_tt}"' if _tt else ""
+    _tt_style = "cursor:help;" if _tt else ""
+    return (f'<div class="{cls}" {_tt_attr} style="{_tt_style}">'
+            f'<div class="l">{label}</div>'
+            f'<div class="v" style="color:{color}">{val}</div>'
+            f'<div class="s">{sub}</div></div>')
 
 def badge(u):
     return f'<span class="{"bc" if u=="Critical" else "bw" if u=="Warning" else "bm"}">{u}</span>'
@@ -744,6 +784,195 @@ def pdk():
                 margin=dict(l=36, r=16, t=36, b=36))
 
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PERSISTENT SHARED DATABASE — SQLite (WAL mode) with JSON fallback
+#  ALL dispatch operations write to disk → visible across ALL sessions/devices
+# ══════════════════════════════════════════════════════════════════════════════
+import sqlite3 as _sqlite3
+
+_DISPATCH_DB   = Path(_HERE) / "data" / "dispatches.db"
+_DISPATCH_JSON = Path(_HERE) / "data" / "dispatches.json"
+_NOTIF_DB      = Path(_HERE) / "data" / "notifications.db"
+_DISPATCH_DB.parent.mkdir(parents=True, exist_ok=True)
+
+def _db_open():
+    """Open SQLite connection with WAL mode for concurrent multi-user access."""
+    try:
+        con = _sqlite3.connect(str(_DISPATCH_DB), check_same_thread=False, timeout=10)
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("""CREATE TABLE IF NOT EXISTS dispatches (
+            ticket_id TEXT PRIMARY KEY,
+            station_id TEXT, station TEXT, status TEXT,
+            urgency TEXT, assigned_at TEXT, closed_at TEXT,
+            engineers TEXT, subsystem TEXT, sla_hours INTEGER,
+            rul_at_dispatch REAL, hypothesis TEXT,
+            work_done TEXT, parts_used TEXT, root_cause TEXT,
+            notes TEXT, restored_rul REAL, validated_by TEXT,
+            created_by TEXT, data_json TEXT
+        )""")
+        con.execute("""CREATE TABLE IF NOT EXISTS notifications (
+            notif_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recipient TEXT, message TEXT, level TEXT,
+            created_at TEXT, read_by TEXT DEFAULT ''
+        )""")
+        con.commit()
+        return con
+    except Exception:
+        return None
+
+def _store_dispatch(d: dict) -> bool:
+    """Write or update a dispatch record to SQLite (JSON fallback on error)."""
+    try:
+        con = _db_open()
+        if con:
+            con.execute("""INSERT OR REPLACE INTO dispatches
+                (ticket_id,station_id,station,status,urgency,assigned_at,closed_at,
+                 engineers,subsystem,sla_hours,rul_at_dispatch,hypothesis,
+                 work_done,parts_used,root_cause,notes,restored_rul,validated_by,created_by,data_json)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+                d.get("ticket_id",""),
+                d.get("station_id", d.get("station","")),
+                d.get("station",   d.get("station_id","")),
+                d.get("status","IN PROGRESS"), d.get("urgency",""),
+                d.get("assigned_at",""), d.get("closed_at",""),
+                json.dumps(d.get("engineers",[])),
+                d.get("subsystem",""), int(d.get("sla_hours",0)),
+                float(d.get("rul_at_dispatch",0) or 0),
+                d.get("hypothesis",""),
+                d.get("work_done",""), d.get("parts_used",""),
+                d.get("root_cause",""), d.get("notes",""),
+                float(d.get("restored_rul",0) or 0),
+                d.get("validated_by",""), d.get("created_by",""),
+                json.dumps(d)))
+            con.commit(); con.close()
+            return True
+    except Exception:
+        pass
+    try:
+        all_d = _load_all_dispatches()
+        all_d[d.get("ticket_id","")] = d
+        _DISPATCH_JSON.write_text(json.dumps(all_d, indent=2))
+        return True
+    except Exception:
+        return False
+
+def _load_all_dispatches() -> dict:
+    """Return {ticket_id: dispatch_dict} from SQLite or JSON fallback."""
+    try:
+        con = _db_open()
+        if con:
+            rows = con.execute(
+                "SELECT ticket_id, data_json FROM dispatches ORDER BY assigned_at DESC"
+            ).fetchall()
+            con.close()
+            result = {}
+            for tid, djson in rows:
+                try:
+                    d = json.loads(djson)
+                    if isinstance(d.get("engineers"), str):
+                        try: d["engineers"] = json.loads(d["engineers"])
+                        except: d["engineers"] = [d["engineers"]]
+                    result[tid] = d
+                except Exception:
+                    pass
+            return result
+    except Exception:
+        pass
+    try:
+        if _DISPATCH_JSON.exists():
+            return json.loads(_DISPATCH_JSON.read_text())
+    except Exception:
+        pass
+    return {}
+
+def _delete_dispatch(ticket_id: str):
+    """Remove a dispatch record from SQLite (used on cancel)."""
+    try:
+        con = _db_open()
+        if con:
+            con.execute("DELETE FROM dispatches WHERE ticket_id=?", (ticket_id,))
+            con.commit(); con.close()
+            return
+    except Exception:
+        pass
+    try:
+        all_d = _load_all_dispatches()
+        all_d.pop(ticket_id, None)
+        _DISPATCH_JSON.write_text(json.dumps(all_d, indent=2))
+    except Exception:
+        pass
+
+def _sync_session_from_db():
+    """Pull latest DB state into session_state. Called on every Dispatch page load."""
+    all_d   = _load_all_dispatches()
+    active  = {d["station_id"]: d for d in all_d.values()
+               if d.get("status") == "IN PROGRESS" and d.get("station_id")}
+    tickets = sorted([d for d in all_d.values() if d.get("status") == "COMPLETED"],
+                     key=lambda x: x.get("closed_at",""), reverse=True)
+    st.session_state.active_dispatches = active
+    st.session_state.dispatch_tickets  = tickets
+
+def _store_notif(recipient: str, message: str, level: str = "info"):
+    """Persist a notification to SQLite for a specific recipient."""
+    try:
+        con = _db_open()
+        if con:
+            con.execute(
+                "INSERT INTO notifications (recipient,message,level,created_at) VALUES(?,?,?,?)",
+                (recipient, message, level, time.strftime("%Y-%m-%dT%H:%M:%S")))
+            con.commit(); con.close()
+    except Exception:
+        pass
+
+def _load_notifs_for(recipient: str) -> list:
+    """Load unread notifications for a specific user."""
+    try:
+        con = _db_open()
+        if con:
+            rows = con.execute(
+                "SELECT notif_id, message, level, created_at FROM notifications "
+                "WHERE recipient=? AND read_by NOT LIKE ? ORDER BY created_at DESC LIMIT 50",
+                (recipient, f"%{recipient}%")).fetchall()
+            con.close()
+            return [{"id": r[0], "msg": r[1], "level": r[2], "ts": r[3]} for r in rows]
+    except Exception:
+        pass
+    return []
+
+def _mark_notifs_read(recipient: str):
+    """Mark all notifications for a user as read."""
+    try:
+        con = _db_open()
+        if con:
+            con.execute(
+                "UPDATE notifications SET read_by = read_by || ? WHERE recipient=?",
+                (f",{recipient}", recipient))
+            con.commit(); con.close()
+    except Exception:
+        pass
+
+def _send_sms_simulation(phone: str, name: str, message: str):
+    """
+    SMS notification via Twilio (when TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN 
+    + TWILIO_FROM_PHONE are set in Streamlit secrets).
+    Falls back to in-system notification + toast preview if Twilio not configured.
+    """
+    try:
+        _sid   = st.secrets.get("TWILIO_ACCOUNT_SID", "")
+        _token = st.secrets.get("TWILIO_AUTH_TOKEN", "")
+        _from  = st.secrets.get("TWILIO_FROM_PHONE", "")
+        if _sid and _token and _from and phone and phone not in ("—", ""):
+            from twilio.rest import Client as _TwilioClient
+            _client = _TwilioClient(_sid, _token)
+            _client.messages.create(body=message[:160], from_=_from, to=phone)
+            return True
+    except Exception:
+        pass
+    # Fallback: show SMS preview as toast notification to dispatcher
+    st.toast(f"📱 SMS preview → {phone} | {name}: {message[:80]}", icon="📟")
+    return False
+
 # ── PDF Report Generator (matplotlib — no extra pip needed) ─────────────────
 def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
                          resolution_pct, downtime_pct, money_saved,
@@ -752,15 +981,60 @@ def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
                          generated_by="System"):
     """Generate a full PDF performance report and return bytes."""
     import io
+    _mpl_ok = False
     try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        import matplotlib.gridspec as gs
+        import matplotlib; matplotlib.use("Agg")
+        import matplotlib.pyplot as plt, matplotlib.gridspec as gs
         from matplotlib.backends.backend_pdf import PdfPages
         import matplotlib.patches as mpatches
+        _mpl_ok = True
     except ImportError:
-        return None, "matplotlib not available"
+        try:
+            import subprocess as _sp2, sys as _sys2
+            _sp2.run([_sys2.executable,"-m","pip","install",
+                      "matplotlib","--break-system-packages","-q"],
+                     capture_output=True, timeout=60)
+            import matplotlib; matplotlib.use("Agg")
+            import matplotlib.pyplot as plt, matplotlib.gridspec as gs
+            from matplotlib.backends.backend_pdf import PdfPages
+            import matplotlib.patches as mpatches
+            _mpl_ok = True
+        except Exception:
+            pass
+    if not _mpl_ok:
+        # Pure-Python HTML fallback
+        def _esc(s): return str(s).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+        _hn = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>OrchestrAI NOC Report</title>
+<style>body{{font-family:monospace;background:#0d1117;color:#e6edf3;padding:2rem}}
+h1{{color:#39c5cf}}h2{{color:#58a6ff;border-bottom:1px solid #30363d;padding-bottom:.3rem}}
+.g{{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin:1rem 0}}
+.k{{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:.7rem 1rem}}
+.kl{{font-size:.65rem;color:#7d8590;text-transform:uppercase}}
+.kv{{font-size:1.4rem;font-weight:700;margin-top:.2rem}}
+table{{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:.8rem}}
+th{{background:#1c2333;color:#7d8590;padding:.35rem .6rem;text-align:left;border:1px solid #30363d}}
+td{{padding:.28rem .6rem;border:1px solid #30363d}}
+</style></head><body>
+<h1>&#9889; OrchestrAI NOC — Performance Report</h1>
+<p style="color:#7d8590">Period: {_esc(period_label)} &middot; Generated: {time.strftime("%Y-%m-%d %H:%M")} &middot; By: {_esc(generated_by)}</p>
+<h2>KPIs</h2><div class="g">
+<div class="k"><div class="kl">Alerts</div><div class="kv" style="color:#ff6b35">{n_alerts}</div></div>
+<div class="k"><div class="kl">Resolved</div><div class="kv" style="color:#3fb950">{n_resolved}</div></div>
+<div class="k"><div class="kl">Active</div><div class="kv" style="color:#f0b429">{n_active}</div></div>
+<div class="k"><div class="kl">Resolution</div><div class="kv" style="color:#39c5cf">{resolution_pct}%</div></div>
+<div class="k"><div class="kl">Downtime Avoided</div><div class="kv" style="color:#3fb950">{downtime_pct}%</div></div>
+<div class="k"><div class="kl">Money Saved</div><div class="kv" style="color:#3fb950">&euro;{money_saved:,}</div></div>
+<div class="k"><div class="kl">Time Saved</div><div class="kv">{time_saved}h</div></div>
+<div class="k"><div class="kl">Avg RMSE</div><div class="kv" style="color:#39c5cf">{avg_rmse:.2f}</div></div>
+</div><h2>Dispatch Log</h2>
+<table><tr><th>Ticket</th><th>Station</th><th>Urgency</th><th>Assigned</th><th>Engineers</th><th>Status</th></tr>"""
+        for _da in active_dispatches.values():
+            _hn += f"<tr><td>{_esc(_da.get('ticket_id',''))}</td><td>{_esc(_da.get('station_id',''))}</td><td style='color:#f0b429'>{_esc(_da.get('urgency',''))}</td><td>{_esc(str(_da.get('assigned_at',''))[:16])}</td><td>{_esc(', '.join(_da.get('engineers',[])))}</td><td style='color:#f0b429'>IN PROGRESS</td></tr>"
+        for _tk in dispatch_tickets[:50]:
+            _hn += f"<tr><td>{_esc(_tk.get('ticket_id',''))}</td><td>{_esc(_tk.get('station',''))}</td><td style='color:#3fb950'>{_esc(_tk.get('urgency',''))}</td><td>{_esc(str(_tk.get('assigned_at',''))[:16])}</td><td>{_esc(', '.join(_tk.get('engineers',[])))}</td><td style='color:#3fb950'>CLOSED</td></tr>"
+        _hn += f"</table><p style='color:#5a6475;font-size:.7rem'>OrchestrAI NOC &middot; XGBoost v2 RMSE=14.60 &middot; R&sup2;=0.874</p></body></html>"
+        return _hn.encode("utf-8"), None
 
     buf = io.BytesIO()
     now_str = time.strftime("%Y-%m-%d %H:%M")
@@ -774,7 +1048,7 @@ def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
         ax.axis("off")
 
         # Logo text
-        ax.text(0.05, 0.92, "VectorAgent", fontsize=28, fontweight="bold",
+        ax.text(0.05, 0.92, "OrchestrAI", fontsize=28, fontweight="bold",
                 color="#39c5cf", transform=ax.transAxes, fontfamily="monospace")
         ax.text(0.31, 0.92, "NOC", fontsize=18, fontweight="light",
                 color="#7d8590", transform=ax.transAxes, fontfamily="monospace")
@@ -908,10 +1182,10 @@ def _generate_pdf_report(period_label, n_alerts, n_resolved, n_active,
 
         # ── PDF metadata ──────────────────────────────────────────────────────
         d = pdf.infodict()
-        d["Title"]   = f"VectorAgent NOC Performance Report — {period_label}"
+        d["Title"]   = f"OrchestrAI NOC Performance Report — {period_label}"
         d["Author"]  = generated_by
         d["Subject"] = "Agentic AI Predictive Maintenance · GSOM SPBU"
-        d["Creator"] = "VectorAgent NOC · Danaya Diarra"
+        d["Creator"] = "OrchestrAI NOC · Danaya Diarra"
 
     buf.seek(0)
     return buf.getvalue(), None
@@ -1089,53 +1363,54 @@ with st.sidebar:
     if not IS_ADMIN:
         all_pages = [p for p in all_pages if p != "Settings"]
 
-    # ── Icon navigation ─────────────────────────────────────────────────────
+    # ── Icon navigation — single button per page, CSS-styled rectangle ────────
     if "nav_page" not in st.session_state:
         st.session_state.nav_page = all_pages[0]
     if st.session_state.nav_page not in all_pages:
         st.session_state.nav_page = all_pages[0]
-    # ── Build combined active+icon CSS for all nav buttons ─────────────────
-    _nav_css_parts = []
+
+    # Inject per-button CSS: active state + SVG icon via ::before pseudo-element
+    _nav_parts = []
     for _pg_c in all_pages:
         _ico_url_c, _ico_col_c = _SVG_ICONS.get(_pg_c, ("", "#7d8590"))
-        _is_act_c  = (st.session_state.nav_page == _pg_c)
-        _pg_key_c  = "nav_" + "".join(c for c in _pg_c if c.isalnum() or c in "_- ")[:30]
-        _btn_sel   = (
-            f'section[data-testid="stSidebar"] button[data-testid="{_pg_key_c}"],'
-            f'section[data-testid="stSidebar"] button[kind="secondary"][aria-label="{_pg_c.replace(chr(34), chr(39))}"]'
-        )
-        # Icon via ::before using the SVG data-URL
-        _opacity_c = "1" if _is_act_c else "0.45"
-        _nav_css_parts.append(
-            f'{_btn_sel}::before{{'
-            f'content:"";display:inline-block;width:16px;height:16px;flex-shrink:0;'
+        _is_act_c = (st.session_state.nav_page == _pg_c)
+        _pk_c = "nav_" + "".join(c for c in _pg_c if c.isalnum() or c in "_- ")[:30]
+        # Icon as ::before
+        _op = "1" if _is_act_c else "0.42"
+        _nav_parts.append(
+            f'div[data-testid="stSidebar"] button[data-testid="{_pk_c}"]::before{{'
+            f'content:"";display:inline-flex;align-items:center;'
+            f'width:17px;height:17px;min-width:17px;margin-right:9px;'
             f'background-image:url("{_ico_url_c}");'
             f'background-size:contain;background-repeat:no-repeat;'
-            f'background-position:center;opacity:{_opacity_c};'
-            f'margin-right:.42rem;vertical-align:middle;}}'
+            f'background-position:center;opacity:{_op};'
+            f'vertical-align:middle;position:relative;top:-1px;}}'
         )
+        # Active state: teal-spectrum border + dark bg + bright text
         if _is_act_c:
-            # Active pill: coloured left border + dark background + bright text + bold
-            _nav_css_parts.append(
-                f'{_btn_sel}{{'
-                f'background:#1c2333!important;'
-                f'border-left:3px solid {_ico_col_c}!important;'
-                f'color:#e6edf3!important;font-weight:700!important;}}'
+            _nav_parts.append(
+                f'div[data-testid="stSidebar"] button[data-testid="{_pk_c}"]{{'
+                f'background:#1a2744!important;'
+                f'border:1px solid {_ico_col_c}!important;'
+                f'color:#e6edf3!important;font-weight:700!important;'
+                f'box-shadow:0 0 0 1px {_ico_col_c}22, inset 3px 0 0 {_ico_col_c}!important;}}'
             )
-            _nav_css_parts.append(
-                f'{_btn_sel}::before{{opacity:1!important;}}'
+        else:
+            # Inactive hover: subtle coloured border on hover
+            _nav_parts.append(
+                f'div[data-testid="stSidebar"] button[data-testid="{_pk_c}"]:hover{{'
+                f'border-color:{_ico_col_c}55!important;}}'
             )
-    if _nav_css_parts:
-        st.markdown("<style>" + "".join(_nav_css_parts) + "</style>",
-                    unsafe_allow_html=True)
+    st.markdown(f"<style>{''.join(_nav_parts)}</style>", unsafe_allow_html=True)
 
-    # ── Render one button per page — the rectangle IS the button ──────────
+    # One button per page — the button IS the rectangle
     for _pg in all_pages:
-        _pg_label = _pg.replace("📖 ", "")
-        _pg_key   = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:30]
-        if st.button(_pg_label, key=_pg_key, use_container_width=True):
+        _pk   = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:30]
+        _lbl  = _pg.replace("📖 ", "")
+        if st.button(_lbl, key=_pk, use_container_width=True):
             st.session_state.nav_page = _pg
             st.rerun()
+
     page = st.session_state.nav_page
 
     st.markdown("---")
@@ -1169,7 +1444,7 @@ with st.sidebar:
                 generated_by=FULL_NAME)
             if _pdf_bytes:
                 st.session_state["_sb_pdf"] = _pdf_bytes
-                st.session_state["_sb_pdf_name"] = f"VectorAgent_Report_{time.strftime('%Y%m%d_%H%M')}.pdf"
+                st.session_state["_sb_pdf_name"] = f"OrchestrAI_Report_{time.strftime('%Y%m%d_%H%M')}.pdf"
             else:
                 st.warning(f"PDF unavailable: {_pdf_err}.")
         if st.session_state.get("_sb_pdf"):
@@ -2451,7 +2726,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                         active_dispatches=st.session_state.active_dispatches,
                         generated_by=FULL_NAME)
                 if _pdf_bytes:
-                    _pdf_fname = f"VectorAgent_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.pdf"
+                    _pdf_fname = f"OrchestrAI_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.pdf"
                     st.session_state["_tab_pdf"] = _pdf_bytes
                     st.session_state["_tab_pdf_name"] = _pdf_fname
                     st.success(f"✓ PDF ready — {len(_pdf_bytes)//1024} KB")
@@ -2465,7 +2740,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
             import io as _io, csv as _csv
             _buf2 = _io.StringIO()
             _w2   = _csv.writer(_buf2)
-            _w2.writerow(["VectorAgent NOC — Performance Report", _period,
+            _w2.writerow(["OrchestrAI NOC — Performance Report", _period,
                           time.strftime("%Y-%m-%d %H:%M"), f"By: {FULL_NAME}"])
             _w2.writerow([])
             _w2.writerow(["KPI", "Value"])
@@ -2489,7 +2764,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
                               _da2.get("assigned_at","")[:16],
                               ";".join(_da2.get("engineers",[])), "IN PROGRESS"])
             _csv_bytes2 = _buf2.getvalue().encode("utf-8")
-            _csv_fname  = f"VectorAgent_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.csv"
+            _csv_fname  = f"OrchestrAI_Report_{_period.replace(' ','_')}_{time.strftime('%Y%m%d_%H%M')}.csv"
             st.download_button("📊 Download CSV (backup)", data=_csv_bytes2,
                                file_name=_csv_fname, mime="text/csv",
                                use_container_width=True, key="dl_csv_report")
@@ -2835,433 +3110,6 @@ GROQ_API_KEY       = "gsk_..."
 """, language="toml")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  PAGE: DISPATCH & ROLLING ROSTER
-# ══════════════════════════════════════════════════════════════════════════════
-elif pk == "Dispatch & Roster":
-    if not IS_ENG:
-        st.warning("Engineer / Admin role required.")
-        st.stop()
-
-    roster   = st.session_state.engineer_roster
-    active   = st.session_state.active_dispatches    # {station_id: dispatch}
-    tickets  = st.session_state.dispatch_tickets
-    notifs   = st.session_state.notif_log
-    rul_ov   = st.session_state.rul_overrides
-
-    # ── Helper: add notification ──────────────────────────────────────────────
-    def _push_notif(msg, level="info"):
-        st.session_state.notif_log.insert(0, {
-            "ts": time.strftime("%H:%M:%S"),
-            "msg": msg,
-            "level": level,
-        })
-
-    # ── Helper: find recommended engineers for a subsystem ───────────────────
-    def _recommend(subsystem, n=3):
-        """Rolling selection: prioritise matching skill + on_call + fewest dispatches."""
-        matched   = [e for e in roster if e["skill"] == subsystem and e["on_call"]]
-        unmatched = [e for e in roster if e["skill"] != subsystem and e["on_call"]]
-        pool      = sorted(matched, key=lambda e: e["dispatches"]) + \
-                    sorted(unmatched, key=lambda e: e["dispatches"])
-        return pool[:n]
-
-    # ── Section header ────────────────────────────────────────────────────────
-    sh("DISPATCH & ROLLING ROSTER — CRITICAL STATION ASSIGNMENT")
-
-    # ── Notification feed ─────────────────────────────────────────────────────
-    if notifs:
-        with st.expander(f"🔔 System notifications ({len(notifs)})", expanded=False):
-            for n_ in notifs[:15]:
-                col = {"info":"#39c5cf","success":"#3fb950","warning":"#f0b429","error":"#ff6b35"}.get(n_["level"],"#7d8590")
-                st.markdown(
-                    f'<div style="display:flex;gap:.7rem;padding:.28rem .6rem;border-left:3px solid {col};'
-                    f'background:#161b22;border-radius:0 4px 4px 0;margin-bottom:.2rem;font-family:monospace;font-size:.70rem">'
-                    f'<span style="color:#7d8590">{n_["ts"]}</span>'
-                    f'<span style="color:{col}">{n_["msg"]}</span></div>',
-                    unsafe_allow_html=True)
-
-    # ═════════════════════════════════════════════════════════════════════════
-    #  TAB 1: ASSIGN DISPATCH   TAB 2: ACTIVE DISPATCHES   TAB 3: TICKET LOG   TAB 4: ROSTER
-    # ═════════════════════════════════════════════════════════════════════════
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "🚨 Assign Dispatch",
-        f"⚡ Active ({len(active)})",
-        f"✅ Completed ({len(tickets)})",
-        "👷 Engineer Roster",
-    ])
-
-    # ─────────────────────────────────────────────────────────────────────────
-    #  TAB 1 — ASSIGN DISPATCH
-    # ─────────────────────────────────────────────────────────────────────────
-    with tab1:
-        # Filter stations needing attention
-        dispatch_stations = [s for s in STATIONS
-                              if live_urgency(live_rul(s)) in ("Critical","Warning")
-                              and s["id"] not in active]
-        restored_stations = [s for s in STATIONS if s["id"] in rul_ov]
-
-        if not dispatch_stations:
-            st.markdown(
-                '<div class="ac m" style="margin-top:.5rem">'
-                '<strong style="color:#3fb950">✓ No unassigned critical/warning stations</strong><br>'
-                '<span style="font-size:.78rem;color:#c9d1d9">All stations either stable or already dispatched.</span></div>',
-                unsafe_allow_html=True)
-        else:
-            for s in dispatch_stations:
-                rul_now = live_rul(s)
-                urg_now = live_urgency(rul_now)
-                uc      = "#ff6b35" if urg_now == "Critical" else "#f0b429"
-                uc_css  = "c" if urg_now == "Critical" else "w"
-
-                st.markdown(f"""
-<div class="ac {uc_css}" style="margin-bottom:.3rem">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start">
-    <div>
-      <span style="font-size:.95rem;font-weight:700;color:#a5d6ff;font-family:monospace">{s['id']}</span>
-      &nbsp;<span class="{'bc' if urg_now=='Critical' else 'bw'}">{urg_now}</span>
-      &nbsp;<span style="font-size:.63rem;color:#30363d;font-family:monospace">{s['sub']} · SLA {s['sla']}h</span>
-    </div>
-    <div style="font-size:1.2rem;font-weight:700;color:{uc};font-family:monospace">{rul_now:.1f} cyc</div>
-  </div>
-  <div style="font-size:.70rem;color:#c9d1d9;margin:.2rem 0">{s['hyp']}</div>
-</div>""", unsafe_allow_html=True)
-
-                rec = _recommend(s["sub"], n=3)
-                rec_names = [e["name"] for e in rec]
-                all_names = [e["name"] for e in roster if e["on_call"]]
-
-                with st.form(f"dispatch_form_{s['id']}"):
-                    fc1, fc2 = st.columns([2, 1])
-                    with fc1:
-                        chosen = st.multiselect(
-                            f"Select engineers for {s['id']}",
-                            options=[e["name"] for e in roster],
-                            default=rec_names,
-                            help="Rolling algorithm pre-selects by skill match + fewest dispatches. Override freely.",
-                            label_visibility="collapsed")
-                        st.caption(
-                            f"🔄 Rolling recommendation (skill={s['sub'].split('_')[0]}, "
-                            f"fewest dispatches): {', '.join(rec_names)}")
-                    with fc2:
-                        priority = st.selectbox("Priority", ["CRITICAL — 4h","WARNING — 48h","MONITOR — 168h"],
-                                                index=0 if urg_now=="Critical" else 1,
-                                                label_visibility="collapsed",
-                                                key=f"pri_{s['id']}")
-                        sla_h  = int(priority.split("—")[1].strip().replace("h",""))
-                        submitted = st.form_submit_button(
-                            f"🚀 Dispatch to {s['id']}", use_container_width=True)
-
-                    if submitted and chosen:
-                        ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
-                        dispatch = {
-                            "station_id":   s["id"],
-                            "subsystem":    s["sub"],
-                            "urgency":      urg_now,
-                            "rul_at_dispatch": round(rul_now, 1),
-                            "hypothesis":   s["hyp"],
-                            "sla_hours":    sla_h,
-                            "engineers":    chosen,
-                            "assigned_at":  ts_now,
-                            "status":       "IN PROGRESS",
-                            "ticket_id":    f"TKT-{s['id']}-{int(time.time())}",
-                        }
-                        st.session_state.active_dispatches[s["id"]] = dispatch
-                        # Update dispatch count for rolling algorithm
-                        for e in st.session_state.engineer_roster:
-                            if e["name"] in chosen:
-                                e["dispatches"] += 1
-                        # Record in persistent perf_log for performance report
-                        st.session_state.perf_log.append({
-                            "ts":        ts_now,
-                            "event":     "dispatch_created",
-                            "station":   s["id"],
-                            "urgency":   urg_now,
-                            "rul":       round(rul_now, 1),
-                            "engineers": chosen,
-                            "ticket_id": dispatch["ticket_id"],
-                            "sla_hours": sla_h,
-                            "subsystem": s["sub"],
-                        })
-                        # In-system + phone notification per engineer
-                        _sms_logs = []
-                        for name in chosen:
-                            _eng_obj = next((e for e in st.session_state.engineer_roster if e["name"] == name), None)
-                            _eng_phone = _eng_obj["phone"] if _eng_obj else "—"
-                            _notif_msg = (
-                                f"📟 [{dispatch['ticket_id']}] {name} ({_eng_phone}) dispatched → {s['id']} "
-                                f"({urg_now}, SLA {sla_h}h, RUL={rul_now:.1f}). Fault: {s['hyp'][:60]}")
-                            _push_notif(_notif_msg, level="warning" if urg_now == "Warning" else "error")
-                            _sms_logs.append(
-                                f"SMS → {_eng_phone} | {name}: Dispatch {dispatch['ticket_id']} — "
-                                f"{s['id']} {urg_now} SLA {sla_h}h. {s['hyp'][:50]}")
-                        # Show SMS preview to dispatcher
-                        for _sms in _sms_logs:
-                            st.toast(_sms, icon="📱")
-                        _push_notif(
-                            f"✅ Dispatch created for {s['id']}: {', '.join(chosen)}",
-                            level="success")
-                        st.success(f"Dispatched {', '.join(chosen)} to {s['id']}. Ticket: {dispatch['ticket_id']}")
-                        st.rerun()
-                    elif submitted and not chosen:
-                        st.error("Select at least one engineer.")
-                st.markdown("<hr style='border-color:#21262d;margin:.5rem 0'>", unsafe_allow_html=True)
-
-    # ─────────────────────────────────────────────────────────────────────────
-    #  TAB 2 — ACTIVE DISPATCHES + VALIDATION FORM
-    # ─────────────────────────────────────────────────────────────────────────
-    with tab2:
-        if not active:
-            st.markdown(
-                '<div class="ac m"><span style="color:#3fb950">No active dispatches.</span></div>',
-                unsafe_allow_html=True)
-        else:
-            for sid, d in list(active.items()):
-                s_obj = next((s for s in STATIONS if s["id"] == sid), None)
-                elapsed_disp = (time.time() - time.mktime(
-                    time.strptime(d["assigned_at"], "%Y-%m-%d %H:%M:%S"))) / 3600
-                sla_pct  = min(100, int(elapsed_disp / max(d["sla_hours"], 1) * 100))
-                sla_col  = "#3fb950" if sla_pct < 60 else ("#f0b429" if sla_pct < 85 else "#ff6b35")
-
-                st.markdown(f"""
-<div class="ac c" style="margin-bottom:.4rem">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem">
-    <div>
-      <span style="font-size:.92rem;font-weight:700;color:#a5d6ff;font-family:monospace">{d['ticket_id']}</span>
-      &nbsp;<span class="bc">IN PROGRESS</span>
-      <div style="font-size:.68rem;color:#7d8590;margin-top:.2rem">
-        Station: <span style="color:#e6edf3">{sid}</span> · {d['subsystem']} · Assigned: {d['assigned_at']}
-      </div>
-      <div style="font-size:.68rem;color:#7d8590">
-        Engineers: <span style="color:#58a6ff">{'  ·  '.join(d['engineers'])}</span>
-      </div>
-      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{d['hypothesis'][:80]}…</div>
-    </div>
-    <div style="text-align:right;font-family:monospace;font-size:.70rem;color:#7d8590">
-      SLA: <span style="color:{sla_col}">{d['sla_hours']}h</span><br>
-      Elapsed: {elapsed_disp:.1f}h<br>
-      RUL at dispatch: {d['rul_at_dispatch']}
-    </div>
-  </div>
-  <div style="background:#21262d;height:4px;border-radius:2px;overflow:hidden">
-    <div style="width:{sla_pct}%;height:4px;background:{sla_col};border-radius:2px"></div>
-  </div>
-</div>""", unsafe_allow_html=True)
-
-                # Validation form
-                with st.expander(f"✅ Validate & Close Ticket — {d['ticket_id']}", expanded=False):
-                    with st.form(f"validate_{sid}"):
-                        st.markdown(
-                            '<div style="font-family:monospace;font-size:.72rem;color:#39c5cf;'
-                            'margin-bottom:.5rem">COMPLETION REPORT</div>',
-                            unsafe_allow_html=True)
-                        v1, v2 = st.columns(2)
-                        with v1:
-                            work_done = st.text_area(
-                                "Work performed *",
-                                placeholder="e.g. Replaced rectifier module B, verified DC bus voltage 48.2V, "
-                                            "restored TX power, cleared PWR-001 alarm.",
-                                height=100, key=f"work_{sid}")
-                            parts_used = st.text_input(
-                                "Parts / spares used",
-                                placeholder="e.g. Rectifier module Ericsson PSU 48V-50A (×1), BBU fuse set (×1)",
-                                key=f"parts_{sid}")
-                            alarm_cleared = st.selectbox(
-                                "Alarm cleared?",
-                                ["Yes — alarm auto-cleared", "Yes — manually cleared via OMC",
-                                 "Partial — monitoring required", "No — escalation needed"],
-                                key=f"alm_{sid}")
-                        with v2:
-                            restored_rul = st.slider(
-                                "Restored RUL (cycles) *",
-                                min_value=10, max_value=125,
-                                value=min(125, int(s_obj["base_rul"] * 0.85)) if s_obj else 100,
-                                help="Engineer's assessment of remaining useful life after repair.",
-                                key=f"rul_{sid}")
-                            root_cause = st.selectbox(
-                                "Root cause confirmed",
-                                ["Rectifier/power unit failure",
-                                 "Cooling fan bearing wear",
-                                 "Antenna connector corrosion",
-                                 "Fibre splice degradation",
-                                 "BBU software/hardware fault",
-                                 "Preventive — no active fault",
-                                 "Other (see notes)"],
-                                key=f"rc_{sid}")
-                            notes = st.text_area(
-                                "Additional notes",
-                                placeholder="Observations, follow-up recommendations…",
-                                height=68, key=f"notes_{sid}")
-
-                        validated = st.form_submit_button("✅ Close Ticket & Restore Station", use_container_width=True)
-                        if validated:
-                            if not work_done.strip():
-                                st.error("Work performed field is required.")
-                            else:
-                                ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
-                                closed = dict(d)
-                                closed.update({
-                                    "station":        sid,
-                                    "status":         "COMPLETED",
-                                    "closed_at":      ts_now,
-                                    "work_done":      work_done.strip(),
-                                    "parts_used":     parts_used.strip(),
-                                    "alarm_cleared":  alarm_cleared,
-                                    "root_cause":     root_cause,
-                                    "notes":          notes.strip(),
-                                    "restored_rul":   restored_rul,
-                                    "validated_by":   USER,
-                                })
-                                st.session_state.dispatch_tickets.insert(0, closed)
-                                del st.session_state.active_dispatches[sid]
-                                # Apply RUL override — station now shows restored RUL
-                                st.session_state.rul_overrides[sid]        = float(restored_rul)
-                                st.session_state.rul_overrides[sid + "_ts"] = time.time()
-                                _push_notif(
-                                    f"🔧 [{closed['ticket_id']}] CLOSED by {USER}. "
-                                    f"Station {sid} restored to RUL={restored_rul}. "
-                                    f"Root cause: {root_cause}.",
-                                    level="success")
-                                st.success(f"Ticket closed. Station {sid} restored to RUL={restored_rul} cycles.")
-                                st.rerun()
-
-                # Cancel dispatch
-                if st.button(f"✕ Cancel dispatch {d['ticket_id']}", key=f"cancel_{sid}"):
-                    del st.session_state.active_dispatches[sid]
-                    _push_notif(f"❌ Dispatch {d['ticket_id']} for {sid} cancelled by {USER}.", level="warning")
-                    st.rerun()
-
-    # ─────────────────────────────────────────────────────────────────────────
-    #  TAB 3 — COMPLETED TICKET LOG
-    # ─────────────────────────────────────────────────────────────────────────
-    with tab3:
-        if not tickets:
-            st.markdown(
-                '<div class="ac m"><span style="color:#7d8590">No completed tickets yet.</span></div>',
-                unsafe_allow_html=True)
-        else:
-            for t in tickets:
-                rul_delta = t["restored_rul"] - t["rul_at_dispatch"]
-                dc = "#3fb950" if rul_delta > 0 else "#ff6b35"
-                st.markdown(f"""
-<div class="ac m" style="margin-bottom:.4rem">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start">
-    <div>
-      <span style="font-family:monospace;font-weight:700;color:#a5d6ff">{t['ticket_id']}</span>
-      &nbsp;<span class="bm">COMPLETED</span>
-      <div style="font-size:.68rem;color:#7d8590;margin-top:.15rem">
-        Station: <span style="color:#e6edf3">{t['station_id']}</span> ·
-        Engineers: <span style="color:#58a6ff">{'  ·  '.join(t['engineers'])}</span> ·
-        Validated by: <span style="color:#bc8cff">{t['validated_by']}</span>
-      </div>
-      <div style="font-size:.68rem;color:#7d8590">Closed: {t['closed_at']} · Root cause: {t['root_cause']}</div>
-      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{t['work_done'][:120]}{'…' if len(t['work_done'])>120 else ''}</div>
-      {f'<div style="font-size:.67rem;color:#7d8590;margin-top:.1rem">Parts: {t["parts_used"]}</div>' if t.get("parts_used") else ''}
-    </div>
-    <div style="text-align:right;font-family:monospace;font-size:.72rem;min-width:110px">
-      <div style="color:#7d8590">RUL restored</div>
-      <div style="font-size:1.1rem;font-weight:700;color:{dc}">{t['restored_rul']}</div>
-      <div style="color:{dc};font-size:.68rem">{'+' if rul_delta>=0 else ''}{rul_delta:.1f} cyc</div>
-    </div>
-  </div>
-</div>""", unsafe_allow_html=True)
-
-    # ─────────────────────────────────────────────────────────────────────────
-    #  TAB 4 — ENGINEER ROSTER MANAGEMENT
-    # ─────────────────────────────────────────────────────────────────────────
-    with tab4:
-        sh("ROLLING ROSTER — ON-CALL STATUS & DISPATCH COUNT")
-
-        skill_colors = {
-            "power_subsystem":       "#f0b429",
-            "thermal_management":    "#ff6b35",
-            "rf_antenna":            "#39c5cf",
-            "backhaul_connectivity": "#58a6ff",
-            "baseband_processing":   "#bc8cff",
-        }
-        level_colors = {"Senior":"#3fb950","Mid":"#58a6ff","Junior":"#f0b429"}
-
-        for e in st.session_state.engineer_roster:
-            sc = skill_colors.get(e["skill"],"#7d8590")
-            lc = level_colors.get(e["level"],"#7d8590")
-            on_col = "#3fb950" if e["on_call"] else "#30363d"
-            on_lbl = "ON-CALL" if e["on_call"] else "OFF"
-            disp_w = min(100, e["dispatches"] * 8)
-
-            c_eng, c_tog = st.columns([5, 1])
-            with c_eng:
-                st.markdown(f"""
-<div style="display:flex;align-items:center;gap:.7rem;padding:.45rem .85rem;
-     background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:.3rem;font-family:monospace;font-size:.73rem">
-  <span style="color:#a5d6ff;font-weight:700;min-width:90px">{e['name']}</span>
-  <span style="color:#7d8590;font-size:.65rem;min-width:30px">{e['id']}</span>
-  <span style="background:{sc}22;color:{sc};border:1px solid {sc}55;border-radius:3px;
-        padding:1px 6px;font-size:.63rem;min-width:110px">{e['skill'].replace('_',' ')}</span>
-  <span style="background:{lc}22;color:{lc};border:1px solid {lc}55;border-radius:3px;
-        padding:1px 6px;font-size:.63rem;min-width:48px">{e['level']}</span>
-  <span style="color:#7d8590;font-size:.63rem;min-width:50px">{e['shift']}</span>
-  <span style="color:{on_col};font-weight:700;font-size:.63rem;min-width:56px">{on_lbl}</span>
-  <span style="color:#7d8590;font-size:.63rem">{e['phone']}</span>
-  <div style="flex:1;margin:0 .5rem">
-    <div style="background:#21262d;height:4px;border-radius:2px">
-      <div style="width:{disp_w}%;height:4px;background:{sc};border-radius:2px"></div>
-    </div>
-  </div>
-  <span style="color:#7d8590;font-size:.63rem">{e['dispatches']} dispatches</span>
-</div>""", unsafe_allow_html=True)
-            with c_tog:
-                btn_lbl = "Set OFF" if e["on_call"] else "Set ON"
-                if st.button(btn_lbl, key=f"tog_{e['id']}", use_container_width=True):
-                    e["on_call"] = not e["on_call"]
-                    status = "ON-CALL" if e["on_call"] else "OFF duty"
-                    _push_notif(f"🔄 {e['name']} set to {status} by {USER}.", level="info")
-                    st.rerun()
-
-        sh("ADD ENGINEER TO ROSTER")
-        with st.form("add_eng_form", clear_on_submit=True):
-            ae1, ae2 = st.columns(2)
-            with ae1: _en  = st.text_input("Full name *", placeholder="e.g. Cheikh Diallo")
-            with ae2: _eph = st.text_input("Phone * (+221/+223)", placeholder="+221 77 XXX XXXX")
-            ae3, ae4, ae5, ae6 = st.columns([2,1,1,1])
-            with ae3: _esk = st.selectbox("Specialisation",
-                                          ["power_subsystem","thermal_management","rf_antenna",
-                                           "backhaul_connectivity","baseband_processing"])
-            with ae4: _elv = st.selectbox("Level", ["Senior","Mid","Junior"])
-            with ae5: _esh = st.selectbox("Shift", ["Day","Night"])
-            with ae6:
-                st.markdown("<br>", unsafe_allow_html=True)
-                _ea = st.form_submit_button("Add ➕", use_container_width=True)
-            if _ea:
-                if not _en.strip():
-                    st.error("Name required.")
-                elif not _eph.strip():
-                    st.error("Phone number required.")
-                else:
-                    new_id   = f"ENG{len(st.session_state.engineer_roster)+1:03d}"
-                    _e_uname, _e_pw = _generate_eng_credentials(_en.strip(), new_id)
-                    # Ensure unique username
-                    _existing_un = set(st.session_state._runtime_users.keys()) if "_runtime_users" in st.session_state else set()
-                    _suffix = 1
-                    _base_uname = _e_uname
-                    while _e_uname in _existing_un:
-                        _e_uname = f"{_base_uname}{_suffix}"; _suffix += 1
-                    _e_uid = f"USR-{abs(hash(_e_uname))%9000+1000}"
-                    _e_fullname = _en.strip()
-                    # Add to engineer roster
-                    st.session_state.engineer_roster.append(dict(
-                        id=new_id, name=_e_fullname, skill=_esk,
-                        level=_elv, on_call=True, shift=_esh,
-                        phone=_eph.strip(), dispatches=0,
-                        username=_e_uname))
-                    # Auto-create system account (admin can change password)
-                    if "_runtime_users" not in st.session_state:
-                        st.session_state._runtime_users = dict(_get_users())
-                    st.session_state._runtime_users[_e_uname] = (
-                        _e_pw, "engineer", _e_fullname, _elv+" Engineer", "Field", _e_uid)
-                    _push_notif(f"👷 {_e_fullname} added to roster. Account: {_e_uname}/{_e_pw}", level="success")
-                    st.success(f"✓ {_e_fullname} added. Login: **{_e_uname}** · Password: **{_e_pw}** (admin can change in Settings → User Management)")
-                    st.rerun()
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: USER GUIDE — comprehensive reference for all users
@@ -3272,7 +3120,7 @@ elif pk == "Dispatch & Roster":
         <div style="background:linear-gradient(135deg,#1c2333,#161b22);border:1px solid #39c5cf44;
              border-left:4px solid #39c5cf;border-radius:10px;padding:1.2rem 1.6rem;margin-bottom:1rem">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:#e6edf3">
-            📖 VectorAgent NOC — <span style="color:#39c5cf">System User Guide</span>
+            📖 OrchestrAI NOC — <span style="color:#39c5cf">System User Guide</span>
           </div>
           <div style="font-size:.78rem;color:#c9d1d9;line-height:1.7;margin-top:.35rem">
             Complete reference for NOC operators, field engineers, thesis evaluators, and system administrators.
@@ -3286,11 +3134,14 @@ elif pk == "Dispatch & Roster":
             _ug = st.tabs([
                 "🏗 Architecture",
                 "🗺 Pages & Navigation",
-                "📊 All KPIs & Metrics",
-                "🤖 AI Chatbot Setup",
-                "⚡ Live Mode Explained",
-                "🔐 Governance Model",
+                "📊 KPIs & Metrics",
+                "🤖 AI Chatbot",
+                "⚡ Live Mode",
+                "🔐 Governance",
                 "🚀 Deployment",
+                "🗄 Database",
+                "📱 Notifications",
+                "❓ FAQ",
             ])
 
             # ── TAB 1: ARCHITECTURE ────────────────────────────────────────────────────
@@ -3460,7 +3311,7 @@ elif pk == "Dispatch & Roster":
                          "than a 10-cycle error. RMSE=14.60 means the average prediction error is ≈14.6 cycles. "
                          "FD001+FD003 (single operating condition) = 12.77; FD002+FD004 (6 conditions) = 16.43. "
                          "SOTA reference: CAELSTM = 11.24 on FD001 alone (trained only on FD001); "
-                         "VectorAgent trains on all 4 simultaneously, a harder and more realistic setting.",
+                         "OrchestrAI trains on all 4 simultaneously, a harder and more realistic setting.",
                          "sqrt( mean( (y_true − y_pred)² ) )", "Lower is better. Threshold for acceptable PdM: RMSE < 20 cycles."),
                         ("MAE — Mean Absolute Error", "#f0b429", "9.97 all-4",
                          "Average absolute prediction error in cycles. Less sensitive to outliers than RMSE. "
@@ -3578,7 +3429,7 @@ elif pk == "Dispatch & Roster":
                          "Percentage reduction in effective downtime versus reactive maintenance. "
                          "Calculated as: (MTTR_reactive − MTTR_ai) / MTTR_reactive × 100. "
                          "Baseline MTTR without AI prediction: 4.2h (industry average for macro BTS). "
-                         "MTTR with VectorAgent pre-dispatch: 1.8h (engineer dispatched before failure, "
+                         "MTTR with OrchestrAI pre-dispatch: 1.8h (engineer dispatched before failure, "
                          "parts pre-ordered, fault pre-diagnosed). Reduction = (4.2−1.8)/4.2 = 57.1%.",
                          "Baseline: 4.2h reactive MTTR · AI-enabled: 1.8h · Reduction: 57.1%"),
                         ("Money Saved (€)", "#f0b429", "€ per period (€1,200/h baseline)",
@@ -3833,8 +3684,590 @@ elif pk == "Dispatch & Roster":
         # Run application
         streamlit run streamlit_pdm.py
 
-        # Report generated: VectorAgent_Report_YYYYMMDD.pdf
+        # Report generated: OrchestrAI_Report_YYYYMMDD.pdf
         # Current date: {time.strftime("%Y-%m-%d")}""", language="bash")
+
+            # ── TAB 8: DATABASE ───────────────────────────────────────────────────────
+            with _ug[7]:
+                sh("PERSISTENT SHARED DATABASE ARCHITECTURE")
+                st.markdown("""
+<div class="ac m" style="margin-bottom:.7rem">
+  <strong style="color:#3fb950">Why a database is needed</strong><br>
+  <span style="font-size:.78rem;color:#c9d1d9;line-height:1.7">
+  Streamlit runs each browser session as an isolated process with its own <code>st.session_state</code>.
+  Without shared persistence, a dispatch created by the admin on PC1 is invisible to the engineer on PC2.
+  OrchestrAI solves this with <strong>SQLite (WAL mode)</strong> — a file-based database built into Python,
+  requiring zero setup and working reliably on Streamlit Community Cloud.
+  </span>
+</div>""", unsafe_allow_html=True)
+
+                sh("DATABASE FILES")
+                for _db_name, _db_path, _desc, _col in [
+                    ("dispatches.db",    "data/dispatches.db",    "Primary dispatch store. WAL mode allows concurrent read/write from multiple users. Tables: dispatches, notifications.", "#3fb950"),
+                    ("dispatches.json",  "data/dispatches.json",  "Automatic JSON fallback. Written if SQLite is unavailable (e.g. filesystem restriction).", "#f0b429"),
+                ]:
+                    _db_exists = (Path(_HERE) / _db_path).exists()
+                    _status    = "✓ Found" if _db_exists else "○ Will be created on first dispatch"
+                    _sc        = "#3fb950" if _db_exists else "#7d8590"
+                    st.markdown(
+                        f'<div style="display:flex;gap:.8rem;align-items:flex-start;padding:.5rem .8rem;'
+                        f'background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:.3rem;'
+                        f'font-family:monospace;font-size:.72rem">'
+                        f'<span style="color:{_col};min-width:120px;font-weight:700">{_db_name}</span>'
+                        f'<span style="color:#7d8590;min-width:180px">{_db_path}</span>'
+                        f'<span style="color:{_sc};min-width:120px">{_status}</span>'
+                        f'<span style="color:#c9d1d9;flex:1">{_desc}</span>'
+                        f'</div>', unsafe_allow_html=True)
+
+                sh("DATA FLOW")
+                for _step, _col in [
+                    ("Admin creates dispatch → _store_dispatch() writes to SQLite → ALL users see it on next page load", "#3fb950"),
+                    ("Engineer completes ticket → _store_dispatch() updates status=COMPLETED → moves to Completed tab for all users", "#39c5cf"),
+                    ("Admin cancels dispatch → _delete_dispatch() removes from SQLite → disappears for all users immediately", "#ff6b35"),
+                    ("Every Dispatch page load → _sync_session_from_db() pulls latest state → session_state always matches DB", "#58a6ff"),
+                ]:
+                    st.markdown(f'<div style="font-family:monospace;font-size:.71rem;color:{_col};padding:.2rem .5rem;'
+                               f'border-left:2px solid {_col};margin-bottom:.25rem">{_step}</div>', unsafe_allow_html=True)
+
+                sh("SCALING")
+                st.markdown("""<div class="ac m" style="font-size:.76rem;color:#c9d1d9;line-height:1.7">
+  <strong style="color:#3fb950">SQLite is correct for this deployment.</strong><br>
+  For 10+ concurrent writers or multi-server deployments, migrate to PostgreSQL using
+  <code>st.connection("postgresql")</code> and update the 5 DB functions —
+  the rest of the application code requires zero changes.
+</div>""", unsafe_allow_html=True)
+
+            # ── TAB 9: NOTIFICATIONS ──────────────────────────────────────────────────
+            with _ug[8]:
+                sh("NOTIFICATION SYSTEM")
+                st.markdown("""<div class="ac m" style="font-size:.78rem;color:#c9d1d9;line-height:1.7">
+  OrchestrAI uses a <strong>3-channel notification system</strong> for dispatch events:
+  <br><br>
+  <b style="color:#39c5cf">① In-system feed</b> — every notification appears in the Notifications panel
+  (sidebar bell icon). Persisted in the SQLite <code>notifications</code> table. Engineers see
+  their own alerts; admins see all.
+  <br><br>
+  <b style="color:#58a6ff">② SMS (Twilio)</b> — when Twilio credentials are configured in
+  Streamlit Secrets, a real SMS is sent to the engineer's registered phone number
+  (+221 Senegal / +223 Mali format). Falls back to in-app toast preview when not configured.
+  <br><br>
+  <b style="color:#bc8cff">③ Toast preview</b> — dispatcher sees a "SMS preview" toast
+  showing the exact message that would be sent: ticket ID, station, urgency, SLA, fault description.
+</div>""", unsafe_allow_html=True)
+
+                sh("SMS CONFIGURATION (TWILIO)")
+                st.code("""# Add to .streamlit/secrets.toml or Streamlit Cloud → Secrets:
+TWILIO_ACCOUNT_SID = "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+TWILIO_AUTH_TOKEN  = "your_auth_token_here"
+TWILIO_FROM_PHONE  = "+1XXXXXXXXXX"   # your Twilio number
+
+# Engineer phone numbers are stored in the roster.
+# Format accepted: +221 77 XXX XXXX (Senegal) or +223 XX XXX XXXX (Mali)
+# When a dispatch is created, each assigned engineer receives:
+#   "OrchestrAI NOC DISPATCH: TKT-FD002_47-XXXXX — Station FD002_47 (Critical).
+#    SLA: 4h. Fault: Power unit degradation — voltage instability..."
+""", language="toml")
+
+                sh("NOTIFICATION TRIGGER EVENTS")
+                for _evt, _ch, _col in [
+                    ("Dispatch CREATED — admin assigns engineers", "In-system + SMS + Toast", "#ff6b35"),
+                    ("Dispatch COMPLETED — engineer closes ticket", "In-system (admin)", "#3fb950"),
+                    ("Dispatch CANCELLED — admin cancels", "In-system (all)", "#f0b429"),
+                    ("New engineer added to roster", "In-system (admin)", "#39c5cf"),
+                    ("Urgency escalation (Monitor→Warning→Critical)", "Alert log (all users)", "#bc8cff"),
+                ]:
+                    st.markdown(
+                        f'<div style="display:flex;gap:.8rem;align-items:center;padding:.4rem .7rem;'
+                        f'background:#161b22;border-left:3px solid {_col};border-radius:5px;margin-bottom:.25rem;'
+                        f'font-family:monospace;font-size:.71rem">'
+                        f'<span style="color:{_col};flex:1">{_evt}</span>'
+                        f'<span style="color:#7d8590">{_ch}</span></div>', unsafe_allow_html=True)
+
+            # ── TAB 10: FAQ ───────────────────────────────────────────────────────────
+            with _ug[9]:
+                sh("FREQUENTLY ASKED QUESTIONS")
+                _faq_items = [
+                    ("Why can't engineers see dispatches created on another device?",
+                     "Each browser has isolated st.session_state. The SQLite DB solves this: _sync_session_from_db() is called on every Dispatch page load, pulling the latest state from disk. If you still see stale data, check that data/dispatches.db is writable on the server (Streamlit Cloud: yes; Docker: mount data/ as a volume).",
+                     "#ff6b35"),
+                    ("Why does the chatbot give rule-based answers?",
+                     "No API key is configured. Go to Settings → Chatbot API → add an Anthropic key (sk-ant-...) or Groq key (gsk_...). Groq is free and fast. The rule-based mode always works and covers the 10 most common telecom alarm patterns.",
+                     "#f0b429"),
+                    ("What does RMSE=14.60 mean?",
+                     "Root Mean Squared Error on the C-MAPSS test set. On average, XGBoost v2 predicts RUL within ±14.60 cycles. In the critical zone (RUL≤20), actual RMSE is 8.29 — much more accurate where it matters most.",
+                     "#39c5cf"),
+                    ("Why does RAG grounding = 1.000?",
+                     "The Diagnostic Agent uses a rule-based engine that explicitly cites retrieved document IDs for every claim. Grounding = fraction of claims with a [DOC-ID] citation. 1.000 means every claim is backed by a retrieved document.",
+                     "#3fb950"),
+                    ("How do I add a real BTS station?",
+                     "Deploy data_connector.py at the site → configure connector mode in Settings → Data Sources → accumulate ≥30 cycles → Settings → Retrain Pipeline → enter station ID → Launch. The model fine-tunes in 2-5 minutes.",
+                     "#58a6ff"),
+                    ("The retrain log shows SKIPPED — is something broken?",
+                     "No. SKIPPED means the existing model is performing well (new model RMSE not ≥0.5 better). This is correct behaviour on first run without live data. Use Force Retrain checkbox to override.",
+                     "#bc8cff"),
+                    ("How do I configure SMS for engineers?",
+                     "Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_PHONE to Streamlit Secrets. Engineer phone numbers (+221 Senegal / +223 Mali) are set in the Roster. Without Twilio, a toast SMS preview is shown to the dispatcher.",
+                     "#f0b429"),
+                    ("Can I use this on a phone?",
+                     "Yes. The sidebar is collapsible. On mobile, use the collapse button (◀/▶) to hide the sidebar for more screen space. The layout uses relative widths so all content adapts to smaller screens.",
+                     "#39c5cf"),
+                ]
+                for _q, _a, _col in _faq_items:
+                    with st.expander(f"❓  {_q}"):
+                        st.markdown(
+                            f'<div style="font-size:.78rem;color:#c9d1d9;line-height:1.7;'
+                            f'border-left:3px solid {_col};padding:.5rem .8rem;'
+                            f'background:#161b22;border-radius:0 5px 5px 0">{_a}</div>',
+                            unsafe_allow_html=True)
+
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PAGE: DISPATCH & ROLLING ROSTER
+# ══════════════════════════════════════════════════════════════════════════════
+elif pk == "Dispatch & Roster":
+    if not IS_ENG:
+        st.warning("Engineer / Admin role required.")
+        st.stop()
+
+    # ── Sync from DB on every page load — all users see same state ───────
+    _sync_session_from_db()
+
+    roster   = st.session_state.engineer_roster
+    active   = st.session_state.active_dispatches    # {station_id: dispatch}
+    tickets  = st.session_state.dispatch_tickets
+    notifs   = st.session_state.notif_log
+    rul_ov   = st.session_state.rul_overrides
+
+    # ── Helper: add notification ──────────────────────────────────────────────
+    def _push_notif(msg, level="info"):
+        st.session_state.notif_log.insert(0, {
+            "ts": time.strftime("%H:%M:%S"),
+            "msg": msg,
+            "level": level,
+        })
+
+    # ── Helper: find recommended engineers for a subsystem ───────────────────
+    def _recommend(subsystem, n=3):
+        """Rolling selection: prioritise matching skill + on_call + fewest dispatches."""
+        matched   = [e for e in roster if e["skill"] == subsystem and e["on_call"]]
+        unmatched = [e for e in roster if e["skill"] != subsystem and e["on_call"]]
+        pool      = sorted(matched, key=lambda e: e["dispatches"]) + \
+                    sorted(unmatched, key=lambda e: e["dispatches"])
+        return pool[:n]
+
+    # ── Section header ────────────────────────────────────────────────────────
+    sh("DISPATCH & ROLLING ROSTER — CRITICAL STATION ASSIGNMENT")
+
+    # ── Notification feed ─────────────────────────────────────────────────────
+    if notifs:
+        with st.expander(f"🔔 System notifications ({len(notifs)})", expanded=False):
+            for n_ in notifs[:15]:
+                col = {"info":"#39c5cf","success":"#3fb950","warning":"#f0b429","error":"#ff6b35"}.get(n_["level"],"#7d8590")
+                st.markdown(
+                    f'<div style="display:flex;gap:.7rem;padding:.28rem .6rem;border-left:3px solid {col};'
+                    f'background:#161b22;border-radius:0 4px 4px 0;margin-bottom:.2rem;font-family:monospace;font-size:.70rem">'
+                    f'<span style="color:#7d8590">{n_["ts"]}</span>'
+                    f'<span style="color:{col}">{n_["msg"]}</span></div>',
+                    unsafe_allow_html=True)
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  TAB 1: ASSIGN DISPATCH   TAB 2: ACTIVE DISPATCHES   TAB 3: TICKET LOG   TAB 4: ROSTER
+    # ═════════════════════════════════════════════════════════════════════════
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🚨 Assign Dispatch",
+        f"⚡ Active ({len(active)})",
+        f"✅ Completed ({len(tickets)})",
+        "👷 Engineer Roster",
+    ])
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 1 — ASSIGN DISPATCH
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab1:
+        # Filter stations needing attention
+        dispatch_stations = [s for s in STATIONS
+                              if live_urgency(live_rul(s)) in ("Critical","Warning")
+                              and s["id"] not in active]
+        restored_stations = [s for s in STATIONS if s["id"] in rul_ov]
+
+        if not dispatch_stations:
+            st.markdown(
+                '<div class="ac m" style="margin-top:.5rem">'
+                '<strong style="color:#3fb950">✓ No unassigned critical/warning stations</strong><br>'
+                '<span style="font-size:.78rem;color:#c9d1d9">All stations either stable or already dispatched.</span></div>',
+                unsafe_allow_html=True)
+        else:
+            for s in dispatch_stations:
+                rul_now = live_rul(s)
+                urg_now = live_urgency(rul_now)
+                uc      = "#ff6b35" if urg_now == "Critical" else "#f0b429"
+                uc_css  = "c" if urg_now == "Critical" else "w"
+
+                st.markdown(f"""
+<div class="ac {uc_css}" style="margin-bottom:.3rem">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <span style="font-size:.95rem;font-weight:700;color:#a5d6ff;font-family:monospace">{s['id']}</span>
+      &nbsp;<span class="{'bc' if urg_now=='Critical' else 'bw'}">{urg_now}</span>
+      &nbsp;<span style="font-size:.63rem;color:#30363d;font-family:monospace">{s['sub']} · SLA {s['sla']}h</span>
+    </div>
+    <div style="font-size:1.2rem;font-weight:700;color:{uc};font-family:monospace">{rul_now:.1f} cyc</div>
+  </div>
+  <div style="font-size:.70rem;color:#c9d1d9;margin:.2rem 0">{s['hyp']}</div>
+</div>""", unsafe_allow_html=True)
+
+                rec = _recommend(s["sub"], n=3)
+                rec_names = [e["name"] for e in rec]
+                all_names = [e["name"] for e in roster if e["on_call"]]
+
+                with st.form(f"dispatch_form_{s['id']}"):
+                    fc1, fc2 = st.columns([2, 1])
+                    with fc1:
+                        chosen = st.multiselect(
+                            f"Select engineers for {s['id']}",
+                            options=[e["name"] for e in roster],
+                            default=rec_names,
+                            help="Rolling algorithm pre-selects by skill match + fewest dispatches. Override freely.",
+                            label_visibility="collapsed")
+                        st.caption(
+                            f"🔄 Rolling recommendation (skill={s['sub'].split('_')[0]}, "
+                            f"fewest dispatches): {', '.join(rec_names)}")
+                    with fc2:
+                        priority = st.selectbox("Priority", ["CRITICAL — 4h","WARNING — 48h","MONITOR — 168h"],
+                                                index=0 if urg_now=="Critical" else 1,
+                                                label_visibility="collapsed",
+                                                key=f"pri_{s['id']}")
+                        sla_h  = int(priority.split("—")[1].strip().replace("h",""))
+                        submitted = st.form_submit_button(
+                            f"🚀 Dispatch to {s['id']}", use_container_width=True)
+
+                    if submitted and chosen:
+                        ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
+                        dispatch = {
+                            "station_id":   s["id"],
+                            "subsystem":    s["sub"],
+                            "urgency":      urg_now,
+                            "rul_at_dispatch": round(rul_now, 1),
+                            "hypothesis":   s["hyp"],
+                            "sla_hours":    sla_h,
+                            "engineers":    chosen,
+                            "assigned_at":  ts_now,
+                            "status":       "IN PROGRESS",
+                            "ticket_id":    f"TKT-{s['id']}-{int(time.time())}",
+                        }
+                        # ── Persist to shared DB (all users see this) ──────
+                        _store_dispatch(dispatch)
+                        _sync_session_from_db()
+                        # Update dispatch count for rolling algorithm
+                        for e in st.session_state.engineer_roster:
+                            if e["name"] in chosen:
+                                e["dispatches"] += 1
+                        # Record in persistent perf_log for performance report
+                        st.session_state.perf_log.append({
+                            "ts":        ts_now,
+                            "event":     "dispatch_created",
+                            "station":   s["id"],
+                            "urgency":   urg_now,
+                            "rul":       round(rul_now, 1),
+                            "engineers": chosen,
+                            "ticket_id": dispatch["ticket_id"],
+                            "sla_hours": sla_h,
+                            "subsystem": s["sub"],
+                        })
+                        # ── In-system + DB + SMS notification per engineer ──────
+                        for _eng_name in chosen:
+                            _eng_rec   = next((e for e in st.session_state.engineer_roster
+                                               if e["name"] == _eng_name), None)
+                            _eng_phone = _eng_rec["phone"] if _eng_rec else "—"
+                            _eng_uname = (_eng_rec.get("username") or
+                                          re.sub(r"[^a-z0-9]", "",
+                                                 _eng_name.lower().replace(" ", "_"))[:20])
+                            _notif_msg = (
+                                f"📟 [{dispatch['ticket_id']}] You are dispatched → {s['id']} "
+                                f"({urg_now}, SLA {sla_h}h, RUL={rul_now:.1f}). "
+                                f"Fault: {s['hyp'][:55]}")
+                            # 1. In-session feed (current session users)
+                            _push_notif(
+                                f"📟 [{dispatch['ticket_id']}] {_eng_name} ({_eng_phone}) → {s['id']} "
+                                f"({urg_now}, SLA {sla_h}h). {s['hyp'][:55]}",
+                                level="error" if urg_now == "Critical" else "warning")
+                            # 2. Persist to DB (engineer sees on next login/refresh)
+                            _store_notif(_eng_uname, _notif_msg,
+                                         level="error" if urg_now == "Critical" else "warning")
+                            # 3. SMS via Twilio (real SMS) or toast preview fallback
+                            _sms_body = (
+                                f"OrchestrAI NOC DISPATCH: {dispatch['ticket_id']} — "
+                                f"Station {s['id']} ({urg_now}). SLA: {sla_h}h. "
+                                f"{s['hyp'][:60]}")
+                            _send_sms_simulation(_eng_phone, _eng_name, _sms_body)
+                        _push_notif(
+                            f"✅ Dispatch {dispatch['ticket_id']} created for {s['id']}: "
+                            f"{', '.join(chosen)}",
+                            level="success")
+                        st.success(f"Dispatched {', '.join(chosen)} to {s['id']}. Ticket: {dispatch['ticket_id']}")
+                        st.rerun()
+                    elif submitted and not chosen:
+                        st.error("Select at least one engineer.")
+                st.markdown("<hr style='border-color:#21262d;margin:.5rem 0'>", unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 2 — ACTIVE DISPATCHES + VALIDATION FORM
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab2:
+        if not active:
+            st.markdown(
+                '<div class="ac m"><span style="color:#3fb950">No active dispatches.</span></div>',
+                unsafe_allow_html=True)
+        else:
+            for sid, d in list(active.items()):
+                s_obj = next((s for s in STATIONS if s["id"] == sid), None)
+                elapsed_disp = (time.time() - time.mktime(
+                    time.strptime(d["assigned_at"], "%Y-%m-%d %H:%M:%S"))) / 3600
+                sla_pct  = min(100, int(elapsed_disp / max(d["sla_hours"], 1) * 100))
+                sla_col  = "#3fb950" if sla_pct < 60 else ("#f0b429" if sla_pct < 85 else "#ff6b35")
+
+                st.markdown(f"""
+<div class="ac c" style="margin-bottom:.4rem">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem">
+    <div>
+      <span style="font-size:.92rem;font-weight:700;color:#a5d6ff;font-family:monospace">{d['ticket_id']}</span>
+      &nbsp;<span class="bc">IN PROGRESS</span>
+      <div style="font-size:.68rem;color:#7d8590;margin-top:.2rem">
+        Station: <span style="color:#e6edf3">{sid}</span> · {d['subsystem']} · Assigned: {d['assigned_at']}
+      </div>
+      <div style="font-size:.68rem;color:#7d8590">
+        Engineers: <span style="color:#58a6ff">{'  ·  '.join(d['engineers'])}</span>
+      </div>
+      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{d['hypothesis'][:80]}…</div>
+    </div>
+    <div style="text-align:right;font-family:monospace;font-size:.70rem;color:#7d8590">
+      SLA: <span style="color:{sla_col}">{d['sla_hours']}h</span><br>
+      Elapsed: {elapsed_disp:.1f}h<br>
+      RUL at dispatch: {d['rul_at_dispatch']}
+    </div>
+  </div>
+  <div style="background:#21262d;height:4px;border-radius:2px;overflow:hidden">
+    <div style="width:{sla_pct}%;height:4px;background:{sla_col};border-radius:2px"></div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+                # Validation form
+                with st.expander(f"✅ Validate & Close Ticket — {d['ticket_id']}", expanded=False):
+                    with st.form(f"validate_{sid}"):
+                        st.markdown(
+                            '<div style="font-family:monospace;font-size:.72rem;color:#39c5cf;'
+                            'margin-bottom:.5rem">COMPLETION REPORT</div>',
+                            unsafe_allow_html=True)
+                        v1, v2 = st.columns(2)
+                        with v1:
+                            work_done = st.text_area(
+                                "Work performed *",
+                                placeholder="e.g. Replaced rectifier module B, verified DC bus voltage 48.2V, "
+                                            "restored TX power, cleared PWR-001 alarm.",
+                                height=100, key=f"work_{sid}")
+                            parts_used = st.text_input(
+                                "Parts / spares used",
+                                placeholder="e.g. Rectifier module Ericsson PSU 48V-50A (×1), BBU fuse set (×1)",
+                                key=f"parts_{sid}")
+                            alarm_cleared = st.selectbox(
+                                "Alarm cleared?",
+                                ["Yes — alarm auto-cleared", "Yes — manually cleared via OMC",
+                                 "Partial — monitoring required", "No — escalation needed"],
+                                key=f"alm_{sid}")
+                        with v2:
+                            restored_rul = st.slider(
+                                "Restored RUL (cycles) *",
+                                min_value=10, max_value=125,
+                                value=min(125, int(s_obj["base_rul"] * 0.85)) if s_obj else 100,
+                                help="Engineer's assessment of remaining useful life after repair.",
+                                key=f"rul_{sid}")
+                            root_cause = st.selectbox(
+                                "Root cause confirmed",
+                                ["Rectifier/power unit failure",
+                                 "Cooling fan bearing wear",
+                                 "Antenna connector corrosion",
+                                 "Fibre splice degradation",
+                                 "BBU software/hardware fault",
+                                 "Preventive — no active fault",
+                                 "Other (see notes)"],
+                                key=f"rc_{sid}")
+                            notes = st.text_area(
+                                "Additional notes",
+                                placeholder="Observations, follow-up recommendations…",
+                                height=68, key=f"notes_{sid}")
+
+                        validated = st.form_submit_button("✅ Close Ticket & Restore Station", use_container_width=True)
+                        if validated:
+                            if not work_done.strip():
+                                st.error("Work performed field is required.")
+                            else:
+                                ts_now = time.strftime("%Y-%m-%d %H:%M:%S")
+                                closed = dict(d)
+                                closed.update({
+                                    "station":        sid,
+                                    "status":         "COMPLETED",
+                                    "closed_at":      ts_now,
+                                    "work_done":      work_done.strip(),
+                                    "parts_used":     parts_used.strip(),
+                                    "alarm_cleared":  alarm_cleared,
+                                    "root_cause":     root_cause,
+                                    "notes":          notes.strip(),
+                                    "restored_rul":   restored_rul,
+                                    "validated_by":   USER,
+                                })
+                                closed["station"] = sid
+                                _store_dispatch(closed)
+                                _sync_session_from_db()
+                                # Apply RUL override — station now shows restored RUL
+                                st.session_state.rul_overrides[sid]        = float(restored_rul)
+                                st.session_state.rul_overrides[sid + "_ts"] = time.time()
+                                _push_notif(
+                                    f"🔧 [{closed['ticket_id']}] CLOSED by {USER}. "
+                                    f"Station {sid} restored to RUL={restored_rul}. "
+                                    f"Root cause: {root_cause}.",
+                                    level="success")
+                                st.success(f"Ticket closed. Station {sid} restored to RUL={restored_rul} cycles.")
+                                st.rerun()
+
+                # Cancel dispatch
+                if IS_ADMIN and st.button(f"✕ Cancel {d['ticket_id']}", key=f"cancel_{sid}"):
+                    _delete_dispatch(d["ticket_id"])
+                    _sync_session_from_db()
+                    _push_notif(f"❌ Dispatch {d['ticket_id']} for {sid} cancelled by {USER}.", level="warning")
+                    st.rerun()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 3 — COMPLETED TICKET LOG
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab3:
+        if not tickets:
+            st.markdown(
+                '<div class="ac m"><span style="color:#7d8590">No completed tickets yet.</span></div>',
+                unsafe_allow_html=True)
+        else:
+            for t in tickets:
+                rul_delta = t["restored_rul"] - t["rul_at_dispatch"]
+                dc = "#3fb950" if rul_delta > 0 else "#ff6b35"
+                st.markdown(f"""
+<div class="ac m" style="margin-bottom:.4rem">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <span style="font-family:monospace;font-weight:700;color:#a5d6ff">{t['ticket_id']}</span>
+      &nbsp;<span class="bm">COMPLETED</span>
+      <div style="font-size:.68rem;color:#7d8590;margin-top:.15rem">
+        Station: <span style="color:#e6edf3">{t['station_id']}</span> ·
+        Engineers: <span style="color:#58a6ff">{'  ·  '.join(t['engineers'])}</span> ·
+        Validated by: <span style="color:#bc8cff">{t['validated_by']}</span>
+      </div>
+      <div style="font-size:.68rem;color:#7d8590">Closed: {t['closed_at']} · Root cause: {t['root_cause']}</div>
+      <div style="font-size:.69rem;color:#c9d1d9;margin-top:.2rem">{t['work_done'][:120]}{'…' if len(t['work_done'])>120 else ''}</div>
+      {f'<div style="font-size:.67rem;color:#7d8590;margin-top:.1rem">Parts: {t["parts_used"]}</div>' if t.get("parts_used") else ''}
+    </div>
+    <div style="text-align:right;font-family:monospace;font-size:.72rem;min-width:110px">
+      <div style="color:#7d8590">RUL restored</div>
+      <div style="font-size:1.1rem;font-weight:700;color:{dc}">{t['restored_rul']}</div>
+      <div style="color:{dc};font-size:.68rem">{'+' if rul_delta>=0 else ''}{rul_delta:.1f} cyc</div>
+    </div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    #  TAB 4 — ENGINEER ROSTER MANAGEMENT
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab4:
+        sh("ROLLING ROSTER — ON-CALL STATUS & DISPATCH COUNT")
+
+        skill_colors = {
+            "power_subsystem":       "#f0b429",
+            "thermal_management":    "#ff6b35",
+            "rf_antenna":            "#39c5cf",
+            "backhaul_connectivity": "#58a6ff",
+            "baseband_processing":   "#bc8cff",
+        }
+        level_colors = {"Senior":"#3fb950","Mid":"#58a6ff","Junior":"#f0b429"}
+
+        for e in st.session_state.engineer_roster:
+            sc = skill_colors.get(e["skill"],"#7d8590")
+            lc = level_colors.get(e["level"],"#7d8590")
+            on_col = "#3fb950" if e["on_call"] else "#30363d"
+            on_lbl = "ON-CALL" if e["on_call"] else "OFF"
+            disp_w = min(100, e["dispatches"] * 8)
+
+            c_eng, c_tog = st.columns([5, 1])
+            with c_eng:
+                st.markdown(f"""
+<div style="display:flex;align-items:center;gap:.7rem;padding:.45rem .85rem;
+     background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:.3rem;font-family:monospace;font-size:.73rem">
+  <span style="color:#a5d6ff;font-weight:700;min-width:90px">{e['name']}</span>
+  <span style="color:#7d8590;font-size:.65rem;min-width:30px">{e['id']}</span>
+  <span style="background:{sc}22;color:{sc};border:1px solid {sc}55;border-radius:3px;
+        padding:1px 6px;font-size:.63rem;min-width:110px">{e['skill'].replace('_',' ')}</span>
+  <span style="background:{lc}22;color:{lc};border:1px solid {lc}55;border-radius:3px;
+        padding:1px 6px;font-size:.63rem;min-width:48px">{e['level']}</span>
+  <span style="color:#7d8590;font-size:.63rem;min-width:50px">{e['shift']}</span>
+  <span style="color:{on_col};font-weight:700;font-size:.63rem;min-width:56px">{on_lbl}</span>
+  <span style="color:#7d8590;font-size:.63rem">{e['phone']}</span>
+  <div style="flex:1;margin:0 .5rem">
+    <div style="background:#21262d;height:4px;border-radius:2px">
+      <div style="width:{disp_w}%;height:4px;background:{sc};border-radius:2px"></div>
+    </div>
+  </div>
+  <span style="color:#7d8590;font-size:.63rem">{e['dispatches']} dispatches</span>
+</div>""", unsafe_allow_html=True)
+            with c_tog:
+                btn_lbl = "Set OFF" if e["on_call"] else "Set ON"
+                if st.button(btn_lbl, key=f"tog_{e['id']}", use_container_width=True):
+                    e["on_call"] = not e["on_call"]
+                    status = "ON-CALL" if e["on_call"] else "OFF duty"
+                    _push_notif(f"🔄 {e['name']} set to {status} by {USER}.", level="info")
+                    st.rerun()
+
+        sh("ADD ENGINEER TO ROSTER")
+        with st.form("add_eng_form", clear_on_submit=True):
+            ae1, ae2 = st.columns(2)
+            with ae1: _en  = st.text_input("Full name *", placeholder="e.g. Cheikh Diallo")
+            with ae2: _eph = st.text_input("Phone * (+221/+223)", placeholder="+221 77 XXX XXXX")
+            ae3, ae4, ae5, ae6 = st.columns([2,1,1,1])
+            with ae3: _esk = st.selectbox("Specialisation",
+                                          ["power_subsystem","thermal_management","rf_antenna",
+                                           "backhaul_connectivity","baseband_processing"])
+            with ae4: _elv = st.selectbox("Level", ["Senior","Mid","Junior"])
+            with ae5: _esh = st.selectbox("Shift", ["Day","Night"])
+            with ae6:
+                st.markdown("<br>", unsafe_allow_html=True)
+                _ea = st.form_submit_button("Add ➕", use_container_width=True)
+            if _ea:
+                if not _en.strip():
+                    st.error("Name required.")
+                elif not _eph.strip():
+                    st.error("Phone number required.")
+                else:
+                    new_id   = f"ENG{len(st.session_state.engineer_roster)+1:03d}"
+                    _e_uname, _e_pw = _generate_eng_credentials(_en.strip(), new_id)
+                    # Ensure unique username
+                    _existing_un = set(st.session_state._runtime_users.keys()) if "_runtime_users" in st.session_state else set()
+                    _suffix = 1
+                    _base_uname = _e_uname
+                    while _e_uname in _existing_un:
+                        _e_uname = f"{_base_uname}{_suffix}"; _suffix += 1
+                    _e_uid = f"USR-{abs(hash(_e_uname))%9000+1000}"
+                    _e_fullname = _en.strip()
+                    # Add to engineer roster
+                    st.session_state.engineer_roster.append(dict(
+                        id=new_id, name=_e_fullname, skill=_esk,
+                        level=_elv, on_call=True, shift=_esh,
+                        phone=_eph.strip(), dispatches=0,
+                        username=_e_uname))
+                    # Auto-create system account (admin can change password)
+                    if "_runtime_users" not in st.session_state:
+                        st.session_state._runtime_users = dict(_get_users())
+                    st.session_state._runtime_users[_e_uname] = (
+                        _e_pw, "engineer", _e_fullname, _elv+" Engineer", "Field", _e_uid)
+                    _push_notif(f"👷 {_e_fullname} added to roster. Account: {_e_uname}/{_e_pw}", level="success")
+                    st.success(f"✓ {_e_fullname} added. Login: **{_e_uname}** · Password: **{_e_pw}** (admin can change in Settings → User Management)")
+                    st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
