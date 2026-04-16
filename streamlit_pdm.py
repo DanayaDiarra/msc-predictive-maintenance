@@ -583,7 +583,7 @@ def elapsed_min():
     return (time.time() - st.session_state.session_start) / 60.0
 
 def live_rul(s):
-    """XGBoost v2 base prediction minus session-time degradation.
+    """Phase2 Ensemble+BC base prediction minus session-time degradation.
     If a restored RUL override exists (engineer validated ticket), use that instead."""
     override = st.session_state.rul_overrides.get(s["id"])
     if override is not None:
@@ -726,9 +726,9 @@ def svg_rul_hbar():
 # ══════════════════════════════════════════════════════════════════════════════
 # ── KPI tooltip definitions ─────────────────────────────────────────────────
 _KPI_TT = {
-    "LIVE RUL":        "Remaining Useful Life: estimated cycles before maintenance. XGBoost v2 live calculation. Thresholds: ≤20 Critical · 21-50 Warning · >50 Monitor.",
-    "RUL":             "Remaining Useful Life (cycles). XGBoost v2 prediction from 21 sensor channels. Cap: 125 cycles. Lower = more urgent.",
-    "PREDICTED RUL":   "XGBoost v2 base prediction. Cycles before maintenance probability exceeds threshold. Confidence interval shown as [cl, ch].",
+    "LIVE RUL":        "Remaining Useful Life: estimated cycles before maintenance. Phase2 Ensemble+BC live calculation. Thresholds: ≤20 Critical · 21-50 Warning · >50 Monitor.",
+    "RUL":             "Remaining Useful Life (cycles). Phase2 Ensemble+BC prediction from 84 features. Cap: 125 cycles. Lower = more urgent.",
+    "PREDICTED RUL":   "Phase2 Ensemble+BC prediction. Cycles before maintenance probability exceeds threshold. Confidence interval shown as [cl, ch].",
     "GROUNDING":       "RAG grounding rate. Fraction of diagnostic claims backed by a retrieved document [DOC-ID]. 1.000 = fully grounded, no hallucination.",
     "HALLUCIN.":       "Hallucination rate. Claims NOT traceable to retrieved evidence. 0.000 = zero hallucination. Formula: 1 - grounding_rate.",
     "MEAN RUL":        "Fleet-average RUL across all stations. Formula: sum(RUL_i) / N. Lower fleet average = higher overall operational risk.",
@@ -736,7 +736,7 @@ _KPI_TT = {
     "CRITICAL ALERTS": "Stations with RUL ≤ 20 cycles. SLA ≤ 4h. Governance Tier 3: human engineer approval required.",
     "WARNING ALERTS":  "Stations with RUL 21-50 cycles. SLA ≤ 48h. Governance Tier 2: auto-execute after 6h timeout.",
     "MONITORING":      "Stations with RUL > 50 cycles. SLA ≤ 168h. Governance Tier 1: fully autonomous.",
-    "AVG RMSE":        "Root Mean Squared Error of XGBoost v2 on C-MAPSS test set (cycles). All-4 average: 15.11. FD001=15.56, FD002=15.45, FD003=12.15, FD004=17.34.",
+    "AVG RMSE":        "Root Mean Squared Error of Phase2 Ensemble+BC on C-MAPSS test set. All-4 RMSE=15.11 · MAE=9.94 · R²=0.8663. FD001=15.56 · FD002=15.45 · FD003=12.15 · FD004=17.34.",
     "TOTAL ALERTS":    "Total dispatch events triggered in the reporting period.",
     "RESOLVED":        "Tickets closed with validation: work performed + root cause + restored RUL. Requires engineer sign-off.",
     "RESOLUTION %":    "Operational efficiency: resolved / total_alerts × 100%.",
@@ -1035,7 +1035,7 @@ td{{padding:.28rem .6rem;border:1px solid #30363d}}
             _hn += f"<tr><td>{_esc(_da.get('ticket_id',''))}</td><td>{_esc(_da.get('station_id',''))}</td><td style='color:#f0b429'>{_esc(_da.get('urgency',''))}</td><td>{_esc(str(_da.get('assigned_at',''))[:16])}</td><td>{_esc(', '.join(_da.get('engineers',[])))}</td><td style='color:#f0b429'>IN PROGRESS</td></tr>"
         for _tk in dispatch_tickets[:50]:
             _hn += f"<tr><td>{_esc(_tk.get('ticket_id',''))}</td><td>{_esc(_tk.get('station',''))}</td><td style='color:#3fb950'>{_esc(_tk.get('urgency',''))}</td><td>{_esc(str(_tk.get('assigned_at',''))[:16])}</td><td>{_esc(', '.join(_tk.get('engineers',[])))}</td><td style='color:#3fb950'>CLOSED</td></tr>"
-        _hn += f"</table><p style='color:#5a6475;font-size:.7rem'>OrchestrAI NOC &middot; XGBoost v2 RMSE=15.11 &middot; R&sup2;=0.866</p></body></html>"
+        _hn += f"</table><p style='color:#5a6475;font-size:.7rem'>OrchestrAI NOC &middot; Phase2 Ensemble+BC RMSE=15.11 &middot; R&sup2;=0.8663</p></body></html>"
         return _hn.encode("utf-8"), None
 
     buf = io.BytesIO()
@@ -1093,7 +1093,7 @@ td{{padding:.28rem .6rem;border:1px solid #30363d}}
 
         # Thesis note
         ax.text(0.05, 0.03,
-                f"Agentic AI for Predictive Maintenance  ·  Ensemble+BC (Ph2)  ·  RMSE=15.11 · R²=0.866  ·  {cur_year}",
+                f"Agentic AI for Predictive Maintenance  ·  Ensemble+BC (Ph2)  ·  RMSE=15.11 · R²=0.8663  ·  {cur_year}",
                 fontsize=7, color="#5a6475", transform=ax.transAxes, fontfamily="monospace")
         pdf.savefig(fig, dpi=150, facecolor=fig.get_facecolor())
         plt.close(fig)
@@ -1111,7 +1111,7 @@ td{{padding:.28rem .6rem;border:1px solid #30363d}}
                      marker="o", markersize=4)
             ax1.axhline(15.11, color="#3fb950", linestyle="--", linewidth=1,
                         label="Baseline 15.11")
-            ax1.set_title("XGBoost v2 RMSE Trend", color="#e6edf3",
+            ax1.set_title("Ensemble+BC RMSE Trend", color="#e6edf3",
                           fontfamily="monospace", fontsize=10)
             ax1.set_ylabel("RMSE (cycles)", color="#7d8590", fontfamily="monospace")
             ax1.tick_params(colors="#7d8590", labelsize=7)
@@ -1277,7 +1277,7 @@ _chip_rmse = (
     '<span style="color:#7d8590">RMSE</span>&nbsp;'
     '<span style="color:#39c5cf;font-weight:700">15.11</span>&nbsp;'
     '<span style="color:#7d8590;font-size:.58rem">all-4&nbsp;&middot;&nbsp;R&sup2;=</span>'
-    '<span style="color:#58a6ff;font-weight:700">0.866</span>'
+    '<span style="color:#58a6ff;font-weight:700">0.8663</span>'
     '</div>'
 )
 
@@ -1470,7 +1470,7 @@ with st.sidebar:
         f'<div style="{_mono};font-size:.60rem;color:#5a6475;line-height:1.9">'
         f'All-4 RMSE&nbsp;&nbsp;<span style="color:#39c5cf;font-weight:700">15.11</span><br>'
         f'FD001+FD003&nbsp;<span style="color:#3fb950;font-weight:700">15.56</span><br>'
-        f'R²&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#58a6ff;font-weight:700">0.866</span><br>'
+        f'R²&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#58a6ff;font-weight:700">0.8663</span><br>'
         f'Session&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#f0b429;font-weight:700">{el2:.1f}m</span>'
         f'</div></div>',
         unsafe_allow_html=True)
@@ -1511,7 +1511,7 @@ if pk == "Live Fleet Monitor":
     # ── Live telemetry cards ──
     _refresh_lbl = (f" · ↻ auto-refresh {st.session_state.refresh_interval}s"
                      if st.session_state.live_mode else " · manual mode")
-    sh("LIVE STATION TELEMETRY — XGBoost v2 Predictive Analytics" + _refresh_lbl)
+    sh("LIVE STATION TELEMETRY — Phase2 Ensemble+BC · Predictive Analytics" + _refresh_lbl)
     for row_i in range(0, len(STATIONS), 2):
         cols2 = st.columns(2)
         for j, col in enumerate(cols2):
@@ -1630,7 +1630,7 @@ elif pk == "Fleet Overview":
     if PLOTLY_OK:
         c1, c2 = st.columns(2)
         with c1:
-            sh("RUL DISTRIBUTION — XGBoost v2 PREDICTIONS")
+            sh("RUL DISTRIBUTION — Phase2 Ensemble+BC PREDICTIONS")
             fig = go.Figure(go.Bar(
                 x=[s["id"] for s in STATIONS], y=[live_rul(s) for s in STATIONS],
                 marker_color=[rc(live_rul(s)) for s in STATIONS], marker_line_width=0,
@@ -1688,7 +1688,7 @@ elif pk == "Station Detail":
                 C-MAPSS {s["subset"]} engine &nbsp;·&nbsp; {s["cycles"]} cycles observed
               </div>
               <div style="font-size:.68rem;color:#5a6475;margin-top:.2rem;font-family:'IBM Plex Mono',monospace">
-                Transformer v2 · all-4 RMSE=15.11 · FD001+FD003=15.56 · R²=0.866 · 15k trees · exp(α=3) weights
+                Phase2 Ensemble+BC · all-4 RMSE=15.11 · MAE=9.94 · R²=0.8663 · TransV2(α=0.70)+XGB(α=0.30)
               </div>
             </div>""", unsafe_allow_html=True)
             sh("PIPELINE FLOW")
@@ -1709,7 +1709,7 @@ elif pk == "Station Detail":
         if PLOTLY_OK:
             f1, f2 = st.columns(2)
             with f1:
-                sh("TOP CONTRIBUTING FEATURES — XGBoost v2")
+                sh("TOP CONTRIBUTING FEATURES — Phase2 Ensemble+BC")
                 fmap = {
                     "power_subsystem":       ["voltage_rolling_mean","total_power_slope_20","battery_slope","power_std_30","current_trend"],
                     "thermal_management":    ["temp_sensor_slope","thermal_index_mean","fan_speed_delta","heat_index_mean","s3_std_30"],
@@ -1727,7 +1727,7 @@ elif pk == "Station Detail":
                 fg.update_layout(**pdk(), height=215, xaxis_title="Importance", showlegend=False)
                 st.plotly_chart(fg, use_container_width=True)
             with f2:
-                sh("LIVE RUL TRAJECTORY — XGBoost v2 Prediction")
+                sh("LIVE RUL TRAJECTORY — Phase2 Ensemble+BC Prediction")
                 t_now   = elapsed_min()
                 t_past  = max(0, t_now - 5)
                 t_max   = t_now + live_rul(s) / s["degrade"]
@@ -1738,7 +1738,7 @@ elif pk == "Station Detail":
                 fr = go.Figure()
                 fr.add_trace(go.Scatter(x=t_range, y=rul_trace, name="True RUL",
                     line=dict(color="#7d8590", dash="dot", width=1.5)))
-                fr.add_trace(go.Scatter(x=t_range, y=rul_pred, name="XGBoost v2",
+                fr.add_trace(go.Scatter(x=t_range, y=rul_pred, name="Ensemble+BC",
                     line=dict(color="#58a6ff", width=2)))
                 fr.add_vline(x=t_now, line_color=rcolor, line_dash="dash", line_width=1.5)
                 fr.add_annotation(x=t_now, y=rul+8,
@@ -1788,7 +1788,7 @@ elif pk == "Station Detail":
         full = (f"The agentic AI system detected wear in the {s['sub'].replace('_',' ')} at station {s['id']} "
                 f"(C-MAPSS {s['subset']} engine, {s['cycles']} cycles), estimating {rul_h} cycles of remaining useful life. "
                 f"Predicted by Transformer v2 — ONE combined model trained on all four C-MAPSS subsets jointly "
-                f"(all-4 RMSE=15.11, FD001+FD003 RMSE=15.56, R²=0.866, 15k trees, exp(alpha=3) weights). "
+                f"(all-4 RMSE=15.11, MAE=9.94, R²=0.8663, TransV2 α=0.70 + XGB α=0.30, conformal CI ±27.58cy). "
                 f"Most likely cause: {s['hyp'].lower()}. Mechanism: {s['mech'].lower()}. "
                 f"Confidence: {conf_pct} (grounding 100%, hallucination 0%). "
                 f"Top feature: {s['top_feat']} (imp={s['top_imp']:.4f}). "
@@ -1800,7 +1800,7 @@ elif pk == "Station Detail":
             <strong style="color:#39c5cf">Action:</strong> {s["a1"]}
           </div>
           <div style="font-size:.69rem;color:#7d8590;font-family:'IBM Plex Mono',monospace">
-            Conf: {conf_pct} · Grounding: 100% · No hallucination · Ensemble+BC (RMSE=15.11, R²=0.866)
+            Conf: {conf_pct} · Grounding: 100% · No hallucination · Ensemble+BC (RMSE=15.11, R²=0.8663)
           </div>
         </div>""", unsafe_allow_html=True)
         sh("FULL EXPLANATION — FOR REPORTS")
@@ -1982,7 +1982,7 @@ elif pk == "Results & Ablation":
               <span style="font-size:.77rem;color:#c9d1d9">
                 3-layer Pre-LN Transformer (↑ from 8,000) · lr=0.02 · Huber loss + CosineAnnealingWarmRestarts (RUL≤30 weighted ~4×) ·
                 min_child_weight=5 · all 4 subsets simultaneously · subset_encoded feature · GPU (device=cuda)<br>
-                RMSE improvement: −8.2% all-4 · −19.7% FD001+FD003 · R² 0.862→0.866
+                RMSE improvement: Phase2(15.11) vs Phase1(15.37): Δ=+0.26 · R² 0.8616→0.8663
               </span>
             </div>""", unsafe_allow_html=True)
 
@@ -2095,9 +2095,9 @@ elif pk == "Results & Ablation":
             st.markdown("""<div class="ac m" style="margin-top:.7rem">
               <strong style="color:#3fb950">KEY EMPIRICAL FINDINGS</strong><br>
               <span style="font-size:.77rem;color:#c9d1d9;line-height:1.8">
-                <b>B vs A:</b> RMSE 18.39→15.11 all-subsets (−8.2%) and 18.39→15.56 FD001+FD003 (−19.7%). R²: 0.862→0.866. &nbsp;·&nbsp;
+                <b>B vs A:</b> RMSE 18.39→15.11 all-subsets (−8.2%) and 18.39→15.56 FD001+FD003 (−19.7%). R²: 0.8616→0.8663. &nbsp;·&nbsp;
                 <b>C vs B:</b> LLM adds diagnostic language but hallucination=0.65 without grounding. &nbsp;·&nbsp;
-                <b>D vs C:</b> RAG reduces hallucination 0.65→0.00, grounding 0.0→1.00. &nbsp;·&nbsp;
+                <b>D vs C:</b> RAG reduces hallucination 0.65→0.18, grounding 0.0→1.00. &nbsp;·&nbsp;
                 <b>E vs D:</b> 12 autonomous actions executed in 33ms total pipeline latency.
               </span>
             </div>""", unsafe_allow_html=True)
@@ -2170,12 +2170,12 @@ elif pk == "Engineer Chatbot":
             "<em>Source: [MAN-BBU-001], [SOP-BBU-001]</em>"),
         ("14.7","rul 14","fd002_47","rmse","15.11","15.56"): (
             "<strong>RUL 14.7 cycles — CRITICAL (FD002_47)</strong><br><br>"
-            "Ensemble+BC: FD002=15.45 | FD001=15.56 | Ph1=15.37 | All-4=15.11 | R²=0.866<br>"
+            "Ensemble+BC: FD002=15.45 | FD001=15.56 | Ph1=15.37 | All-4=15.11 | R²=0.8663<br>"
             "CI: [11.7–17.7]. Governance Tier 3. SLA: 4h.<br><br>"
             "<strong>Actions:</strong><br>1. [AUTO] Query CMDB (PWR-001/004)<br>"
             "2. [AUTO] Open Critical ticket · 30-min escalation<br>"
             "3. [TIMEOUT 6h] Dispatch power specialist + rectifier spare<br><br>"
-            "<em>XGBoost v2 · 15k trees · exp(α=3) · all 4 C-MAPSS subsets</em>"),
+            "<em>Phase2 Ensemble+BC · TransV2(α=0.70)+XGB(α=0.30) · all 4 C-MAPSS subsets · RMSE=15.11</em>"),
         ("spare","parts","fan replacement","what spare"): (
             "<strong>Cooling Fan Replacement — Spare Parts</strong><br><br>"
             "• 2× cooling fan units (replace both — bearing life equalisation)<br>"
@@ -3100,7 +3100,7 @@ FD002_47, 2026-04-01T10:00:00Z, cabinet_temp_c, 38.11""", language="csv")
             index=["simulation","live"].index(_current_rul_mode),
             format_func=lambda m: {
                 "simulation": "🔵 Simulation — C-MAPSS synthetic degradation (default)",
-                "live":       "🟢 Live — Real-time XGBoost v2 predictions from sensor stream"
+                "live":       "🟢 Live — Real-time Phase2 Ensemble+BC predictions from sensor stream"
             }[m],
             key="rul_mode_radio")
 
@@ -3186,7 +3186,7 @@ GROQ_API_KEY       = "gsk_..."
                      "Model: Pre-LN Transformer (d=128, h=8, l=3), exp(α=3) near-failure sample weighting — "
                      "samples with RUL ≤ 30 cycles receive ≈4× higher weight, biasing the model toward "
                      "accuracy in the operationally critical zone. Trained jointly on all 4 NASA C-MAPSS "
-                     "sub-datasets. RMSE=15.11 (all-4), RMSE=15.56 (FD001+FD003), R²=0.866.",
+                     "sub-datasets. RMSE=15.11 (all-4), MAE=9.94, R²=0.8663. Phase1 TV2=15.37 (reference).",
                      ["21 sensor channels → telecom KPI mapping (voltage, temp, fan RPM, VSWR, latency…)",
                       "exp(α=3): near-failure zone (RUL≤30) accuracy prioritised — avoids missed critical alerts",
                       "Per-subset RMSE: FD001=15.56 · FD002=15.45 · FD003=12.15 · FD004=17.34",
@@ -3262,12 +3262,12 @@ GROQ_API_KEY       = "gsk_..."
                       "Alert log records timestamp, station ID, and urgency transition",
                       "Reset session clock clears alert log and restarts RUL countdown from base predictions"]),
                     ("🏠 Fleet Overview","#58a6ff","Fleet snapshot + analytics",
-                     "Shows all stations with XGBoost v2 base predictions, CI error bars, diagnostic quality "
+                     "Shows all stations with Phase2 Ensemble+BC predictions, CI error bars, diagnostic quality "
                      "radar chart, and pipeline latency breakdown. Best for static reports and thesis figures.",
                      ["CI error bars show prediction uncertainty [cl, ch]",
                       "Radar chart compares: RAG coverage, diagnostic confidence, grounding rate, actions",
                       "Pipeline latency: RAG retrieval = 27.5ms of 33ms total E2E",
-                      "XGBoost v2 feature importance bar chart per subsystem"]),
+                      "Phase2 Ensemble+BC feature importance bar chart per subsystem"]),
                     ("🔍 Station Detail","#39c5cf","Per-station deep-dive",
                      "Two tabs: Detail (live RUL gauge with animated needle, live trajectory Plotly chart "
                      "with NOW marker, feature importance bars, root-cause hypothesis, fault component, "
@@ -3306,14 +3306,14 @@ GROQ_API_KEY       = "gsk_..."
                      "incremental value of each pipeline layer).",
                      ["Full HTML table: FD001=15.56 · FD002=15.45 · FD003=12.15 · FD004=17.34",
                       "Ablation: B vs A = −8.2% RMSE · D vs C = hallucination 0.65→0.00",
-                      "Per-RUL-range chart: XGBoost v2 RMSE=8.29 in 0-20 (critical) zone",
+                      "Per-RUL-range chart: Phase2 Ensemble+BC Zone 0-20 RMSE=5.78 cycles",
                       "Literature comparison: CAELSTM=11.24 (FD001 only, single-subset training)"]),
                     ("⚙ Settings","#ff6b35","System configuration (Admin only)",
                      "8 tabs: My Profile · User Management · Data Sources · Performance Reports · "
                      "Retrain Pipeline · Chatbot API · Knowledge Base · System Modes. "
                      "Controls all operational parameters, user accounts, data connectors, and AI keys.",
                      ["Data Sources: configure MQTT / REST / File / Simulation connector",
-                      "Retrain Pipeline: schedule or launch XGBoost v2 retraining",
+                      "Retrain Pipeline: schedule or launch Phase2 Ensemble+BC retraining",
                       "Knowledge Base: upload SOPs, manuals, alarm guides to expand RAG corpus",
                       "User Management: add/remove users, change roles and passwords"]),
                     ("📖 User Guide","#39c5cf","This page",
@@ -3349,11 +3349,11 @@ GROQ_API_KEY       = "gsk_..."
                          "MAE = 9.97 < RMSE = 15.11 indicates the error distribution has a long right tail "
                          "(some large outlier errors), while most predictions are within ≈10 cycles of true RUL.",
                          "mean( |y_true − y_pred| )", "Lower is better. MAE < RMSE always holds by Jensen's inequality."),
-                        ("R² — Coefficient of Determination", "#3fb950", "0.866",
-                         "Proportion of RUL variance explained by the model. R² = 0.866 means 87.4% of the "
-                         "variability in remaining useful life is captured by XGBoost v2. Scale-free (0 to 1), "
+                        ("R² — Coefficient of Determination", "#3fb950", "0.8663",
+                         "Proportion of RUL variance explained by the model. R² = 0.8663 means 86.6% of the "
+                         "variability in remaining useful life is captured by the Phase2 Ensemble+BC model. Scale-free (0 to 1), "
                          "enabling comparison across datasets regardless of their RUL range. "
-                         "Improved from R² = 0.862 (v1) to 0.866 (v2) via exp(α=3) near-failure weighting.",
+                         "Phase 1 TV2: R²=0.8616. Phase 2 Ensemble+BC: R²=0.8663 (+0.0047). Improvement from conformal calibration and per-subset bias correction.",
                          "1 − SS_res / SS_tot", "Higher is better. 1.0 = perfect model; 0.0 = null (mean) model."),
                         ("NASA Score — Asymmetric Penalty", "#bc8cff", "Supplementary metric",
                          "Asymmetric scoring that penalises late predictions (predicting MORE RUL than actual = "
@@ -3370,7 +3370,7 @@ GROQ_API_KEY       = "gsk_..."
                          "Calibration target: 68% of true RUL values fall within the ±1σ interval.",
                          "Bootstrap [P5, P95] of prediction distribution", "Use cl (lower bound) for conservative maintenance scheduling."),
                         ("Per-RUL-Range RMSE", "#39c5cf", "0–20: 8.29 · 20–50: 18.64 · 50–100: 21.35",
-                         "RMSE broken down by urgency zone. XGBoost v2 achieves RMSE = 8.29 in the critical zone "
+                         "RMSE broken down by urgency zone. Phase2 Ensemble+BC achieves RMSE = 5.78 in the critical zone "
                          "(0–20 cycles) due to exp(α=3) weighting — this is the most operationally important zone. "
                          "Performance degrades in the 50–100 range (RMSE = 21.35), which is acceptable since "
                          "Monitor-tier stations have 168h SLA and only need an approximate time window.",
@@ -3479,7 +3479,7 @@ GROQ_API_KEY       = "gsk_..."
                         ("Predictive Rate (%)", "#39c5cf", "≥87% failures caught pre-outage",
                          "Fraction of actual failures correctly predicted before the outage occurs. "
                          "Approximated as: (n_resolved / n_alerts) × 87%, reflecting that well-tuned "
-                         "XGBoost v2 catches approximately 87% of imminent failures in the 0–20 cycle window. "
+                         "Phase2 Ensemble+BC catches approximately 87% of imminent failures in the 0–20 cycle window. "
                          "In production, measure as: tickets closed before station went down / total tickets.",
                          "Proxy: (n_resolved / n_alerts) × 0.87. Direct measurement requires failure ground-truth."),
                         ("Resolution Rate (%)", "#39c5cf", "n_resolved / n_alerts × 100",
@@ -3623,7 +3623,7 @@ GROQ_API_KEY       = "gsk_..."
           <strong>📂 File (CSV)</strong> — NMS exports CSV to a watched folder every 60s. Zero API integration required.<br><br>
           When a non-simulation connector is configured, the RUL mode badge in the sidebar automatically
           changes from <strong style="color:#58a6ff">🔵 Simulation</strong> to <strong style="color:#3fb950">🟢 Live</strong>.
-          The XGBoost v2 model then predicts from real sensor readings instead of the simulation formula.
+          The Phase2 Ensemble+BC model then predicts from real sensor readings instead of the simulation formula.
         </div>""", unsafe_allow_html=True)
 
             # ── TAB 6: GOVERNANCE ─────────────────────────────────────────────────────
@@ -3825,7 +3825,7 @@ TWILIO_FROM_PHONE  = "+1XXXXXXXXXX"   # your Twilio number
                      "No API key is configured. Go to Settings → Chatbot API → add an Anthropic key (sk-ant-...) or Groq key (gsk_...). Groq is free and fast. The rule-based mode always works and covers the 10 most common telecom alarm patterns.",
                      "#f0b429"),
                     ("What does RMSE=15.11 mean?",
-                     "Root Mean Squared Error on the C-MAPSS test set. On average, XGBoost v2 predicts RUL within ±15.11 cycles. In the critical zone (RUL≤20), actual RMSE is 8.29 — much more accurate where it matters most.",
+                     "Root Mean Squared Error on the C-MAPSS test set. Phase2 Ensemble+BC predicts RUL within ±15.11 cycles on average. In the critical zone (RUL≤20), RMSE is 5.78 — the key metric for dispatch accuracy.",
                      "#39c5cf"),
                     ("Why does RAG grounding = 1.000?",
                      "The Diagnostic Agent uses a rule-based engine that explicitly cites retrieved document IDs for every claim. Grounding = fraction of claims with a [DOC-ID] citation. 1.000 means every claim is backed by a retrieved document.",
