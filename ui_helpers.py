@@ -184,7 +184,7 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
   var m=L.marker([{s['lat']},{s['lon']}],{{icon:pulseIcon,zIndexOffset:{300 if urg=="Critical" else 200 if urg=="Warning" else 100}}});
   m.addTo(map);
   m.bindPopup(`
-    <div style="font-family:'IBM Plex Mono',monospace;min-width:210px;background:#161b22;color:#e6edf3;border-radius:8px;overflow:hidden">
+    <div style="font-family:'IBM Plex Mono',monospace;min-width:340px;max-width:380px;background:#161b22;color:#e6edf3;border-radius:8px;overflow:hidden">
       <div style="background:{color}22;border-left:4px solid {color};padding:9px 13px">
         <div style="font-size:1rem;font-weight:700;color:{color}">{sid}</div>
         <div style="font-size:.63rem;color:#7d8590;margin-top:2px">📍 {city}, {country}</div>
@@ -198,27 +198,40 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
           <span style="font-size:.63rem;color:#7d8590">LIVE RUL</span>
           <span style="font-size:.82rem;font-weight:700;color:{color}">{rul:.1f} cycles</span>
         </div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:.63rem;color:#7d8590">CI [90%]</span>
-          <span style="font-size:.65rem;color:#c9d1d9">[{cl:.1f} – {ch:.1f}]</span>
-        </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:.63rem;color:#7d8590">CONF</span>
-          <span style="font-size:.65rem;color:#58a6ff">{conf:.3f}</span>
+          <span style="font-size:.63rem;color:#7d8590">EST. LOSS IF FAILURE</span>
+          <span style="font-size:.75rem;font-weight:700;color:#ff6b35">€{s.get('rec_loss', 4200):,.0f}</span>
         </div>
-        <div style="background:#21262d;height:3px;border-radius:2px;margin-bottom:7px">
+        <div style="background:#21262d;height:3px;border-radius:2px;margin-bottom:10px">
           <div style="width:{min(100,int(rul/125*100))}%;height:3px;background:{color};border-radius:2px"></div>
         </div>
-        <div style="font-size:.63rem;color:#7d8590;margin-bottom:3px">{sub}</div>
-        <div style="font-size:.62rem;color:#c9d1d9;line-height:1.4;margin-bottom:8px">{hyp[:72]}{'...' if len(hyp)>72 else ''}</div>
-        <button onclick="selectStation('{sid}')"
-          style="width:100%;padding:6px 0;background:{color}22;border:1px solid {color};
-          border-radius:4px;color:{color};font-family:'IBM Plex Mono',monospace;
-          font-size:.68rem;cursor:pointer;font-weight:700;letter-spacing:.04em">
-          ▶ VIEW STATION DETAIL
+
+        <div style="background:#1c2333;border-left:3px solid #ff6b35;padding:7px 9px;margin-bottom:7px;border-radius:3px">
+          <div style="font-size:.58rem;color:#ff6b35;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">⚠ Root Cause</div>
+          <div style="font-size:.62rem;color:#c9d1d9;line-height:1.5">{s.get('rec_cause', 'Analyzing...')[:160]}...</div>
+        </div>
+
+        <div style="background:#1c2333;border-left:3px solid #f0b429;padding:7px 9px;margin-bottom:7px;border-radius:3px">
+          <div style="font-size:.58rem;color:#f0b429;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">🔥 Business Risks</div>
+          <div style="font-size:.62rem;color:#c9d1d9;line-height:1.5">{s.get('rec_risks', 'Assessing...')[:150]}...</div>
+        </div>
+
+        <div style="background:#1c2333;border-left:3px solid #3fb950;padding:7px 9px;margin-bottom:9px;border-radius:3px">
+          <div style="font-size:.58rem;color:#3fb950;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">✓ Recommended Action</div>
+          <div style="font-size:.62rem;color:#c9d1d9;line-height:1.5">{s.get('rec_solution', 'Planning...')[:180]}...</div>
+        </div>
+
+        <button onclick="navigateToDetail('{sid}')"
+          style="width:100%;padding:7px 0;background:{color};border:none;
+          border-radius:5px;color:#fff;font-family:'IBM Plex Mono',monospace;
+          font-size:.70rem;cursor:pointer;font-weight:700;letter-spacing:.04em;
+          box-shadow:0 2px 8px {color}44;transition:all .2s"
+          onmouseover="this.style.boxShadow='0 4px 12px {color}66';this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.boxShadow='0 2px 8px {color}44';this.style.transform='translateY(0)'">
+          ▶ VIEW FULL STATION DETAIL
         </button>
       </div>
-    </div>`,{{maxWidth:270,className:"orchpop"}});
+    </div>`,{{maxWidth:400,className:"orchpop"}});
   m.on("click",function(){{selectStation(sid);}});
   allM[sid]={{m:m,urgency:"{urg}",color:"{color}"}};
 }})();""")
@@ -327,7 +340,10 @@ function selectStation(sid){{
   var e=allM[sid]; if(!e)return;
   map.flyTo(e.m.getLatLng(),9,{{duration:0.85,easeLinearity:0.4}});
   setTimeout(function(){{e.m.openPopup();}},900);
-  window.parent.postMessage({{type:"station_click",id:sid}},"*");
+}}
+function navigateToDetail(sid){{
+  // Store selected station and trigger navigation to Station Detail page
+  window.parent.postMessage({{type:"navigate_to_detail",id:sid}},"*");
 }}
 window.addEventListener("message",function(e){{
   if(e.data&&e.data.type==="map_select")selectStation(e.data.id);

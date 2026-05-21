@@ -391,6 +391,76 @@ def spark_history(s: dict, n: int = 12) -> list:
 def sensor_arrow(s: dict) -> str:
     return "↓" if s["sensor_dir"]=="low" else "↑"
 
+def get_station_recommendation(s: dict, rul: float, urg: str) -> dict:
+    """Generate actionable recommendations with cause, risks, solution, and financial loss."""
+    sub = s.get("sub", "")
+
+    # Normalise sub to key (station uses 'power_subsystem', 'thermal_management', etc.)
+    if   "power"    in sub: sub_key = "power"
+    elif "thermal"  in sub: sub_key = "thermal"
+    elif "rf"       in sub: sub_key = "rf"
+    elif "backhaul" in sub: sub_key = "backhaul"
+    elif "baseband" in sub: sub_key = "baseband"
+    else:                   sub_key = "power"
+
+    # Financial loss calculation (€/hour downtime based on subsystem)
+    downtime_cost = {
+        "power":    850,   # Power failures cause complete outage
+        "thermal":  620,   # Thermal issues risk equipment damage
+        "rf":       720,   # RF problems affect coverage
+        "backhaul": 680,   # Backhaul impacts connectivity
+        "baseband": 750    # Baseband affects call processing
+    }.get(sub_key, 700)
+
+    # Estimated downtime hours if failure occurs
+    est_downtime = 6 if urg == "Critical" else 3 if urg == "Warning" else 1
+    financial_loss = downtime_cost * est_downtime
+
+    # Subsystem-specific recommendations
+    recommendations = {
+        "power": {
+            "cause": "Rectifier degradation or battery bank depletion detected. Voltage fluctuations indicate imminent power supply failure.",
+            "risks": "Complete station outage, loss of backup power, network coverage gap affecting 3,000-5,000 subscribers. Data loss risk.",
+            "solution": "Immediate: Switch to backup generator. Deploy engineer with rectifier module and battery testing kit. Replace degraded components within SLA window.",
+            "prevention": "Implement bi-weekly voltage monitoring and quarterly battery health checks."
+        },
+        "thermal": {
+            "cause": "Cooling system malfunction - fan failure or blocked air intake. Ambient temperature exceeding operational limits (>45°C).",
+            "risks": "Equipment overheating leading to thermal shutdown, permanent hardware damage to PA/BBU. Service degradation and potential fire hazard.",
+            "solution": "Immediate: Enable auxiliary cooling. Dispatch with replacement cooling fans and thermal paste. Clean air filters, verify HVAC operation.",
+            "prevention": "Install temperature monitoring sensors. Schedule monthly HVAC maintenance."
+        },
+        "rf": {
+            "cause": "RF power amplifier degradation or antenna system VSWR increase. Possible cable connector corrosion or antenna misalignment.",
+            "risks": "Reduced coverage radius (up to 40%), call drop rate increase, handover failures. Competitor advantage in affected area.",
+            "solution": "Immediate: Run remote RF diagnostics. Dispatch RF specialist with VSWR meter, spare PA module, and weatherproofing kit. Realign antenna if needed.",
+            "prevention": "Quarterly antenna inspection and PIM testing. Annual weatherproofing seal replacement."
+        },
+        "backhaul": {
+            "cause": "Microwave link degradation due to antenna misalignment, rain fade, or equipment failure. Packet loss increasing beyond threshold.",
+            "risks": "Network congestion, reduced capacity (up to 60%), internet service degradation. Customer churn risk in enterprise segment.",
+            "solution": "Immediate: Reroute traffic to backup link if available. Dispatch with spectrum analyzer and alignment tools. Check for physical obstructions.",
+            "prevention": "Install link monitoring system. Implement automatic diversity switching. Bi-annual link budget review."
+        },
+        "baseband": {
+            "cause": "BBU processing capacity exhaustion or software instability. Possible memory leak or database corruption in call processing module.",
+            "risks": "Call setup failures, dropped connections, SMS delays. Impacts 80% of station capacity. Customer complaints and regulatory penalties.",
+            "solution": "Immediate: Remote BBU reboot if safe. Dispatch with backup BBU unit. Perform database integrity check and software patch update.",
+            "prevention": "Enable proactive alarming for CPU >75%. Implement monthly software health checks and log analysis."
+        }
+    }
+
+    rec = recommendations.get(sub_key, recommendations["power"])
+
+    return {
+        "cause": rec["cause"],
+        "risks": rec["risks"],
+        "solution": rec["solution"],
+        "prevention": rec["prevention"],
+        "financial_loss": financial_loss,
+        "downtime_hours": est_downtime
+    }
+
 def check_alerts():
     for s in STATIONS:
         rul = live_rul(s); new_urg = live_urgency(rul)
@@ -778,10 +848,14 @@ if pk == "Station Map":
         if not geo: continue
         lat,lon,city,country=geo
         rul=live_rul(s); urg=live_urgency(rul)
+        rec=get_station_recommendation(s, rul, urg)
         stations_data.append({"id":s["id"],"urgency":urg,"rul":round(rul,1),
             "sub":s.get("sub",""),"hyp":s.get("hyp",""),
             "cl":s.get("cl",0),"ch":s.get("ch",0),"conf":s.get("conf",0),
-            "lat":lat,"lon":lon,"city":city,"country":country})
+            "lat":lat,"lon":lon,"city":city,"country":country,
+            "rec_cause":rec["cause"],"rec_risks":rec["risks"],
+            "rec_solution":rec["solution"],"rec_loss":rec["financial_loss"],
+            "rec_downtime":rec["downtime_hours"]})
 
     nc=sum(1 for s in stations_data if s["urgency"]=="Critical")
     nw=sum(1 for s in stations_data if s["urgency"]=="Warning")
@@ -822,15 +896,94 @@ if pk == "Station Map":
     map_html = build_map_html(stations_data, sel_id)
     st.components.v1.html(map_html, height=580, scrolling=False)
 
-    # Clickable station grid (sorted: Critical first)
-    st.markdown('<div style="font-family:monospace;font-size:.62rem;color:#5a6475;margin:.4rem 0 .4rem">▼ Click to navigate directly to Station Detail</div>',unsafe_allow_html=True)
+    # Message listener — receives navigate_to_detail from the Leaflet iframe
+    # Finds the matching hidden Streamlit nav button by its text label and clicks it
+    st.markdown("""
+    <script>
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'navigate_to_detail' && event.data.id) {
+            var sid = event.data.id;
+            // Scan all buttons in the page for one whose label contains this station ID
+            var all = document.querySelectorAll('button');
+            for (var i = 0; i < all.length; i++) {
+                if (all[i].innerText && all[i].innerText.indexOf(sid) !== -1) {
+                    all[i].click();
+                    return;
+                }
+            }
+        }
+    });
+    </script>
+    """, unsafe_allow_html=True)
+
+    # ── RECOMMENDATION CARDS — sorted Critical → Warning → Monitor ──────────────
+    st.markdown("""
+<div style="display:flex;align-items:center;gap:.7rem;margin:.9rem 0 .6rem">
+  <div style="flex:1;height:1px;background:linear-gradient(90deg,#ff6b3566,transparent)"></div>
+  <span style="font-family:monospace;font-size:.72rem;font-weight:700;color:#ff6b35;letter-spacing:.08em">
+    ⚡ STATION INTELLIGENCE — ROOT CAUSE · RISK · RECOMMENDED ACTION
+  </span>
+  <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,#ff6b3566)"></div>
+</div>""", unsafe_allow_html=True)
+
     sorted_s=sorted(stations_data,key=lambda x:(0 if x["urgency"]=="Critical" else 1 if x["urgency"]=="Warning" else 2,x["rul"]))
-    for row_s in range(0,len(sorted_s),6):
-        row_items=sorted_s[row_s:row_s+6]; cols=st.columns(len(row_items))
+    for row_s in range(0,len(sorted_s),3):
+        row_items=sorted_s[row_s:row_s+3]
+        cols=st.columns(len(row_items))
         for col,s in zip(cols,row_items):
-            ico="🔴" if s["urgency"]=="Critical" else "🟡" if s["urgency"]=="Warning" else "🟢"
-            if col.button(f"{ico} {s['id']}\n{s['rul']:.1f}cy · {s['city']}",key=f"mapbtn_{s['id']}",use_container_width=True):
-                st.session_state.nav_page="Station Detail"; st.session_state["_map_sel"]=s["id"]; st.rerun()
+            urg=s["urgency"]
+            color="#ff6b35" if urg=="Critical" else "#f0b429" if urg=="Warning" else "#3fb950"
+            ico="🔴" if urg=="Critical" else "🟡" if urg=="Warning" else "🟢"
+            sub_label=s["sub"].replace("_"," ").title()
+            loss=s.get("rec_loss",0); dt=s.get("rec_downtime",1)
+            cause=s.get("rec_cause",""); risks=s.get("rec_risks",""); sol=s.get("rec_solution","")
+            rul_pct=min(100,int(s["rul"]/125*100))
+            with col:
+                st.markdown(f"""
+<div style="background:#161b22;border:1px solid {color}33;border-top:3px solid {color};
+     border-radius:8px;padding:.75rem .85rem .55rem;margin-bottom:.35rem">
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.45rem">
+    <div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:.9rem;font-weight:700;color:{color}">{ico} {s['id']}</div>
+      <div style="font-size:.61rem;color:#7d8590;margin-top:.1rem">📍 {s['city']}, {s['country']}</div>
+      <div style="font-size:.59rem;color:#58a6ff;margin-top:.08rem">{sub_label}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:monospace;font-size:1.05rem;font-weight:700;color:{color}">{s['rul']:.1f}</div>
+      <div style="font-size:.56rem;color:#7d8590">cycles RUL</div>
+      <div style="font-size:.65rem;font-weight:700;color:#ff6b35;margin-top:.2rem">€{loss:,.0f}</div>
+      <div style="font-size:.54rem;color:#7d8590">loss / {dt}h fail</div>
+    </div>
+  </div>
+
+  <!-- RUL progress bar -->
+  <div style="background:#21262d;height:3px;border-radius:2px;margin-bottom:.55rem">
+    <div style="width:{rul_pct}%;height:3px;background:{color};border-radius:2px"></div>
+  </div>
+
+  <!-- Cause -->
+  <div style="background:#ff6b3510;border-left:3px solid #ff6b35;padding:6px 8px;border-radius:3px;margin-bottom:5px">
+    <div style="font-size:.57rem;color:#ff6b35;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">⚠ Root Cause</div>
+    <div style="font-size:.62rem;color:#c9d1d9;line-height:1.45">{cause[:130]}{'…' if len(cause)>130 else ''}</div>
+  </div>
+
+  <!-- Risks -->
+  <div style="background:#f0b42910;border-left:3px solid #f0b429;padding:6px 8px;border-radius:3px;margin-bottom:5px">
+    <div style="font-size:.57rem;color:#f0b429;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">🔥 Business Risk</div>
+    <div style="font-size:.62rem;color:#c9d1d9;line-height:1.45">{risks[:130]}{'…' if len(risks)>130 else ''}</div>
+  </div>
+
+  <!-- Solution -->
+  <div style="background:#3fb95010;border-left:3px solid #3fb950;padding:6px 8px;border-radius:3px;margin-bottom:.55rem">
+    <div style="font-size:.57rem;color:#3fb950;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">✓ Recommended Action</div>
+    <div style="font-size:.62rem;color:#c9d1d9;line-height:1.45">{sol[:130]}{'…' if len(sol)>130 else ''}</div>
+  </div>
+
+</div>""", unsafe_allow_html=True)
+                if col.button(f"▶ {s['id']} — Open Full Detail",key=f"mapbtn_{s['id']}",use_container_width=True):
+                    st.session_state.nav_page="Station Detail"; st.session_state["_map_sel"]=s["id"]; st.rerun()
 
     # Critical banner
     crit_list=[s for s in stations_data if s["urgency"]=="Critical"]
