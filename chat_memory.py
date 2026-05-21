@@ -67,11 +67,12 @@ def load_history_for_display(user_id: str) -> list[dict]:
     return result
 
 
-def _windowed_history(user_id: str) -> SQLChatMessageHistory:
+def get_windowed_history(user_id: str) -> SQLChatMessageHistory:
     """
     Returns a SQLChatMessageHistory whose get_messages() is transparently
     windowed to the last WINDOW messages.  We achieve this by subclassing
     inline so the chain only ever sees the tail.
+    Public alias used by chatbot_agent.py.
     """
     class WindowedHistory(SQLChatMessageHistory):
         def get_messages(self):          # LangChain < 0.3 API
@@ -84,6 +85,9 @@ def _windowed_history(user_id: str) -> SQLChatMessageHistory:
         session_id=SESSION_ID,
         connection=_db_url(user_id),
     )
+
+# keep private alias for internal callers
+_windowed_history = get_windowed_history
 
 
 # ─────────────────────────────────────────────────────────────────────────────
