@@ -1638,10 +1638,17 @@ elif pk == "Engineer Chatbot":
         stations_fn = _agent_stations_fn,
     )
 
-    # Sync persistent DB → session_state on first load (or after clear)
+    # Cold-start: load history from SQLite once per session.
+    # After that, session_state.chat_history is the single source of truth for display.
+    # The DB is only written to (via save_turn inside agent.chat()).
     if not st.session_state.get("_chat_history_loaded"):
-        st.session_state.chat_history = _agent.get_history()
-        st.session_state._chat_history_loaded = True
+        _db_history = _agent.get_history()   # [{role, content}] — no engine/tools
+        # Preserve engine/tools_used from any existing session_state entries
+        if st.session_state.chat_history:
+            st.session_state._chat_history_loaded = True  # session already has live data
+        else:
+            st.session_state.chat_history = _db_history
+            st.session_state._chat_history_loaded = True
 
     # ── Engine status badge ───────────────────────────────────────────────────
     _gk = _agent.groq_key; _ak = _agent.ant_key
