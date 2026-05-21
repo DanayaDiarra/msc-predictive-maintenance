@@ -2302,6 +2302,27 @@ password = "your-pw"
 
         sh("RUL DATA SOURCE")
         _rul_is_live_s = st.session_state.rul_mode == "live"
+        # Count stations with live predictions dynamically
+        try:
+            from db_connector import ST_DB_PATH as _ST_DB_PATH2, query_sqlite as _qs2
+            _st_cfg2 = _get_db_config("st_db")
+            _st_path2 = _st_cfg2.get("path", str(_ST_DB_PATH2))
+            _pred_count = _qs2(_st_path2, "SELECT COUNT(DISTINCT station_id) AS n FROM rul_predictions")[0]["n"]
+        except Exception:
+            _pred_count = 0
+        _total_stations = len(STATIONS)
+        _coverage_txt = (
+            f'<strong style="color:#3fb950">Live mode</strong>: RUL values are fetched from the '
+            f'<code>rul_predictions</code> table (Phase 2 Ensemble+BC model, RMSE 15.11). '
+            f'<strong>{_pred_count} / {_total_stations} stations</strong> have predictions'
+            + (' — full fleet coverage.' if _pred_count >= _total_stations else
+               f'; {_total_stations - _pred_count} fall back to simulation automatically.')
+        )
+        _sim_txt = (
+            '<strong style="color:#58a6ff">Simulation mode</strong>: RUL decrements from '
+            '<code>base_rul</code> using the station\'s degradation rate multiplied by '
+            'elapsed session time. No DB connection required — useful for demos and offline presentations.'
+        )
         st.markdown(f"""
 <div style="background:linear-gradient(135deg,#1c2333,#161b22);border:1px solid
      {'#3fb95055' if _rul_is_live_s else '#58a6ff44'};border-left:4px solid
@@ -2315,13 +2336,7 @@ password = "your-pw"
     </span>
   </div>
   <div style="font-size:.71rem;color:#c9d1d9;line-height:1.65">
-    {'<strong style="color:#3fb950">Live mode</strong>: RUL values are fetched from the <code>rul_predictions</code> table '
-     '(Phase 2 Ensemble+BC model, RMSE 15.11). Currently <strong>15 / 25 stations</strong> have predictions; '
-     'others fall back to simulation automatically.'
-     if _rul_is_live_s else
-     '<strong style="color:#58a6ff">Simulation mode</strong>: RUL decrements from <code>base_rul</code> '
-     'using the station\'s degradation rate multiplied by elapsed session time. '
-     'No DB connection required — useful for demos and offline presentations.'}
+    {_coverage_txt if _rul_is_live_s else _sim_txt}
   </div>
 </div>""", unsafe_allow_html=True)
 
