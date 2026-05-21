@@ -247,7 +247,7 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
         </div>
 
         <button
-          onclick="window.parent.postMessage({{type:'si_nav',id:'{sid}'}},'*')"
+          onclick="scrollToIntelligence('{sid}')"
           style="width:100%;padding:6px 0;background:{color};border:none;
           border-radius:5px;color:#fff;font-family:'IBM Plex Mono',monospace;
           font-size:.67rem;cursor:pointer;font-weight:700;letter-spacing:.04em;
@@ -366,6 +366,31 @@ function selectStation(sid){{
   var e=allM[sid]; if(!e)return;
   map.flyTo(e.m.getLatLng(),9,{{duration:0.85,easeLinearity:0.4}});
   setTimeout(function(){{e.m.openPopup();}},900);
+}}
+function scrollToIntelligence(sid){{
+  // This iframe has allow-same-origin — window.parent.document is accessible.
+  // 1. Try to find the SI card and scroll to it
+  // 2. Fallback: click the hidden "Open Full Detail" nav button
+  try {{
+    var pd=window.parent.document;
+    var card=pd.getElementById("si_card_"+sid);
+    if(card){{
+      card.scrollIntoView({{behavior:"smooth",block:"center"}});
+      card.style.transition="box-shadow .3s";
+      card.style.boxShadow="0 0 0 2px #39c5cf, 0 0 28px #39c5cf99";
+      setTimeout(function(){{card.style.boxShadow="0 0 0 2px #39c5cf33";}},900);
+      setTimeout(function(){{card.style.boxShadow="";}},3000);
+      return;
+    }}
+    // Card filtered out — click hidden nav button to open Station Detail
+    var btns=pd.querySelectorAll("button");
+    for(var i=0;i<btns.length;i++){{
+      if((btns[i].innerText||"").indexOf(sid)!==-1&&
+         (btns[i].innerText||"").indexOf("Open Full Detail")!==-1){{
+        btns[i].click();return;
+      }}
+    }}
+  }}catch(err){{console.warn("scrollToIntelligence:",err);}}
 }}
 window.addEventListener("message",function(e){{
   if(e.data&&e.data.type==="map_select")selectStation(e.data.id);
