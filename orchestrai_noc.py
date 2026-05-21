@@ -159,20 +159,13 @@ div[data-testid="stColumn"] .stButton>button{width:100%!important;height:auto!im
     linear-gradient(160deg, #0b0f1a 0%, #0d1117 40%, #0a1020 100%);
   background-attachment:fixed;
 }
+/* Sidebar buttons - glassmorphic styling will override this below */
 section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
   > div.element-container > div[data-testid="stButton"] > button {
   display:flex!important;align-items:center!important;
-  background:transparent!important;border:1px solid transparent!important;
-  border-radius:6px!important;color:var(--muted)!important;
-  font-family:var(--mono)!important;font-size:.71rem!important;
-  text-align:left!important;padding:.42rem .75rem!important;
-  margin-bottom:.04rem!important;width:100%!important;min-height:36px!important;
+  width:100%!important;min-height:36px!important;
   line-height:1.3!important;
-  transition:background .12s,color .12s,border-color .12s!important;
-}
-section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
-  > div.element-container > div[data-testid="stButton"] > button:hover{
-  background:#1c2333!important;border-color:#1a6696!important;color:#c9d1d9!important;
+  /* Other styles moved to glassmorphic section below for consistency */
 }
 </style>""", unsafe_allow_html=True)
 
@@ -591,8 +584,9 @@ with st.sidebar:
     /* Import SF Pro font (fallback to system fonts) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-    /* Base styling - glassmorphic design */
-    div[data-testid="stSidebar"] button {
+    /* Base styling - glassmorphic design - HIGH SPECIFICITY to override global CSS */
+    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+    > div.element-container > div[data-testid="stButton"] > button {
         /* Layout & Sizing */
         border-radius: 10px !important;
         padding: 0.85rem 1.1rem !important;
@@ -630,21 +624,24 @@ with st.sidebar:
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 
-    /* Override Streamlit's default centering */
-    div[data-testid="stSidebar"] button > div {
+    /* Override Streamlit's default centering - HIGH SPECIFICITY */
+    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+    > div.element-container > div[data-testid="stButton"] > button > div {
         width: 100% !important;
         text-align: left !important;
         display: flex !important;
         justify-content: flex-start !important;
     }
 
-    div[data-testid="stSidebar"] button p {
+    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+    > div.element-container > div[data-testid="stButton"] > button p {
         text-align: left !important;
         margin: 0 !important;
     }
 
-    /* Gentle hover effect - soft glow */
-    div[data-testid="stSidebar"] button:hover {
+    /* Gentle hover effect - soft glow - HIGH SPECIFICITY */
+    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+    > div.element-container > div[data-testid="stButton"] > button:hover {
         background: rgba(255, 255, 255, 0.08) !important;
         border-color: rgba(88, 166, 255, 0.3) !important;
         color: rgba(255, 255, 255, 0.95) !important;
@@ -667,7 +664,9 @@ with st.sidebar:
 
         # Active state styling - brighter with more opacity (glassmorphic active state)
         if _is_act:
-            st.markdown(f"""<style>div[data-testid="stSidebar"] button[data-testid="{_pk}"]{{
+            st.markdown(f"""<style>
+            section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+            > div.element-container > div[data-testid="stButton"] > button[data-testid="{_pk}"]{{
               /* Brighter glassmorphic background */
               background: rgba(57, 197, 207, 0.15) !important;
               backdrop-filter: blur(20px) saturate(200%) !important;
