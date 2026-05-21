@@ -586,25 +586,48 @@ with st.sidebar:
     if st.session_state.nav_page not in all_pages:
         st.session_state.nav_page="Station Map"
 
-    # Navigation styling - no icons, clean boxes with proper left alignment
+    # Glassmorphic macOS-inspired navigation styling
     st.markdown("""<style>
-    /* Force left alignment for ALL sidebar buttons */
+    /* Import SF Pro font (fallback to system fonts) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+    /* Base styling - glassmorphic design */
     div[data-testid="stSidebar"] button {
-        border-radius: 6px !important;
-        padding: 0.7rem 1rem !important;
+        /* Layout & Sizing */
+        border-radius: 10px !important;
+        padding: 0.85rem 1.1rem !important;
+        margin-bottom: 0.4rem !important;
+        width: 100% !important;
+
+        /* Typography - SF Pro style */
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif !important;
+        font-size: 0.9375rem !important;
+        font-weight: 500 !important;
+        letter-spacing: -0.01em !important;
+
+        /* Glassmorphic background */
+        background: rgba(255, 255, 255, 0.04) !important;
+        backdrop-filter: blur(12px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+
+        /* Border & Shadow */
+        border: 0.5px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.12),
+            0 2px 4px rgba(0, 0, 0, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+
+        /* Text */
+        color: rgba(255, 255, 255, 0.65) !important;
+
+        /* Alignment */
         text-align: left !important;
         justify-content: flex-start !important;
-        font-family: 'IBM Plex Sans', sans-serif !important;
-        font-size: 0.875rem !important;
-        font-weight: 500 !important;
-        letter-spacing: 0.01em !important;
-        border: 1.5px solid #30363d !important;
-        background: #0d1117 !important;
-        color: #8b949e !important;
-        transition: all 0.2s ease !important;
-        width: 100% !important;
         display: flex !important;
         align-items: center !important;
+
+        /* Smooth transitions */
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 
     /* Override Streamlit's default centering */
@@ -620,12 +643,21 @@ with st.sidebar:
         margin: 0 !important;
     }
 
-    /* Hover state - colorful border */
+    /* Gentle hover effect - soft glow */
     div[data-testid="stSidebar"] button:hover {
-        background: #161b22 !important;
-        border-color: #58a6ff !important;
-        color: #e6edf3 !important;
-        box-shadow: 0 2px 8px rgba(88, 166, 255, 0.15) !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: rgba(88, 166, 255, 0.3) !important;
+        color: rgba(255, 255, 255, 0.95) !important;
+        box-shadow:
+            0 2px 8px rgba(88, 166, 255, 0.15),
+            0 4px 12px rgba(0, 0, 0, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+        transform: translateY(-1px) scale(1.01) !important;
+    }
+
+    /* Add spacing between navigation items */
+    div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div {
+        gap: 0 !important;
     }
     </style>""", unsafe_allow_html=True)
 
@@ -633,14 +665,27 @@ with st.sidebar:
         _is_act = st.session_state.nav_page == _pg
         _pk = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:28]
 
-        # Active state styling with colored box
+        # Active state styling - brighter with more opacity (glassmorphic active state)
         if _is_act:
             st.markdown(f"""<style>div[data-testid="stSidebar"] button[data-testid="{_pk}"]{{
-              background: #1c2333 !important;
-              border: 1.5px solid #39c5cf !important;
-              color: #39c5cf !important;
+              /* Brighter glassmorphic background */
+              background: rgba(57, 197, 207, 0.15) !important;
+              backdrop-filter: blur(20px) saturate(200%) !important;
+              -webkit-backdrop-filter: blur(20px) saturate(200%) !important;
+
+              /* Prominent border */
+              border: 0.5px solid rgba(57, 197, 207, 0.4) !important;
+
+              /* Enhanced shadow with cyan glow */
+              box-shadow:
+                  0 2px 12px rgba(57, 197, 207, 0.25),
+                  0 4px 20px rgba(57, 197, 207, 0.15),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                  inset 3px 0 0 rgba(57, 197, 207, 0.5) !important;
+
+              /* Bright text */
+              color: rgba(57, 197, 207, 1) !important;
               font-weight: 600 !important;
-              box-shadow: 0 0 16px rgba(57, 197, 207, 0.2), inset 3px 0 0 #39c5cf !important;
             }}</style>""", unsafe_allow_html=True)
 
         if st.button(_pg, key=_pk, use_container_width=True):
