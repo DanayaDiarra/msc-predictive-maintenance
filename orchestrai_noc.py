@@ -237,6 +237,53 @@ IS_ADMIN  = ROLE == "admin"
 IS_ENG    = ROLE in ("admin","engineer")
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  PERSISTENT SETTINGS MANAGEMENT
+# ══════════════════════════════════════════════════════════════════════════════
+SETTINGS_FILE = Path("data/app_settings.json")
+
+def load_persistent_settings():
+    """Load settings from disk and populate session_state."""
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE, 'r') as f:
+                settings = json.load(f)
+                # Load database configurations
+                if "db_configs" in settings:
+                    st.session_state.db_configs = settings["db_configs"]
+                # Load API keys
+                if "groq_key" in settings:
+                    st.session_state._groq_key = settings["groq_key"]
+                if "anthropic_key" in settings:
+                    st.session_state._rt_ant_key = settings["anthropic_key"]
+                # Load connector mode
+                if "connector_mode" in settings:
+                    st.session_state.connector_mode = settings["connector_mode"]
+                return True
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+            return False
+    return False
+
+def save_persistent_settings():
+    """Save current settings from session_state to disk."""
+    try:
+        settings = {
+            "db_configs": st.session_state.get("db_configs", {}),
+            "groq_key": st.session_state.get("_groq_key", ""),
+            "anthropic_key": st.session_state.get("_rt_ant_key", ""),
+            "connector_mode": st.session_state.get("connector_mode", "simulation"),
+        }
+        # Ensure data directory exists
+        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        # Write settings to file
+        with open(SETTINGS_FILE, 'w') as f:
+            json.dump(settings, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving settings: {e}")
+        return False
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  SESSION STATE
 # ══════════════════════════════════════════════════════════════════════════════
 _DEFAULTS = {
@@ -328,51 +375,6 @@ def check_alerts():
             st.session_state[key] = True
             st.session_state.alert_log.insert(0,{"ts":time.strftime("%H:%M:%S"),
                 "id":s["id"],"msg":f"RUL={rul:.1f}  {s['urgency']}→{new_urg}","urg":new_urg})
-
-# ── Persistent Settings Management ────────────────────────────────────────
-SETTINGS_FILE = Path("data/app_settings.json")
-
-def load_persistent_settings():
-    """Load settings from disk and populate session_state."""
-    if SETTINGS_FILE.exists():
-        try:
-            with open(SETTINGS_FILE, 'r') as f:
-                settings = json.load(f)
-                # Load database configurations
-                if "db_configs" in settings:
-                    st.session_state.db_configs = settings["db_configs"]
-                # Load API keys
-                if "groq_key" in settings:
-                    st.session_state._groq_key = settings["groq_key"]
-                if "anthropic_key" in settings:
-                    st.session_state._rt_ant_key = settings["anthropic_key"]
-                # Load connector mode
-                if "connector_mode" in settings:
-                    st.session_state.connector_mode = settings["connector_mode"]
-                return True
-        except Exception as e:
-            print(f"Error loading settings: {e}")
-            return False
-    return False
-
-def save_persistent_settings():
-    """Save current settings from session_state to disk."""
-    try:
-        settings = {
-            "db_configs": st.session_state.get("db_configs", {}),
-            "groq_key": st.session_state.get("_groq_key", ""),
-            "anthropic_key": st.session_state.get("_rt_ant_key", ""),
-            "connector_mode": st.session_state.get("connector_mode", "simulation"),
-        }
-        # Ensure data directory exists
-        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        # Write settings to file
-        with open(SETTINGS_FILE, 'w') as f:
-            json.dump(settings, f, indent=2)
-        return True
-    except Exception as e:
-        print(f"Error saving settings: {e}")
-        return False
 
 # ── DB config helpers ──────────────────────────────────────────────────────
 def _save_db_config(key, cfg):
