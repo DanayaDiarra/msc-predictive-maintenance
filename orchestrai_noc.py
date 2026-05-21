@@ -1124,13 +1124,24 @@ elif pk == "Engineer Chatbot":
             sys_p="You are an expert telecom BTS maintenance engineer. Answer alarm codes, procedures, RUL interpretation. Cite [DOC-ID]. Be concise and actionable."
             # Try Groq first (PRIMARY)
             _groq_k=st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
+            groq_error = None
             if _groq_k and len(_groq_k)>10:
                 try:
-                    import urllib.request as _ur, json as _j2
-                    _gp=_j2.dumps({"model":"llama-3.3-70b-versatile","max_tokens":600,"messages":[{"role":"system","content":sys_p},{"role":"user","content":last_q}]}).encode()
-                    with _ur.urlopen(_ur.Request("https://api.groq.com/openai/v1/chat/completions",data=_gp,headers={"Authorization":f"Bearer {_groq_k}","Content-Type":"application/json"}),timeout=15) as _gr:
-                        answer=_j2.loads(_gr.read())["choices"][0]["message"]["content"]; engine_used="LLaMA 3.3 70B · Groq"
-                except Exception: pass
+                    from groq import Groq
+                    client = Groq(api_key=_groq_k)
+                    response = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": sys_p},
+                            {"role": "user", "content": last_q}
+                        ],
+                        max_tokens=600,
+                        temperature=0.7
+                    )
+                    answer = response.choices[0].message.content
+                    engine_used = "LLaMA 3.3 70B · Groq"
+                except Exception as e:
+                    groq_error = f"Groq Error: {str(e)}"
             # Try Anthropic as fallback
             if not answer:
                 ant_key=_get_ant_key()
@@ -1148,6 +1159,8 @@ elif pk == "Engineer Chatbot":
                 rb=rule_based_answer(last_q)
                 answer=rb if rb else "No specific rule matched. Ask about alarm codes (PWR, COOL, RF, BKH, BBU), RUL urgency, or maintenance procedures."
                 engine_used="Rule-based KB"
+                if groq_error:
+                    answer = f"⚠️ {groq_error}\n\n{answer}"
             st.session_state.chat_history.append({"role":"assistant","content":answer,"engine":engine_used}); st.session_state.chat_thinking=False; st.rerun()
     sh("YOUR QUESTION")
     with st.form("chat_form",clear_on_submit=True):
