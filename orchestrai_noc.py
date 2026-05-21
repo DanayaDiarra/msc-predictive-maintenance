@@ -1253,13 +1253,15 @@ elif pk == "Results & Ablation":
             max_val = max(drift_vals) if drift_vals else baseline * 1.2
             y_max = max(max_val * 1.05, baseline * 1.35)  # Ensure all thresholds visible
 
+            # Configure layout (avoid dict key conflict)
+            _drift_layout = pdk()
+            _drift_layout["yaxis"]["range"] = [baseline * 0.95, y_max]
             fig_drift.update_layout(
-                **pdk(),
+                **_drift_layout,
                 height=340,
                 xaxis_title="Days Since Deployment",
                 yaxis_title="RMSE (cycles)",
-                showlegend=False,
-                yaxis=dict(range=[baseline * 0.95, y_max])
+                showlegend=False
             )
             st.plotly_chart(fig_drift, use_container_width=True)
 
