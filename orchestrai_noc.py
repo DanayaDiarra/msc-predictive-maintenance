@@ -1,12 +1,13 @@
 """
-OrchestrAI NOC v2 — Main Application
-Agentic AI for Predictive Maintenance | Danaya Diarra | GSOM SPBU 2026
+OrchestrAI Network Operations Center (NOC)
 
-Modules:
-  agents.py        — Interpreter, Diagnostic, Planning, Execution agents + chatbot rules
-  db_connector.py  — HR DB, Supply Chain DB, Station Streams connector (SQLite/PG/REST)
-  ui_helpers.py    — metric cards, SVG builders, Leaflet map HTML builder
-  seed_databases.py — creates and seeds the 3 test SQLite databases (run once)
+Advanced AI-powered predictive maintenance platform for telecommunications infrastructure.
+Features multi-agent reasoning, real-time monitoring of 25 BTS stations across West Africa,
+and intelligent dispatch planning with automated engineer assignment.
+
+Author: Danaya Diarra
+Institution: GSOM Saint Petersburg State University
+Year: 2026
 """
 
 import sys, os, re, json, time, math
@@ -27,11 +28,34 @@ import streamlit as st
 from config.stations import STATIONS, STATION_GEO
 
 st.set_page_config(
-    page_title="OrchestrAI NOC",
+    page_title="OrchestrAI NOC - Agentic Predictive Maintenance for Telecom Infrastructure",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
+    menu_items={
+        'About': """
+        **OrchestrAI Network Operations Center**
+
+        Advanced AI-powered predictive maintenance platform for telecommunications infrastructure
+        across West Africa. Features multi-agent reasoning, real-time monitoring of 25 BTS stations,
+        and intelligent dispatch planning with 27-engineer roster management.
+
+        © 2026 Danaya Diarra | GSOM Saint Petersburg State University
+        """
+    }
 )
+
+# Add meta tags for professional social media sharing
+st.markdown("""
+<meta name="description" content="OrchestrAI NOC: AI-powered predictive maintenance platform for telecom infrastructure. Real-time monitoring, multi-agent reasoning, and intelligent dispatch for 25 BTS stations across West Africa.">
+<meta name="author" content="Danaya Diarra">
+<meta property="og:title" content="OrchestrAI NOC - Agentic Predictive Maintenance Platform">
+<meta property="og:description" content="Advanced AI system for predictive maintenance of telecommunications infrastructure. Features multi-agent reasoning, real-time RUL prediction, and intelligent engineer dispatch planning.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="OrchestrAI NOC - Agentic Predictive Maintenance">
+<meta name="twitter:description" content="AI-powered predictive maintenance platform for telecom infrastructure with real-time monitoring and intelligent dispatch.">
+""", unsafe_allow_html=True)
 
 # ── Import local modules ───────────────────────────────────────────────────
 from ui_helpers import (mc, sh, pdk, badge, tier_html, urgency_color, rul_color,

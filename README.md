@@ -1,11 +1,27 @@
-# Agentic Predictive Maintenance Platform
+# OrchestrAI Network Operations Center
 
-## 📋 Project Overview
+**Advanced AI-Powered Predictive Maintenance Platform for Telecommunications Infrastructure**
 
-This is an **Agentic AI for Predictive Maintenance** system for telecom infrastructure (BTS stations) in West Africa.
-The project implements a multi-agent pipeline using XGBoost, PyTorch Transformers, and RAG for predictive maintenance.
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://msc-predictive-maintenance-kuviqvk7aflphb8zjbidhp.streamlit.app/)
 
-**Main Application:** `orchestrai_noc.py` - OrchestrAI Network Operations Center (NOC) Dashboard
+## 📋 Overview
+
+OrchestrAI NOC is an enterprise-grade **agentic AI system** for predictive maintenance of telecommunications infrastructure across West Africa. The platform combines multi-agent reasoning, real-time monitoring, and intelligent dispatch planning to predict equipment failures and optimize maintenance operations.
+
+**Live Demo:** [https://msc-predictive-maintenance-kuviqvk7aflphb8zjbidhp.streamlit.app/](https://msc-predictive-maintenance-kuviqvk7aflphb8zjbidhp.streamlit.app/)
+
+### Key Features
+
+- 🤖 **Multi-Agent AI Pipeline** - Interpreter, Diagnostic, and Planning agents with RAG knowledge base
+- 📊 **Real-Time Monitoring** - Live tracking of 25 BTS stations with RUL prediction (RMSE: 15.11 cycles)
+- 🚨 **Intelligent Dispatch** - Automated engineer assignment from 27-person roster with skill matching
+- 🗄️ **Integrated Data Sources** - HR database, supply chain inventory, and telemetry streams
+- 💬 **AI Chatbot** - Multi-tier fallback system (Groq LLaMA 3.3 70B → Claude Haiku → Rule-based KB)
+- 📱 **SMS Notifications** - Automatic alerts to dispatched engineers
+
+**Author:** Danaya Diarra
+**Institution:** Graduate School of Management, Saint Petersburg State University
+**Year:** 2026
 
 ## 🚀 Quick Start
 
