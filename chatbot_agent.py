@@ -18,9 +18,10 @@ NOCChatAgent(user_id, groq_key, ant_key, stations_fn)
   │     get_alarm_info(code)           PWR/COOL/RF/BKH/BBU alarm KB
   │     get_maintenance_procedure(sub) numbered field procedures
   │
-  ├── Tier 1 · ChatGroq  LLaMA 3.3 70B + tools
-  ├── Tier 2 · ChatAnthropic  Claude Haiku + tools
-  └── Tier 3 · Rule-based KB  (no API key, always available)
+  ├── Tier 1   · ChatGroq  LLaMA 3.3 70B + tools
+  ├── Tier 1.5 · ChatGroq  LLaMA 3.1 8B  + tools  (auto-retry on 429)
+  ├── Tier 2   · ChatAnthropic  Claude Haiku + tools
+  └── Tier 3   · Rule-based KB  (no API key, always available)
 
 Public API
 ----------
@@ -354,7 +355,25 @@ class NOCChatAgent:
                 if tools_used:
                     engine += f" + {', '.join(dict.fromkeys(tools_used))}"
             except Exception as exc:
-                groq_error = str(exc)[:140]
+                err_str = str(exc)
+                # Tier 1.5 — rate-limited? retry with faster/lighter Groq model
+                if "429" in err_str or "rate limit" in err_str.lower():
+                    try:
+                        from langchain_groq import ChatGroq
+                        llm_light = ChatGroq(
+                            api_key=self.groq_key,
+                            model="llama-3.1-8b-instant",
+                            max_tokens=700,
+                            temperature=0.7,
+                        )
+                        answer, tools_used = self._invoke(llm_light, question, context)
+                        engine = "LLaMA 3.1 8B · Groq"
+                        if tools_used:
+                            engine += f" + {', '.join(dict.fromkeys(tools_used))}"
+                    except Exception:
+                        groq_error = "rate_limited"
+                else:
+                    groq_error = err_str[:140]
 
         # Step 2b — Tier 2: Claude Haiku
         if not answer and self.ant_key:
@@ -383,7 +402,10 @@ class NOCChatAgent:
             engine     = "Rule-based KB"
             tools_used = []
             if groq_error:
-                answer = f"⚠ {groq_error}\n\n{answer}"
+                prefix = ("⚠ Groq rate limited — using KB fallback."
+                          if groq_error == "rate_limited"
+                          else f"⚠ LLM unavailable ({groq_error[:80]}) — using KB fallback.")
+                answer = f"{prefix}\n\n{answer}"
 
         # Step 3 — persist to SQLite (single write point, always executed)
         save_turn(self.user_id, question, answer)
