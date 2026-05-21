@@ -906,8 +906,42 @@ if pk == "Station Map":
     map_html = build_map_html(stations_data, sel_id)
     st.components.v1.html(map_html, height=580, scrolling=False)
 
+    # ── SI navigation listener ────────────────────────────────────────────────────
+    # height=1 (not 0) so the iframe actually renders and the script executes.
+    # allow-same-origin IS set by Streamlit → window.parent.document is accessible.
+    # Listens for postMessage {type:'si_nav', id:sid} sent by the map popup button,
+    # then scrolls+highlights the matching card; falls back to Station Detail nav
+    # if the card is filtered out of the current view.
+    st.components.v1.html("""<script>
+(function(){
+  if (window.parent.__si_nav_ready) return;
+  window.parent.__si_nav_ready = true;
+  window.parent.addEventListener('message', function(ev) {
+    if (!ev.data || ev.data.type !== 'si_nav' || !ev.data.id) return;
+    var sid = ev.data.id;
+    var card = window.parent.document.getElementById('si_card_' + sid);
+    if (card) {
+      card.scrollIntoView({behavior:'smooth', block:'center'});
+      card.style.transition = 'box-shadow .3s';
+      card.style.boxShadow = '0 0 0 2px #39c5cf, 0 0 28px #39c5cf88';
+      setTimeout(function(){ card.style.boxShadow = '0 0 0 2px #39c5cf33, 0 0 8px #39c5cf22'; }, 800);
+      setTimeout(function(){ card.style.boxShadow = ''; }, 2800);
+    } else {
+      // Card filtered out — fall back to clicking the Station Detail nav button
+      var btns = window.parent.document.querySelectorAll('button');
+      for (var i = 0; i < btns.length; i++) {
+        if ((btns[i].innerText||'').indexOf(sid) !== -1 &&
+            (btns[i].innerText||'').indexOf('Open Full Detail') !== -1) {
+          btns[i].click(); return;
+        }
+      }
+    }
+  });
+})();
+</script>""", height=1)
+
     # ── STATION INTELLIGENCE CARDS ───────────────────────────────────────────────
-    # id="si_section" is the anchor target for popup "VIEW STATION INTELLIGENCE" links
+    # id="si_section" — section header anchor; each card has id="si_card_{s['id']}"
     st.markdown("""
 <div id="si_section" style="display:flex;align-items:center;gap:.7rem;margin:.9rem 0 .55rem">
   <div style="flex:1;height:1px;background:linear-gradient(90deg,#ff6b3566,transparent)"></div>

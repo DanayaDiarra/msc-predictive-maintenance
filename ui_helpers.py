@@ -246,16 +246,16 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
           {hyp[:90]}{'…' if len(hyp)>90 else ''}
         </div>
 
-        <a href="#si_card_{sid}" target="_parent"
-          style="display:block;width:100%;box-sizing:border-box;padding:6px 0;
-          background:{color};border-radius:5px;color:#fff;text-decoration:none;
-          text-align:center;font-family:'IBM Plex Mono',monospace;
-          font-size:.67rem;font-weight:700;letter-spacing:.04em;
+        <button
+          onclick="window.parent.postMessage({{type:'si_nav',id:'{sid}'}},'*')"
+          style="width:100%;padding:6px 0;background:{color};border:none;
+          border-radius:5px;color:#fff;font-family:'IBM Plex Mono',monospace;
+          font-size:.67rem;cursor:pointer;font-weight:700;letter-spacing:.04em;
           box-shadow:0 2px 8px {color}44;transition:opacity .2s"
           onmouseover="this.style.opacity='.82'"
           onmouseout="this.style.opacity='1'">
           ▶ VIEW STATION INTELLIGENCE
-        </a>
+        </button>
       </div>
     </div>`,{{maxWidth:290,className:"orchpop"}});
   m.on("click",function(){{selectStation(sid);}});
