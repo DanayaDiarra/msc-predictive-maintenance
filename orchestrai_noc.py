@@ -1102,6 +1102,13 @@ elif pk == "Results & Ablation":
             st.session_state.perf_drift_history = [
                 15.11 + (i * 0.08) + np.random.uniform(-0.3, 0.5) for i in range(days)
             ]
+        if "perf_station_count_at_train" not in st.session_state:
+            st.session_state.perf_station_count_at_train = len(STATIONS)
+
+        # Check for new stations/data (data drift trigger)
+        current_station_count = len(STATIONS)
+        new_stations_added = current_station_count > st.session_state.perf_station_count_at_train
+        stations_delta = current_station_count - st.session_state.perf_station_count_at_train
 
         # Calculate drift metrics
         baseline = st.session_state.perf_baseline_rmse
@@ -1126,6 +1133,24 @@ elif pk == "Results & Ablation":
             drift_status = "Critical"
             drift_color = "#ff0000"
             drift_icon = "🚨"
+
+        # Data drift alert (new stations added)
+        if new_stations_added:
+            st.markdown(f"""<div style="background:linear-gradient(135deg,#39c5cf15,#39c5cf05);
+            border:2px solid #39c5cf;border-radius:10px;padding:.75rem 1rem;margin-bottom:.6rem">
+            <div style="display:flex;align-items:center;gap:.6rem">
+                <span style="font-size:1.3rem">📊</span>
+                <div>
+                    <div style="font-size:.85rem;font-weight:700;color:#39c5cf">Data Drift Detected: New Stations Added</div>
+                    <div style="font-family:monospace;font-size:.68rem;color:#c9d1d9;margin-top:.2rem">
+                        <strong style="color:#39c5cf">+{stations_delta}</strong> new station(s) added
+                        ({st.session_state.perf_station_count_at_train} → {current_station_count}) ·
+                        Model trained on <strong>{st.session_state.perf_station_count_at_train}</strong> stations ·
+                        <strong style="color:#f0b429">Retrain recommended</strong> to include new data
+                    </div>
+                </div>
+            </div>
+            </div>""", unsafe_allow_html=True)
 
         # Status banner
         st.markdown(f"""<div style="background:linear-gradient(135deg,{drift_color}15,{drift_color}05);
@@ -1224,13 +1249,17 @@ elif pk == "Results & Ablation":
             fig_drift.add_hrect(y0=baseline*1.10, y1=baseline*1.20, fillcolor="#f0b429", opacity=0.05, line_width=0)
             fig_drift.add_hrect(y0=baseline*1.20, y1=baseline*1.30, fillcolor="#ff6b35", opacity=0.05, line_width=0)
 
+            # Calculate y-axis range safely
+            max_val = max(drift_vals) if drift_vals else baseline * 1.2
+            y_max = max(max_val * 1.05, baseline * 1.35)  # Ensure all thresholds visible
+
             fig_drift.update_layout(
                 **pdk(),
                 height=340,
                 xaxis_title="Days Since Deployment",
                 yaxis_title="RMSE (cycles)",
                 showlegend=False,
-                yaxis=dict(range=[baseline * 0.95, max(drift_vals) * 1.05])
+                yaxis=dict(range=[baseline * 0.95, y_max])
             )
             st.plotly_chart(fig_drift, use_container_width=True)
 
@@ -1265,15 +1294,17 @@ elif pk == "Results & Ablation":
             </div>
             <div style="font-size:.70rem;color:#7d8590">
                 Model version: <strong style="color:#58a6ff">Phase2-Ensemble-v2.1</strong> ·
-                Training set: <strong>C-MAPSS FD001-FD004 + 25 BTS historical data</strong> ·
+                Training set: <strong>C-MAPSS FD001-FD004 + {st.session_state.perf_station_count_at_train} BTS stations</strong> ·
                 Duration: <strong>~45 minutes</strong>
             </div>
             </div>""", unsafe_allow_html=True)
 
         with rt2:
-            retrain_enabled = drift_pct >= 20  # Enable button if drift >= 20%
+            # Enable retrain if drift >= 20% OR new stations added
+            retrain_enabled = (drift_pct >= 20) or new_stations_added
+            retrain_reason = "New stations detected" if new_stations_added else f"Drift at {drift_pct:.1f}%"
             if retrain_enabled:
-                if st.button("🔄 Trigger Retrain", type="primary", use_container_width=True, key="retrain_btn"):
+                if st.button(f"🔄 Trigger Retrain ({retrain_reason})", type="primary", use_container_width=True, key="retrain_btn"):
                     with st.spinner("Initiating model retraining..."):
                         import time
                         time.sleep(2)
@@ -1282,10 +1313,11 @@ elif pk == "Results & Ablation":
                         st.session_state.perf_predictions_count = 0
                         st.session_state.perf_last_retrain = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
                         st.session_state.perf_drift_history = [baseline + np.random.uniform(-0.2, 0.3) for _ in range(30)]
-                    st.success("✅ Model retraining completed successfully!")
+                        st.session_state.perf_station_count_at_train = current_station_count  # Update station count
+                    st.success(f"✅ Model retraining completed! Now trained on {current_station_count} stations.")
                     st.rerun()
             else:
-                st.button("🔄 Trigger Retrain", disabled=True, use_container_width=True, key="retrain_btn_disabled", help="Retrain available when drift ≥20%")
+                st.button("🔄 Trigger Retrain", disabled=True, use_container_width=True, key="retrain_btn_disabled", help="Retrain available when drift ≥20% or new stations added")
 
         # Auto-retrain setting
         st.markdown("---")
