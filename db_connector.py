@@ -182,3 +182,25 @@ def fetch_station_stream(cfg: dict, station_id: str, limit: int = 50) -> list[di
     except Exception:
         return []
     return []
+
+
+def fetch_live_rul(station_id: str, cfg: dict = None) -> dict | None:
+    """
+    Fetch the most recent RUL prediction for a station from rul_predictions table.
+    Returns a dict with keys: predicted_rul, ci_low, ci_high, confidence, urgency, ts
+    or None if no data is available.
+    cfg defaults to the local station_streams.db (SQLite).
+    """
+    path = str(ST_DB_PATH)
+    if cfg:
+        path = cfg.get("path", path)
+    try:
+        rows = query_sqlite(
+            path,
+            "SELECT predicted_rul, ci_low, ci_high, confidence, urgency, ts "
+            "FROM rul_predictions WHERE station_id=? ORDER BY ts DESC LIMIT 1",
+            (station_id,)
+        )
+        return rows[0] if rows else None
+    except Exception:
+        return None

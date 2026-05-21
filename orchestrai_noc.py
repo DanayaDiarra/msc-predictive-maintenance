@@ -372,6 +372,17 @@ def live_rul(s: dict) -> float:
     if override is not None:
         rt = st.session_state.rul_overrides.get(s["id"]+"_ts", time.time())
         return max(0.1, override - (time.time()-rt)/60.0 * s["degrade"] * 0.3)
+    # Live mode: fetch latest model prediction from station_streams.db
+    if st.session_state.get("rul_mode") == "live":
+        try:
+            from db_connector import fetch_live_rul, ST_DB_PATH
+            st_cfg = _get_db_config("st_db")
+            db_path = st_cfg.get("path", str(ST_DB_PATH))
+            row = fetch_live_rul(s["id"], {"path": db_path})
+            if row is not None:
+                return max(0.1, float(row["predicted_rul"]))
+        except Exception:
+            pass  # fall through to simulation
     return max(0.1, s["base_rul"] - elapsed_min() * s["degrade"])
 
 def live_urgency(rul: float) -> str:
@@ -695,10 +706,26 @@ with st.sidebar:
     st.markdown("---")
     hr_c=_get_db_config("hr_db").get("connected",False)
     sc_c=_get_db_config("sc_db").get("connected",False)
+    _rul_is_live = st.session_state.rul_mode == "live"
+    # RUL mode toggle — click to switch SIM ↔ LIVE
+    _rul_col1, _rul_col2 = st.columns([3, 2])
+    with _rul_col1:
+        st.markdown(
+            f"<div style='font-family:monospace;font-size:.62rem;line-height:2.2;"
+            f"padding:.25rem 0;color:#7d8590'>RUL &nbsp;&nbsp;"
+            f"<strong style=\"color:{'#3fb950' if _rul_is_live else '#58a6ff'}\">"
+            f"{'🟢 LIVE' if _rul_is_live else '🔵 SIM'}</strong></div>",
+            unsafe_allow_html=True
+        )
+    with _rul_col2:
+        _rul_btn_label = "→ SIM" if _rul_is_live else "→ LIVE"
+        if st.button(_rul_btn_label, key="rul_mode_toggle", use_container_width=True,
+                     help="Switch RUL source: LIVE reads from station_streams.db predictions; SIM uses degradation simulation"):
+            st.session_state.rul_mode = "simulation" if _rul_is_live else "live"
+            st.rerun()
     st.markdown(f"""
 <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;
-     padding:.45rem .65rem;font-family:monospace;font-size:.62rem;line-height:1.9">
-  <div>RUL &nbsp;&nbsp; <strong style="color:{'#3fb950' if st.session_state.rul_mode=='live' else '#58a6ff'}">{'🟢 LIVE' if st.session_state.rul_mode=='live' else '🔵 SIM'}</strong></div>
+     padding:.35rem .65rem;font-family:monospace;font-size:.62rem;line-height:1.9;margin-top:.2rem">
   <div style="color:#7d8590">HR DB &nbsp; <span style="color:{'#3fb950' if hr_c else '#7d8590'}">{'● connected' if hr_c else '○ not connected'}</span></div>
   <div style="color:#7d8590">SC DB &nbsp; <span style="color:{'#3fb950' if sc_c else '#7d8590'}">{'● connected' if sc_c else '○ not connected'}</span></div>
 </div>""", unsafe_allow_html=True)
