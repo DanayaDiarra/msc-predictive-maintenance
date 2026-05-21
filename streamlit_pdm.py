@@ -1212,50 +1212,117 @@ with st.sidebar:
     if not IS_ADMIN:
         all_pages = [p for p in all_pages if p != "Settings"]
 
-    # ── Icon navigation — single button per page, CSS-styled rectangle ────────
+    # ── Glassmorphic macOS-inspired navigation (matching orchestrai_noc.py) ────
     if "nav_page" not in st.session_state:
         st.session_state.nav_page = all_pages[0]
     if st.session_state.nav_page not in all_pages:
         st.session_state.nav_page = all_pages[0]
 
-    # Inject per-button CSS: active state + SVG icon via ::before pseudo-element
-    _nav_parts = []
-    for _pg_c in all_pages:
-        _ico_url_c, _ico_col_c = _SVG_ICONS.get(_pg_c, ("", "#7d8590"))
-        _is_act_c = (st.session_state.nav_page == _pg_c)
-        _pk_c = "nav_" + "".join(c for c in _pg_c if c.isalnum() or c in "_- ")[:30]
-        # Icon as ::before
-        _op = "1" if _is_act_c else "0.42"
-        _nav_parts.append(
-            f'div[data-testid="stSidebar"] button[data-testid="{_pk_c}"]::before{{'
-            f'content:"";display:inline-flex;align-items:center;'
-            f'width:17px;height:17px;min-width:17px;margin-right:9px;'
-            f'background-image:url("{_ico_url_c}");'
-            f'background-size:contain;background-repeat:no-repeat;'
-            f'background-position:center;opacity:{_op};'
-            f'vertical-align:middle;position:relative;top:-1px;}}'
-        )
-        # Active state: teal-spectrum border + dark bg + bright text
-        if _is_act_c:
-            _nav_parts.append(
-                f'div[data-testid="stSidebar"] button[data-testid="{_pk_c}"]{{'
-                f'background:#1a2744!important;'
-                f'border:1px solid {_ico_col_c}!important;'
-                f'color:#e6edf3!important;font-weight:700!important;'
-                f'box-shadow:0 0 0 1px {_ico_col_c}22, inset 3px 0 0 {_ico_col_c}!important;}}'
-            )
-        else:
-            # Inactive hover: subtle coloured border on hover
-            _nav_parts.append(
-                f'div[data-testid="stSidebar"] button[data-testid="{_pk_c}"]:hover{{'
-                f'border-color:{_ico_col_c}55!important;}}'
-            )
-    st.markdown(f"<style>{''.join(_nav_parts)}</style>", unsafe_allow_html=True)
+    # Glassmorphic navigation styling
+    st.markdown("""<style>
+    /* Import SF Pro font (fallback to system fonts) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-    # One button per page — the button IS the rectangle
+    /* Base styling - glassmorphic design - HIGH SPECIFICITY to override global CSS */
+    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+    > div.element-container > div[data-testid="stButton"] > button {
+        /* Layout & Sizing */
+        border-radius: 10px !important;
+        padding: 0.85rem 1.1rem !important;
+        margin-bottom: 0.4rem !important;
+        width: 100% !important;
+
+        /* Typography - SF Pro style */
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif !important;
+        font-size: 0.9375rem !important;
+        font-weight: 500 !important;
+        letter-spacing: -0.01em !important;
+
+        /* Glassmorphic background */
+        background: rgba(255, 255, 255, 0.04) !important;
+        backdrop-filter: blur(12px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+
+        /* Border & Shadow */
+        border: 0.5px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.12),
+            0 2px 4px rgba(0, 0, 0, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+
+        /* Text */
+        color: rgba(255, 255, 255, 0.65) !important;
+
+        /* Alignment */
+        text-align: left !important;
+        justify-content: flex-start !important;
+        display: flex !important;
+        align-items: center !important;
+
+        /* Smooth transitions */
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    /* Override Streamlit's default centering - HIGH SPECIFICITY */
+    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+    > div.element-container > div[data-testid="stButton"] > button > div {
+        width: 100% !important;
+        text-align: left !important;
+        display: flex !important;
+        justify-content: flex-start !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+    > div.element-container > div[data-testid="stButton"] > button p {
+        text-align: left !important;
+        margin: 0 !important;
+    }
+
+    /* Gentle hover effect - soft glow - HIGH SPECIFICITY */
+    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+    > div.element-container > div[data-testid="stButton"] > button:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: rgba(88, 166, 255, 0.3) !important;
+        color: rgba(255, 255, 255, 0.95) !important;
+        box-shadow:
+            0 2px 8px rgba(88, 166, 255, 0.15),
+            0 4px 12px rgba(0, 0, 0, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+        transform: translateY(-1px) scale(1.01) !important;
+    }
+    </style>""", unsafe_allow_html=True)
+
+    # One button per page with glassmorphic styling
     for _pg in all_pages:
-        _pk   = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:30]
-        _lbl  = _pg.replace("📖 ", "")
+        _is_act = st.session_state.nav_page == _pg
+        _pk = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:30]
+        _lbl = _pg.replace("📖 ", "")
+
+        # Active state styling - brighter with more opacity
+        if _is_act:
+            st.markdown(f"""<style>
+            section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+            > div.element-container > div[data-testid="stButton"] > button[data-testid="{_pk}"]{{
+              /* Brighter glassmorphic background */
+              background: rgba(57, 197, 207, 0.15) !important;
+              backdrop-filter: blur(20px) saturate(200%) !important;
+              -webkit-backdrop-filter: blur(20px) saturate(200%) !important;
+
+              /* Prominent border */
+              border: 0.5px solid rgba(57, 197, 207, 0.4) !important;
+
+              /* Enhanced shadow with cyan glow */
+              box-shadow:
+                  0 2px 12px rgba(57, 197, 207, 0.25),
+                  0 4px 20px rgba(57, 197, 207, 0.15),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                  inset 3px 0 0 rgba(57, 197, 207, 0.5) !important;
+
+              /* Bright text */
+              color: rgba(57, 197, 207, 1) !important;
+              font-weight: 600 !important;
+            }}</style>""", unsafe_allow_html=True)
+
         if st.button(_lbl, key=_pk, use_container_width=True):
             st.session_state.nav_page = _pg
             st.rerun()

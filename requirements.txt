@@ -16,6 +16,6 @@ scikit-learn>=1.4.0
 xgboost>=2.0.0
 
 # Optional: uncomment to enable
-# groq                  # Groq LLaMA 3.3 70B (free)
+groq                    # Groq LLaMA 3.3 70B (free) - ENABLED
 # twilio                # Real SMS to engineer phones
 # paho-mqtt             # MQTT live sensor connector
