@@ -896,7 +896,7 @@ if pk == "Station Map":
      font-family:monospace;font-size:.67rem;color:#7d8590;display:flex;align-items:center;gap:.7rem">
   <span style="color:#39c5cf;font-size:.85rem">🗺</span>
   <span><strong style="color:#e6edf3">Morning inspection view</strong> — click any station marker to see live RUL, confidence interval, fault hypothesis.
-  Click <strong style="color:#39c5cf">▶ VIEW STATION DETAIL</strong> inside the popup to open the full diagnostic page.
+  Click <strong style="color:#39c5cf">▶ VIEW STATION INTELLIGENCE</strong> inside the popup to jump to the full recommendation card.
   &nbsp;·&nbsp; <span style="color:#ff6b35">🔴 fast-pulse = Critical</span>
   &nbsp;·&nbsp; <span style="color:#f0b429">🟡 slow-pulse = Warning</span>
   &nbsp;·&nbsp; <span style="color:#3fb950">🟢 breathe = Monitor</span></span>
@@ -906,32 +906,10 @@ if pk == "Station Map":
     map_html = build_map_html(stations_data, sel_id)
     st.components.v1.html(map_html, height=580, scrolling=False)
 
-    # Listener iframe — st.components.v1.html executes scripts unlike st.markdown.
-    # Attaches the handler onto window.parent (the real Streamlit frame) so it can
-    # receive postMessages from the Leaflet map iframe and scroll the DOM cards.
-    st.components.v1.html("""
-<script>
-(function(){
-  // Guard: register only once per Streamlit session to avoid duplicate listeners
-  if (window.parent.__si_listener) return;
-  window.parent.__si_listener = true;
-  window.parent.addEventListener('message', function(ev) {
-    if (!ev.data || ev.data.type !== 'scroll_to_intelligence' || !ev.data.id) return;
-    var card = window.parent.document.getElementById('si_card_' + ev.data.id);
-    if (!card) return;
-    card.scrollIntoView({behavior:'smooth', block:'center'});
-    card.style.transition = 'box-shadow .3s';
-    card.style.boxShadow = '0 0 0 2px #39c5cf, 0 0 28px #39c5cf99';
-    setTimeout(function(){ card.style.boxShadow = '0 0 0 2px #39c5cf44, 0 0 12px #39c5cf33'; }, 700);
-    setTimeout(function(){ card.style.boxShadow = ''; }, 2600);
-  });
-})();
-</script>
-""", height=0)
-
     # ── STATION INTELLIGENCE CARDS ───────────────────────────────────────────────
+    # id="si_section" is the anchor target for popup "VIEW STATION INTELLIGENCE" links
     st.markdown("""
-<div style="display:flex;align-items:center;gap:.7rem;margin:.9rem 0 .55rem">
+<div id="si_section" style="display:flex;align-items:center;gap:.7rem;margin:.9rem 0 .55rem">
   <div style="flex:1;height:1px;background:linear-gradient(90deg,#ff6b3566,transparent)"></div>
   <span style="font-family:monospace;font-size:.72rem;font-weight:700;color:#ff6b35;letter-spacing:.08em">
     ⚡ STATION INTELLIGENCE — ROOT CAUSE · RISK · RECOMMENDED ACTION

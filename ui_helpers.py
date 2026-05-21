@@ -246,15 +246,16 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
           {hyp[:90]}{'…' if len(hyp)>90 else ''}
         </div>
 
-        <button onclick="scrollToIntelligence('{sid}')"
-          style="width:100%;padding:6px 0;background:{color};border:none;
-          border-radius:5px;color:#fff;font-family:'IBM Plex Mono',monospace;
-          font-size:.67rem;cursor:pointer;font-weight:700;letter-spacing:.04em;
+        <a href="#si_card_{sid}" target="_parent"
+          style="display:block;width:100%;box-sizing:border-box;padding:6px 0;
+          background:{color};border-radius:5px;color:#fff;text-decoration:none;
+          text-align:center;font-family:'IBM Plex Mono',monospace;
+          font-size:.67rem;font-weight:700;letter-spacing:.04em;
           box-shadow:0 2px 8px {color}44;transition:opacity .2s"
           onmouseover="this.style.opacity='.82'"
           onmouseout="this.style.opacity='1'">
           ▶ VIEW STATION INTELLIGENCE
-        </button>
+        </a>
       </div>
     </div>`,{{maxWidth:290,className:"orchpop"}});
   m.on("click",function(){{selectStation(sid);}});
@@ -365,10 +366,6 @@ function selectStation(sid){{
   var e=allM[sid]; if(!e)return;
   map.flyTo(e.m.getLatLng(),9,{{duration:0.85,easeLinearity:0.4}});
   setTimeout(function(){{e.m.openPopup();}},900);
-}}
-function scrollToIntelligence(sid){{
-  // Close popup then ask parent to scroll to + highlight the station's intelligence card
-  window.parent.postMessage({{type:"scroll_to_intelligence",id:sid}},"*");
 }}
 window.addEventListener("message",function(e){{
   if(e.data&&e.data.type==="map_select")selectStation(e.data.id);
