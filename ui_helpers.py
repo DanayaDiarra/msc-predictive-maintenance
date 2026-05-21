@@ -184,54 +184,45 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
   var m=L.marker([{s['lat']},{s['lon']}],{{icon:pulseIcon,zIndexOffset:{300 if urg=="Critical" else 200 if urg=="Warning" else 100}}});
   m.addTo(map);
   m.bindPopup(`
-    <div style="font-family:'IBM Plex Mono',monospace;min-width:340px;max-width:380px;background:#161b22;color:#e6edf3;border-radius:8px;overflow:hidden">
-      <div style="background:{color}22;border-left:4px solid {color};padding:9px 13px">
-        <div style="font-size:1rem;font-weight:700;color:{color}">{sid}</div>
-        <div style="font-size:.63rem;color:#7d8590;margin-top:2px">📍 {city}, {country}</div>
+    <div style="font-family:'IBM Plex Mono',monospace;min-width:230px;max-width:260px;background:#161b22;color:#e6edf3;border-radius:8px;overflow:hidden">
+      <div style="background:{color}18;border-left:4px solid {color};padding:8px 12px">
+        <div style="font-size:.95rem;font-weight:700;color:{color}">{sid}</div>
+        <div style="font-size:.60rem;color:#7d8590;margin-top:2px">📍 {city}, {country}</div>
       </div>
-      <div style="padding:9px 13px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-          <span style="font-size:.63rem;color:#7d8590">URGENCY</span>
-          <span style="font-size:.70rem;font-weight:700;color:{color};background:{color}22;padding:1px 8px;border-radius:3px">{urg.upper()}</span>
+      <div style="padding:9px 12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-size:.60rem;color:#7d8590">URGENCY</span>
+          <span style="font-size:.65rem;font-weight:700;color:{color};background:{color}22;padding:1px 7px;border-radius:3px">{urg.upper()}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:.63rem;color:#7d8590">LIVE RUL</span>
-          <span style="font-size:.82rem;font-weight:700;color:{color}">{rul:.1f} cycles</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:.60rem;color:#7d8590">LIVE RUL</span>
+          <span style="font-size:.78rem;font-weight:700;color:{color}">{rul:.1f} cycles</span>
         </div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:.63rem;color:#7d8590">EST. LOSS IF FAILURE</span>
-          <span style="font-size:.75rem;font-weight:700;color:#ff6b35">€{s.get('rec_loss', 4200):,.0f}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+          <span style="font-size:.60rem;color:#7d8590">EST. LOSS</span>
+          <span style="font-size:.70rem;font-weight:700;color:#ff6b35">€{s.get('rec_loss', 4200):,.0f}</span>
         </div>
-        <div style="background:#21262d;height:3px;border-radius:2px;margin-bottom:10px">
-          <div style="width:{min(100,int(rul/125*100))}%;height:3px;background:{color};border-radius:2px"></div>
+        <div style="background:#21262d;height:2px;border-radius:2px;margin-bottom:8px">
+          <div style="width:{min(100,int(rul/125*100))}%;height:2px;background:{color};border-radius:2px"></div>
         </div>
-
-        <div style="background:#1c2333;border-left:3px solid #ff6b35;padding:7px 9px;margin-bottom:7px;border-radius:3px">
-          <div style="font-size:.58rem;color:#ff6b35;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">⚠ Root Cause</div>
-          <div style="font-size:.62rem;color:#c9d1d9;line-height:1.5">{s.get('rec_cause', 'Analyzing...')[:160]}...</div>
+        <div style="font-size:.61rem;color:#c9d1d9;line-height:1.45;margin-bottom:9px;
+             background:#21262d;border-radius:4px;padding:5px 7px">
+          {hyp[:90]}{'…' if len(hyp)>90 else ''}
         </div>
-
-        <div style="background:#1c2333;border-left:3px solid #f0b429;padding:7px 9px;margin-bottom:7px;border-radius:3px">
-          <div style="font-size:.58rem;color:#f0b429;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">🔥 Business Risks</div>
-          <div style="font-size:.62rem;color:#c9d1d9;line-height:1.5">{s.get('rec_risks', 'Assessing...')[:150]}...</div>
+        <div style="font-size:.57rem;color:#7d8590;text-align:center;margin-bottom:6px">
+          Full details in Station Intelligence ↓
         </div>
-
-        <div style="background:#1c2333;border-left:3px solid #3fb950;padding:7px 9px;margin-bottom:9px;border-radius:3px">
-          <div style="font-size:.58rem;color:#3fb950;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">✓ Recommended Action</div>
-          <div style="font-size:.62rem;color:#c9d1d9;line-height:1.5">{s.get('rec_solution', 'Planning...')[:180]}...</div>
-        </div>
-
         <button onclick="navigateToDetail('{sid}')"
-          style="width:100%;padding:7px 0;background:{color};border:none;
+          style="width:100%;padding:6px 0;background:{color};border:none;
           border-radius:5px;color:#fff;font-family:'IBM Plex Mono',monospace;
-          font-size:.70rem;cursor:pointer;font-weight:700;letter-spacing:.04em;
+          font-size:.67rem;cursor:pointer;font-weight:700;letter-spacing:.04em;
           box-shadow:0 2px 8px {color}44;transition:all .2s"
-          onmouseover="this.style.boxShadow='0 4px 12px {color}66';this.style.transform='translateY(-1px)'"
-          onmouseout="this.style.boxShadow='0 2px 8px {color}44';this.style.transform='translateY(0)'">
-          ▶ VIEW FULL STATION DETAIL
+          onmouseover="this.style.opacity='.85'"
+          onmouseout="this.style.opacity='1'">
+          ▶ VIEW STATION DETAIL
         </button>
       </div>
-    </div>`,{{maxWidth:400,className:"orchpop"}});
+    </div>`,{{maxWidth:280,className:"orchpop"}});
   m.on("click",function(){{selectStation(sid);}});
   allM[sid]={{m:m,urgency:"{urg}",color:"{color}"}};
 }})();""")
