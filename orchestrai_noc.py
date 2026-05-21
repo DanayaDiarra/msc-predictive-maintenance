@@ -256,6 +256,9 @@ for _k,_v in _DEFAULTS.items():
     if _k not in st.session_state:
         st.session_state[_k] = _v
 
+# Load persistent settings from disk (overwrites defaults for saved settings)
+load_persistent_settings()
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  STATION DATA MODEL
 # ══════════════════════════════════════════════════════════════════════════════
@@ -326,10 +329,57 @@ def check_alerts():
             st.session_state.alert_log.insert(0,{"ts":time.strftime("%H:%M:%S"),
                 "id":s["id"],"msg":f"RUL={rul:.1f}  {s['urgency']}→{new_urg}","urg":new_urg})
 
+# ── Persistent Settings Management ────────────────────────────────────────
+SETTINGS_FILE = Path("data/app_settings.json")
+
+def load_persistent_settings():
+    """Load settings from disk and populate session_state."""
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE, 'r') as f:
+                settings = json.load(f)
+                # Load database configurations
+                if "db_configs" in settings:
+                    st.session_state.db_configs = settings["db_configs"]
+                # Load API keys
+                if "groq_key" in settings:
+                    st.session_state._groq_key = settings["groq_key"]
+                if "anthropic_key" in settings:
+                    st.session_state._rt_ant_key = settings["anthropic_key"]
+                # Load connector mode
+                if "connector_mode" in settings:
+                    st.session_state.connector_mode = settings["connector_mode"]
+                return True
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+            return False
+    return False
+
+def save_persistent_settings():
+    """Save current settings from session_state to disk."""
+    try:
+        settings = {
+            "db_configs": st.session_state.get("db_configs", {}),
+            "groq_key": st.session_state.get("_groq_key", ""),
+            "anthropic_key": st.session_state.get("_rt_ant_key", ""),
+            "connector_mode": st.session_state.get("connector_mode", "simulation"),
+        }
+        # Ensure data directory exists
+        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        # Write settings to file
+        with open(SETTINGS_FILE, 'w') as f:
+            json.dump(settings, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving settings: {e}")
+        return False
+
 # ── DB config helpers ──────────────────────────────────────────────────────
 def _save_db_config(key, cfg):
     if "db_configs" not in st.session_state: st.session_state.db_configs={}
     st.session_state.db_configs[key] = cfg
+    # Persist to disk
+    save_persistent_settings()
 
 def _get_db_config(key):
     return st.session_state.get("db_configs",{}).get(key,{})
@@ -1668,7 +1718,11 @@ elif pk == "Settings":
             index=["simulation","file","rest","mqtt"].index(st.session_state.get("connector_mode","simulation")),
             format_func=lambda m:{"simulation":"🔵 Simulation (C-MAPSS proxy)","file":"📂 File (CSV/Parquet)","rest":"🌐 REST API","mqtt":"📡 MQTT broker"}[m])
         if _cm != st.session_state.get("connector_mode"):
-            if st.button("Apply connector mode"): st.session_state.connector_mode=_cm; st.success(f"Mode set: {_cm}"); st.rerun()
+            if st.button("Apply connector mode"):
+                st.session_state.connector_mode=_cm
+                save_persistent_settings()
+                st.success(f"Mode set: {_cm}")
+                st.rerun()
         _ds=st.file_uploader("Upload station data (CSV/Parquet)",type=["csv","parquet","xlsx"],accept_multiple_files=True,key="ds_upload_sett")
         if _ds:
             for f_ in _ds: st.success(f"✓ {f_.name} ({f_.size//1024} KB)")
@@ -1986,6 +2040,7 @@ password = "your-pw"
             _gv=st.text_input("Key (gsk_...)",type="password",value=_current_groq,placeholder="gsk_...",key="sett_groq")
             if st.button("Save Groq key",use_container_width=True,key="save_groq"):
                 st.session_state._groq_key=_gv.strip()
+                save_persistent_settings()
                 st.success(f"✓ Groq key saved ({len(_gv.strip())} chars)")
                 st.rerun()
         with k2:
@@ -1996,6 +2051,7 @@ password = "your-pw"
             _av=st.text_input("Key (sk-ant-...)",type="password",value=_current_ant,placeholder="sk-ant-...",key="sett_ant")
             if st.button("Save Anthropic key",use_container_width=True,key="save_ant"):
                 st.session_state._rt_ant_key=_av.strip()
+                save_persistent_settings()
                 st.success(f"✓ Anthropic key saved ({len(_av.strip())} chars)")
                 st.rerun()
         sh("PRIORITY ORDER")
