@@ -282,6 +282,9 @@ def load_persistent_settings():
                 # Load connector mode
                 if "connector_mode" in settings:
                     st.session_state.connector_mode = settings["connector_mode"]
+                # Load RUL mode
+                if "rul_mode" in settings:
+                    st.session_state.rul_mode = settings["rul_mode"]
                 return True
         except Exception as e:
             print(f"Error loading settings: {e}")
@@ -296,6 +299,7 @@ def save_persistent_settings():
             "groq_key": st.session_state.get("_groq_key", ""),
             "anthropic_key": st.session_state.get("_rt_ant_key", ""),
             "connector_mode": st.session_state.get("connector_mode", "simulation"),
+            "rul_mode": st.session_state.get("rul_mode", "simulation"),
         }
         # Ensure data directory exists
         SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -2310,6 +2314,80 @@ password = "your-pw"
         _lv=st.radio("Auto-refresh",["Offline (manual)","Live (auto-refresh)"],index=1 if st.session_state.live_mode else 0)
         if st.button("Apply"):
             st.session_state.live_mode=(_lv=="Live (auto-refresh)"); st.success(f"Set: {_lv}")
+
+        sh("RUL DATA SOURCE")
+        _rul_is_live_s = st.session_state.rul_mode == "live"
+        st.markdown(f"""
+<div style="background:linear-gradient(135deg,#1c2333,#161b22);border:1px solid
+     {'#3fb95055' if _rul_is_live_s else '#58a6ff44'};border-left:4px solid
+     {'#3fb950' if _rul_is_live_s else '#58a6ff'};border-radius:9px;
+     padding:.85rem 1.2rem;margin-bottom:.9rem">
+  <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.3rem">
+    <span style="font-size:1.1rem">{'🟢' if _rul_is_live_s else '🔵'}</span>
+    <span style="font-family:monospace;font-size:.82rem;font-weight:700;
+      color:{'#3fb950' if _rul_is_live_s else '#58a6ff'}">
+      {'LIVE — reading from station_streams.db predictions' if _rul_is_live_s else 'SIMULATION — degradation model (clock-based)'}
+    </span>
+  </div>
+  <div style="font-size:.71rem;color:#c9d1d9;line-height:1.65">
+    {'<strong style="color:#3fb950">Live mode</strong>: RUL values are fetched from the <code>rul_predictions</code> table '
+     '(Phase 2 Ensemble+BC model, RMSE 15.11). Currently <strong>15 / 25 stations</strong> have predictions; '
+     'others fall back to simulation automatically.'
+     if _rul_is_live_s else
+     '<strong style="color:#58a6ff">Simulation mode</strong>: RUL decrements from <code>base_rul</code> '
+     'using the station\'s degradation rate multiplied by elapsed session time. '
+     'No DB connection required — useful for demos and offline presentations.'}
+  </div>
+</div>""", unsafe_allow_html=True)
+
+        _rul_choice = st.radio(
+            "RUL source",
+            ["🔵  Simulation  (degradation model, no DB needed)",
+             "🟢  Live  (Ensemble+BC predictions from station_streams.db)"],
+            index=1 if _rul_is_live_s else 0,
+            key="sys_rul_radio",
+            help="Live mode reads the rul_predictions table. Falls back to simulation if no prediction exists for a station."
+        )
+        _new_rul_mode = "live" if _rul_choice.startswith("🟢") else "simulation"
+
+        # Show ST DB path when Live is selected
+        if _new_rul_mode == "live":
+            from db_connector import ST_DB_PATH as _ST_DB_PATH
+            _st_cfg = _get_db_config("st_db")
+            _st_path_default = _st_cfg.get("path", str(_ST_DB_PATH))
+            _st_path = st.text_input(
+                "station_streams.db path",
+                value=_st_path_default,
+                key="sys_st_db_path",
+                placeholder=str(_ST_DB_PATH),
+                help="Path to the SQLite station streams database containing rul_predictions table"
+            )
+            # Quick connection test
+            _tc1, _tc2 = st.columns([1, 3])
+            with _tc1:
+                if st.button("Test connection", key="sys_st_test"):
+                    try:
+                        from db_connector import query_sqlite
+                        rows = query_sqlite(_st_path, "SELECT COUNT(*) AS n FROM rul_predictions")
+                        st.success(f"✓ Connected — {rows[0]['n']} predictions found")
+                    except Exception as _e:
+                        st.error(f"✗ {str(_e)[:120]}")
+        else:
+            _st_path = None
+
+        if st.button("Apply RUL mode", key="sys_rul_apply", use_container_width=False):
+            st.session_state.rul_mode = _new_rul_mode
+            if _new_rul_mode == "live" and _st_path:
+                _existing = _get_db_config("st_db")
+                _existing["path"] = _st_path
+                if "db_configs" not in st.session_state:
+                    st.session_state.db_configs = {}
+                st.session_state.db_configs["st_db"] = _existing
+            save_persistent_settings()
+            _label = "🟢 LIVE" if _new_rul_mode == "live" else "🔵 SIM"
+            st.success(f"RUL mode saved: {_label}")
+            st.rerun()
+
         sh("SECRETS TEMPLATE")
         st.code("""# .streamlit/secrets.toml
 [users]
