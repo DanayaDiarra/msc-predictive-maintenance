@@ -1702,6 +1702,8 @@ password = "your-pw"
         with k1:
             sh("Anthropic (primary)")
             _current_ant = st.session_state.get("_rt_ant_key","")
+            if _current_ant:
+                st.info(f"🔑 Current key: {_current_ant[:8]}...{_current_ant[-4:]} ({len(_current_ant)} chars)")
             _av=st.text_input("Key (sk-ant-...)",type="password",value=_current_ant,placeholder="sk-ant-...",key="sett_ant")
             if st.button("Save Anthropic key",use_container_width=True,key="save_ant"):
                 st.session_state._rt_ant_key=_av.strip()
@@ -1710,6 +1712,8 @@ password = "your-pw"
         with k2:
             sh("Groq (free fallback)")
             _current_groq = st.session_state.get("_groq_key","")
+            if _current_groq:
+                st.info(f"🔑 Current key: {_current_groq[:8]}...{_current_groq[-4:]} ({len(_current_groq)} chars)")
             _gv=st.text_input("Key (gsk_...)",type="password",value=_current_groq,placeholder="gsk_...",key="sett_groq")
             if st.button("Save Groq key",use_container_width=True,key="save_groq"):
                 st.session_state._groq_key=_gv.strip()
