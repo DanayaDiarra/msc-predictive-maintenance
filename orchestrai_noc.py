@@ -1701,14 +1701,20 @@ password = "your-pw"
         k1,k2=st.columns(2)
         with k1:
             sh("Anthropic (primary)")
-            _av=st.text_input("Key (sk-ant-...)",type="password",value=st.session_state.get("_rt_ant_key",""),placeholder="sk-ant-...",key="sett_ant")
+            _current_ant = st.session_state.get("_rt_ant_key","")
+            _av=st.text_input("Key (sk-ant-...)",type="password",value=_current_ant,placeholder="sk-ant-...",key="sett_ant")
             if st.button("Save Anthropic key",use_container_width=True,key="save_ant"):
-                st.session_state._rt_ant_key=_av.strip(); st.success("Saved.")
+                st.session_state._rt_ant_key=_av.strip()
+                st.success(f"✓ Anthropic key saved ({len(_av.strip())} chars)")
+                st.rerun()
         with k2:
             sh("Groq (free fallback)")
-            _gv=st.text_input("Key (gsk_...)",type="password",value=st.session_state.get("_groq_key",""),placeholder="gsk_...",key="sett_groq")
+            _current_groq = st.session_state.get("_groq_key","")
+            _gv=st.text_input("Key (gsk_...)",type="password",value=_current_groq,placeholder="gsk_...",key="sett_groq")
             if st.button("Save Groq key",use_container_width=True,key="save_groq"):
-                st.session_state._groq_key=_gv.strip(); st.success("Saved.")
+                st.session_state._groq_key=_gv.strip()
+                st.success(f"✓ Groq key saved ({len(_gv.strip())} chars)")
+                st.rerun()
         sh("PRIORITY ORDER")
         st.markdown('<div style="font-family:monospace;font-size:.72rem;color:#c9d1d9;line-height:2">1. <strong style="color:#39c5cf">Anthropic Claude Haiku</strong> (highest quality)<br>2. <strong style="color:#3fb950">Groq LLaMA 3.3 70B</strong> (free, fast)<br>3. <strong style="color:#7d8590">Rule-based KB</strong> (always available)</div>',unsafe_allow_html=True)
 
