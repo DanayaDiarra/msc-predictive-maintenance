@@ -896,20 +896,26 @@ if pk == "Station Map":
     map_html = build_map_html(stations_data, sel_id)
     st.components.v1.html(map_html, height=580, scrolling=False)
 
-    # Message listener — receives navigate_to_detail from the Leaflet iframe
-    # Finds the matching hidden Streamlit nav button by its text label and clicks it
+    # Message listener — receives scroll_to_intelligence from the Leaflet iframe
+    # Scrolls the page to the matching station intelligence card and pulses it
     st.markdown("""
     <script>
     window.addEventListener('message', function(event) {
-        if (event.data && event.data.type === 'navigate_to_detail' && event.data.id) {
+        if (event.data && event.data.type === 'scroll_to_intelligence' && event.data.id) {
             var sid = event.data.id;
-            // Scan all buttons in the page for one whose label contains this station ID
-            var all = document.querySelectorAll('button');
-            for (var i = 0; i < all.length; i++) {
-                if (all[i].innerText && all[i].innerText.indexOf(sid) !== -1) {
-                    all[i].click();
-                    return;
-                }
+            var card = document.getElementById('si_card_' + sid);
+            if (card) {
+                card.scrollIntoView({behavior: 'smooth', block: 'center'});
+                // Pulse highlight: brighten border then fade back
+                var orig = card.style.boxShadow;
+                card.style.transition = 'box-shadow .25s';
+                card.style.boxShadow = '0 0 0 2px #39c5cf, 0 0 24px #39c5cf88';
+                setTimeout(function() {
+                    card.style.boxShadow = '0 0 0 2px #39c5cf55, 0 0 12px #39c5cf33';
+                }, 600);
+                setTimeout(function() {
+                    card.style.boxShadow = orig || '';
+                }, 2200);
             }
         }
     });
@@ -982,8 +988,8 @@ if pk == "Station Map":
                 rul_pct=min(100,int(s["rul"]/125*100))
                 with col:
                     st.markdown(f"""
-<div style="background:#161b22;border:1px solid {color}33;border-top:3px solid {color};
-     border-radius:8px;padding:.75rem .85rem .55rem;margin-bottom:.35rem">
+<div id="si_card_{s['id']}" style="background:#161b22;border:1px solid {color}33;border-top:3px solid {color};
+     border-radius:8px;padding:.75rem .85rem .55rem;margin-bottom:.35rem;transition:box-shadow .25s">
 
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.45rem">
     <div>
