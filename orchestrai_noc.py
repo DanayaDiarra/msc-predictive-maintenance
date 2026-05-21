@@ -45,6 +45,14 @@ try:
 except ImportError:
     AGENTS_AVAILABLE = False
 
+# Import Groq for chatbot
+try:
+    from groq import Groq
+    GROQ_AVAILABLE = True
+except ImportError:
+    GROQ_AVAILABLE = False
+    Groq = None
+
 from db_connector import (test_connection, fetch_engineers, fetch_parts,
                            fetch_station_stream, HR_DB_PATH, SC_DB_PATH, ST_DB_PATH)
 
@@ -1099,7 +1107,9 @@ elif pk == "Results & Ablation":
 elif pk == "Engineer Chatbot":
     if not IS_ENG: st.warning("Engineer / Admin role required."); st.stop()
     _groq_k=st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
-    if _groq_k and len(_groq_k)>10:
+    if not GROQ_AVAILABLE:
+        st.markdown('<div style="background:#1c2333;border:1px solid #ff6b3544;border-radius:6px;padding:.6rem .85rem;margin-bottom:.6rem;font-size:.76rem;color:#ff6b35;font-family:monospace">⚠ Groq module not installed. Run: <code>pip install groq</code> and restart Streamlit.</div>',unsafe_allow_html=True)
+    elif _groq_k and len(_groq_k)>10:
         st.markdown(f'<div style="background:#0d1117;border:1px solid #3fb95055;border-radius:6px;padding:.38rem .85rem;margin-bottom:.6rem;font-family:monospace;font-size:.66rem;color:#3fb950">🔌 LLaMA 3.3 70B · Groq · {_groq_k[:8]}...{_groq_k[-4:]}</div>',unsafe_allow_html=True)
     else:
         st.markdown('<div style="background:#1c2333;border:1px solid #f0b42944;border-radius:6px;padding:.6rem .85rem;margin-bottom:.6rem;font-size:.76rem;color:#f0b429;font-family:monospace">⚠ No Groq key — rule-based mode. Add key in Settings → ⚙ System & API.</div>',unsafe_allow_html=True)
@@ -1125,9 +1135,8 @@ elif pk == "Engineer Chatbot":
             # Try Groq first (PRIMARY)
             _groq_k=st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
             groq_error = None
-            if _groq_k and len(_groq_k)>10:
+            if GROQ_AVAILABLE and _groq_k and len(_groq_k)>10:
                 try:
-                    from groq import Groq
                     client = Groq(api_key=_groq_k)
                     response = client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
@@ -1142,6 +1151,8 @@ elif pk == "Engineer Chatbot":
                     engine_used = "LLaMA 3.3 70B · Groq"
                 except Exception as e:
                     groq_error = f"Groq Error: {str(e)}"
+            elif not GROQ_AVAILABLE and _groq_k:
+                groq_error = "Groq module not installed. Run: pip install groq"
             # Try Anthropic as fallback
             if not answer:
                 ant_key=_get_ant_key()
