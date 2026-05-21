@@ -1618,96 +1618,105 @@ elif pk == "Results & Ablation":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pk == "Engineer Chatbot":
     if not IS_ENG: st.warning("Engineer / Admin role required."); st.stop()
-    _groq_k=st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
-    if not GROQ_AVAILABLE:
-        st.markdown('<div style="background:#1c2333;border:1px solid #ff6b3544;border-radius:6px;padding:.6rem .85rem;margin-bottom:.6rem;font-size:.76rem;color:#ff6b35;font-family:monospace">⚠ Groq module not installed. Run: <code>pip install groq</code> and restart Streamlit.</div>',unsafe_allow_html=True)
-        # Debug info
-        with st.expander("🔍 Debug Info - Click to see Python environment details"):
-            st.code(f"""Python executable: {sys.executable}
-Python version: {sys.version}
-Groq available: {GROQ_AVAILABLE}
 
-Attempting import now:""")
-            try:
-                import groq as _test_groq
-                st.success(f"✅ Can import groq! Version: {_test_groq.__version__}")
-            except ImportError as e:
-                st.error(f"❌ Cannot import groq: {e}")
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
-    elif _groq_k and len(_groq_k)>10:
-        st.markdown(f'<div style="background:#0d1117;border:1px solid #3fb95055;border-radius:6px;padding:.38rem .85rem;margin-bottom:.6rem;font-family:monospace;font-size:.66rem;color:#3fb950">🔌 LLaMA 3.3 70B · Groq · {_groq_k[:8]}...{_groq_k[-4:]}</div>',unsafe_allow_html=True)
+    # ── LangChain memory bootstrap ────────────────────────────────────────────
+    from chat_memory import (
+        build_groq_chain, build_anthropic_chain,
+        invoke_with_memory, load_history_for_display, clear_history
+    )
+    _chat_user = UID  # one SQLite DB per user
+
+    # Sync persistent DB → session_state on first load (or after clear)
+    if not st.session_state.get("_chat_history_loaded"):
+        st.session_state.chat_history = load_history_for_display(_chat_user)
+        st.session_state._chat_history_loaded = True
+
+    _groq_k = st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
+
+    # Engine status badge
+    if _groq_k and len(_groq_k) > 10:
+        st.markdown(
+            f'<div style="background:#0d1117;border:1px solid #3fb95055;border-radius:6px;'
+            f'padding:.38rem .85rem;margin-bottom:.6rem;font-family:monospace;font-size:.66rem;color:#3fb950">'
+            f'🔌 LLaMA 3.3 70B · Groq · LangChain memory · {_groq_k[:8]}...{_groq_k[-4:]}'
+            f'<span style="color:#7d8590;margin-left:.8rem">history: {len(st.session_state.chat_history)//2} turns · persisted to SQLite</span>'
+            f'</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div style="background:#1c2333;border:1px solid #f0b42944;border-radius:6px;padding:.6rem .85rem;margin-bottom:.6rem;font-size:.76rem;color:#f0b429;font-family:monospace">⚠ No Groq key — rule-based mode. Add key in Settings → ⚙ System & API.</div>',unsafe_allow_html=True)
+
     QS=["What does alarm PWR-001 mean?","How do I test for PIM?","Station FD002_47 has RUL 14.7 — urgent?","Spare parts for cooling fan replacement?","COOL-001 vs COOL-003 difference?","ITU-T G.826 ESR threshold?","BBU software upgrade duration?","Gradual VSWR increase — cause?"]
     sh("QUICK QUESTIONS")
     for row in [QS[:4],QS[4:]]:
         for col,q in zip(st.columns(4),row):
             lbl=(q[:35]+"…") if len(q)>35 else q
             if col.button(lbl,key=f"pill_{q[:18]}",use_container_width=True):
-                st.session_state.chat_history.append({"role":"user","content":q}); st.session_state.chat_thinking=True; st.rerun()
+                st.session_state.chat_history.append({"role":"user","content":q})
+                st.session_state.chat_thinking=True; st.rerun()
+
     sh("CONVERSATION")
     for msg in st.session_state.chat_history:
         if msg["role"]=="user":
             st.markdown(f'<div style="display:flex;justify-content:flex-end;margin:.35rem 0"><div class="cu">{msg["content"]}</div></div>',unsafe_allow_html=True)
         else:
-            eng=msg.get("engine",""); ec="#3fb950" if "groq" in eng.lower() or "llama" in eng.lower() else ("#39c5cf" if "claude" in eng.lower() or "anthropic" in eng.lower() else "#7d8590")
+            eng=msg.get("engine","")
+            ec="#3fb950" if "groq" in eng.lower() or "llama" in eng.lower() else ("#39c5cf" if "claude" in eng.lower() or "anthropic" in eng.lower() else "#7d8590")
             st.markdown(f'<div style="display:flex;gap:.5rem;margin:.35rem 0"><div style="font-size:1rem;margin-top:4px">⚡</div><div class="ca">{msg["content"]}<div style="margin-top:.3rem;font-family:monospace;font-size:.60rem;color:{ec}">{eng}</div></div></div>',unsafe_allow_html=True)
+
     if st.session_state.chat_thinking and st.session_state.chat_history:
-        last_q=st.session_state.chat_history[-1]["content"]
+        last_q = st.session_state.chat_history[-1]["content"]
         with st.spinner("Thinking…"):
-            answer=None; engine_used="Rule-based"
-            sys_p="You are an expert telecom BTS maintenance engineer. Answer alarm codes, procedures, RUL interpretation. Cite [DOC-ID]. Be concise and actionable."
-            # Try Groq first (PRIMARY)
-            _groq_k=st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
+            answer = None; engine_used = "Rule-based KB"
             groq_error = None
-            if GROQ_AVAILABLE and _groq_k and len(_groq_k)>10:
+
+            # ── Tier 1: Groq via LangChain (with full windowed memory) ───────
+            _groq_k = st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
+            if _groq_k and len(_groq_k) > 10:
                 try:
-                    client = Groq(api_key=_groq_k)
-                    response = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[
-                            {"role": "system", "content": sys_p},
-                            {"role": "user", "content": last_q}
-                        ],
-                        max_tokens=600,
-                        temperature=0.7
-                    )
-                    answer = response.choices[0].message.content
-                    engine_used = "LLaMA 3.3 70B · Groq"
-                except Exception as e:
-                    groq_error = f"Groq Error: {str(e)}"
-            elif not GROQ_AVAILABLE and _groq_k:
-                groq_error = "Groq module not installed. Run: pip install groq"
-            # Try Anthropic as fallback
+                    chain = build_groq_chain(_groq_k)
+                    answer = invoke_with_memory(chain, _chat_user, last_q)
+                    engine_used = "LLaMA 3.3 70B · Groq · LangChain"
+                except Exception as _e:
+                    groq_error = f"Groq: {str(_e)[:120]}"
+
+            # ── Tier 2: Anthropic via LangChain (fallback) ───────────────────
             if not answer:
-                ant_key=_get_ant_key()
+                ant_key = _get_ant_key()
                 if ant_key:
-                    import anthropic as _ant
                     try:
-                        client=_ant.Anthropic(api_key=ant_key)
-                        prev=[{"role":m["role"],"content":re.sub(r"<[^>]+>","",str(m["content"])).strip()} for m in st.session_state.chat_history[:-1][-6:] if m["role"] in ("user","assistant")]
-                        prev.append({"role":"user","content":last_q})
-                        resp=client.messages.create(model="claude-haiku-4-5-20251001",max_tokens=700,system=sys_p,messages=prev)
-                        answer=resp.content[0].text; engine_used="Claude Haiku · Anthropic"
-                    except Exception as _e: pass
-            # Rule-based final fallback
+                        chain = build_anthropic_chain(ant_key)
+                        answer = invoke_with_memory(chain, _chat_user, last_q)
+                        engine_used = "Claude Haiku · Anthropic · LangChain"
+                    except Exception as _e:
+                        pass
+
+            # ── Tier 3: Rule-based KB (always available) ─────────────────────
             if not answer:
-                rb=rule_based_answer(last_q)
-                answer=rb if rb else "No specific rule matched. Ask about alarm codes (PWR, COOL, RF, BKH, BBU), RUL urgency, or maintenance procedures."
-                engine_used="Rule-based KB"
+                rb = rule_based_answer(last_q)
+                answer = rb if rb else "No specific rule matched. Ask about alarm codes (PWR, COOL, RF, BKH, BBU), RUL urgency, or maintenance procedures."
+                engine_used = "Rule-based KB"
                 if groq_error:
                     answer = f"⚠️ {groq_error}\n\n{answer}"
-            st.session_state.chat_history.append({"role":"assistant","content":answer,"engine":engine_used}); st.session_state.chat_thinking=False; st.rerun()
+
+            st.session_state.chat_history.append({"role":"assistant","content":answer,"engine":engine_used})
+            st.session_state.chat_thinking = False
+            st.rerun()
+
     sh("YOUR QUESTION")
-    with st.form("chat_form",clear_on_submit=True):
-        ci,cb=st.columns([5,1])
-        with ci: user_input=st.text_input("Ask",placeholder="e.g. What does COOL-003 mean?",label_visibility="collapsed")
-        with cb: submitted=st.form_submit_button("Send ⚡",use_container_width=True)
+    with st.form("chat_form", clear_on_submit=True):
+        ci,cb = st.columns([5,1])
+        with ci: user_input = st.text_input("Ask",placeholder="e.g. What does COOL-003 mean?",label_visibility="collapsed")
+        with cb: submitted = st.form_submit_button("Send ⚡",use_container_width=True)
         if submitted and user_input.strip():
-            st.session_state.chat_history.append({"role":"user","content":user_input.strip()}); st.session_state.chat_thinking=True; st.rerun()
+            st.session_state.chat_history.append({"role":"user","content":user_input.strip()})
+            st.session_state.chat_thinking = True; st.rerun()
+
     if st.session_state.chat_history:
-        if st.button("Clear conversation"): st.session_state.chat_history=[]; st.session_state.chat_thinking=False; st.rerun()
+        if st.button("Clear conversation"):
+            clear_history(_chat_user)
+            st.session_state.chat_history = []
+            st.session_state.chat_thinking = False
+            st.session_state._chat_history_loaded = False
+            st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: DISPATCH & ROSTER
