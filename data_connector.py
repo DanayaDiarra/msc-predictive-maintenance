@@ -85,24 +85,8 @@ _latest  = {}   # {station_id: reading_dict}
 _history = {}   # {station_id: [list of reading_dicts, max 200]}
 _MAX_H   = 200
 
-# Station nominal values for simulation
-_NOMINALS = {
-    "FD002_47":  {"dc_voltage_v":48.5,    "sub":"power_subsystem",       "degrade":0.55, "dir":-1},
-    "FD003_88":  {"cabinet_temp_c":36.0,  "sub":"thermal_management",    "degrade":0.60, "dir": 1},
-    "FD001_23":  {"fan_speed_rpm":3200,   "sub":"thermal_management",    "degrade":0.22, "dir":-1},
-    "FD004_55":  {"vswr_ratio":1.72,      "sub":"rf_antenna",            "degrade":0.18, "dir": 1},
-    "FD004_112": {"latency_ms":5.9,       "sub":"backhaul_connectivity", "degrade":0.07, "dir": 1},
-    "FD003_71":  {"rssi_dbm":-67.0,       "sub":"rf_antenna",            "degrade":0.05, "dir":-1},
-    "FD001_08":  {"cpu_util_pct":68.5,    "sub":"baseband_processing",   "degrade":0.04, "dir": 1},
-    "FD002_91":  {"battery_cap_pct":84.0, "sub":"power_subsystem",       "degrade":0.04, "dir":-1},
-    "FD004_203": {"latency_ms":7.1,       "sub":"backhaul_connectivity", "degrade":0.03, "dir": 1},
-    "FD001_77":  {"cpu_util_pct":62.0,    "sub":"baseband_processing",   "degrade":0.02, "dir": 1},
-    "FD002_14":  {"dc_voltage_v":42.8,    "sub":"power_subsystem",       "degrade":0.65, "dir":-1},
-    "FD001_44":  {"pa_efficiency_pct":78.5,"sub":"rf_antenna",           "degrade":0.20, "dir":-1},
-    "FD003_55":  {"cabinet_temp_c":41.2,  "sub":"thermal_management",    "degrade":0.28, "dir": 1},
-    "FD004_78":  {"mem_util_pct":68.0,    "sub":"baseband_processing",   "degrade":0.06, "dir": 1},
-    "FD002_33":  {"latency_ms":14.8,      "sub":"backhaul_connectivity", "degrade":0.03, "dir": 1},
-}
+# Import centralized station configuration
+from config.stations import STATION_NOMINALS as _NOMINALS
 
 
 # ══════════════════════════════════════════════════════════════════════════════
