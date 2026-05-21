@@ -368,29 +368,39 @@ function selectStation(sid){{
   setTimeout(function(){{e.m.openPopup();}},900);
 }}
 function scrollToIntelligence(sid){{
-  // This iframe has allow-same-origin — window.parent.document is accessible.
-  // 1. Try to find the SI card and scroll to it
-  // 2. Fallback: click the hidden "Open Full Detail" nav button
+  // allow-same-origin lets us access window.parent.document, but calling
+  // .scrollIntoView() on a cross-frame element executes in the IFRAME context
+  // and browsers silently ignore it.  Fix: inject a <script> tag directly into
+  // the parent document — scripts appended via appendChild run in THAT document's
+  // context, so scrollIntoView works correctly.
   try {{
     var pd=window.parent.document;
-    var card=pd.getElementById("si_card_"+sid);
-    if(card){{
-      card.scrollIntoView({{behavior:"smooth",block:"center"}});
-      card.style.transition="box-shadow .3s";
-      card.style.boxShadow="0 0 0 2px #39c5cf, 0 0 28px #39c5cf99";
-      setTimeout(function(){{card.style.boxShadow="0 0 0 2px #39c5cf33";}},900);
-      setTimeout(function(){{card.style.boxShadow="";}},3000);
-      return;
-    }}
-    // Card filtered out — click hidden nav button to open Station Detail
-    var btns=pd.querySelectorAll("button");
-    for(var i=0;i<btns.length;i++){{
-      if((btns[i].innerText||"").indexOf(sid)!==-1&&
-         (btns[i].innerText||"").indexOf("Open Full Detail")!==-1){{
-        btns[i].click();return;
-      }}
-    }}
-  }}catch(err){{console.warn("scrollToIntelligence:",err);}}
+    // Remove any previous injected scroll script
+    var prev=pd.getElementById('_orchai_si_scr');
+    if(prev&&prev.parentNode)prev.parentNode.removeChild(prev);
+    // Build script that executes in parent context
+    var scr=pd.createElement('script');
+    scr.id='_orchai_si_scr';
+    scr.textContent='(function(){{'
+      +'var e=document.getElementById("si_card_'+sid+'")'
+      +'||document.getElementById("si_section");'
+      +'if(e){{'
+        +'e.scrollIntoView({{behavior:"smooth",block:"center"}});'
+        +'e.style.transition="box-shadow .3s";'
+        +'e.style.boxShadow="0 0 0 3px #39c5cf,0 0 32px #39c5cf99";'
+        +'setTimeout(function(){{e.style.boxShadow="0 0 0 2px #39c5cf33";}},900);'
+        +'setTimeout(function(){{e.style.boxShadow="";}},3000);'
+      +'}}'
+    +'}})();';
+    pd.body.appendChild(scr);
+  }}catch(err){{
+    // Fallback: try window.top in case of extra wrapper frame
+    try{{
+      var e=window.top.document.getElementById('si_card_'+sid)
+            ||window.top.document.getElementById('si_section');
+      if(e)e.scrollIntoView({{behavior:'smooth',block:'center'}});
+    }}catch(e2){{console.warn('scrollToIntelligence failed:',err,e2);}}
+  }}
 }}
 window.addEventListener("message",function(e){{
   if(e.data&&e.data.type==="map_select")selectStation(e.data.id);
