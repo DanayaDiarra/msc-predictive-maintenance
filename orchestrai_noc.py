@@ -1109,6 +1109,20 @@ elif pk == "Engineer Chatbot":
     _groq_k=st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
     if not GROQ_AVAILABLE:
         st.markdown('<div style="background:#1c2333;border:1px solid #ff6b3544;border-radius:6px;padding:.6rem .85rem;margin-bottom:.6rem;font-size:.76rem;color:#ff6b35;font-family:monospace">⚠ Groq module not installed. Run: <code>pip install groq</code> and restart Streamlit.</div>',unsafe_allow_html=True)
+        # Debug info
+        with st.expander("🔍 Debug Info - Click to see Python environment details"):
+            st.code(f"""Python executable: {sys.executable}
+Python version: {sys.version}
+Groq available: {GROQ_AVAILABLE}
+
+Attempting import now:""")
+            try:
+                import groq as _test_groq
+                st.success(f"✅ Can import groq! Version: {_test_groq.__version__}")
+            except ImportError as e:
+                st.error(f"❌ Cannot import groq: {e}")
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
     elif _groq_k and len(_groq_k)>10:
         st.markdown(f'<div style="background:#0d1117;border:1px solid #3fb95055;border-radius:6px;padding:.38rem .85rem;margin-bottom:.6rem;font-family:monospace;font-size:.66rem;color:#3fb950">🔌 LLaMA 3.3 70B · Groq · {_groq_k[:8]}...{_groq_k[-4:]}</div>',unsafe_allow_html=True)
     else:
