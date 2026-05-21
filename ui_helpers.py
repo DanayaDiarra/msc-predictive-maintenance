@@ -171,6 +171,19 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
         sz     = 26 if urg=="Critical" else 22 if urg=="Warning" else 18
         sz_sel = sz + 6
 
+        # Time-to-failure from RUL and per-minute degradation rate
+        degrade       = max(s.get("degrade", 0.1), 0.001)
+        rem_mins      = rul / degrade
+        if rem_mins < 60:
+            time_to_fail = f"{rem_mins:.0f} min"
+        elif rem_mins < 1440:
+            h, m = int(rem_mins // 60), int(rem_mins % 60)
+            time_to_fail = f"{h}h {m:02d}m"
+        else:
+            time_to_fail = f"{int(rem_mins // 60)}h"
+        loss_per_hour = s.get("rec_loss_per_hour", s.get("rec_loss", 4200) / 6)
+        loss_per_min  = loss_per_hour / 60
+
         markers_js.append(f"""
 (function(){{
   var sid="{sid}",color="{color}",isSelected={is_sel};
@@ -184,31 +197,53 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
   var m=L.marker([{s['lat']},{s['lon']}],{{icon:pulseIcon,zIndexOffset:{300 if urg=="Critical" else 200 if urg=="Warning" else 100}}});
   m.addTo(map);
   m.bindPopup(`
-    <div style="font-family:'IBM Plex Mono',monospace;min-width:230px;max-width:260px;background:#161b22;color:#e6edf3;border-radius:8px;overflow:hidden">
+    <div style="font-family:'IBM Plex Mono',monospace;min-width:240px;max-width:268px;background:#161b22;color:#e6edf3;border-radius:8px;overflow:hidden">
       <div style="background:{color}18;border-left:4px solid {color};padding:8px 12px">
         <div style="font-size:.95rem;font-weight:700;color:{color}">{sid}</div>
         <div style="font-size:.60rem;color:#7d8590;margin-top:2px">📍 {city}, {country}</div>
       </div>
       <div style="padding:9px 12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <span style="font-size:.60rem;color:#7d8590">URGENCY</span>
-          <span style="font-size:.65rem;font-weight:700;color:{color};background:{color}22;padding:1px 7px;border-radius:3px">{urg.upper()}</span>
+          <span style="font-size:.63rem;font-weight:700;color:{color};background:{color}22;padding:1px 7px;border-radius:3px">{urg.upper()}</span>
         </div>
+
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <span style="font-size:.60rem;color:#7d8590">LIVE RUL</span>
-          <span style="font-size:.78rem;font-weight:700;color:{color}">{rul:.1f} cycles</span>
+          <span style="font-size:.75rem;font-weight:700;color:{color}">{rul:.1f} cycles</span>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-          <span style="font-size:.60rem;color:#7d8590">EST. LOSS</span>
-          <span style="font-size:.70rem;font-weight:700;color:#ff6b35">€{s.get('rec_loss', 4200):,.0f}</span>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:.60rem;color:#7d8590">TIME TO FAILURE</span>
+          <span style="font-size:.72rem;font-weight:700;color:{color}">{time_to_fail}</span>
         </div>
-        <div style="background:#21262d;height:2px;border-radius:2px;margin-bottom:8px">
+
+        <div style="background:#21262d;height:2px;border-radius:2px;margin-bottom:7px">
           <div style="width:{min(100,int(rul/125*100))}%;height:2px;background:{color};border-radius:2px"></div>
         </div>
-        <div style="font-size:.61rem;color:#c9d1d9;line-height:1.45;margin-bottom:9px;
+
+        <div style="background:#ff6b3512;border-radius:4px;padding:5px 8px;margin-bottom:5px">
+          <div style="font-size:.57rem;color:#ff6b35;font-weight:700;margin-bottom:2px">💶 FINANCIAL EXPOSURE</div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:.59rem;color:#7d8590">est. total loss</span>
+            <span style="font-size:.68rem;font-weight:700;color:#ff6b35">€{s.get('rec_loss',4200):,.0f}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:.59rem;color:#7d8590">loss / hour</span>
+            <span style="font-size:.63rem;color:#f0b429">€{loss_per_hour:,.0f}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:.59rem;color:#7d8590">loss / min</span>
+            <span style="font-size:.63rem;color:#f0b429">€{loss_per_min:.1f}</span>
+          </div>
+        </div>
+
+        <div style="font-size:.61rem;color:#c9d1d9;line-height:1.45;margin-bottom:8px;
              background:#21262d;border-radius:4px;padding:5px 7px">
           {hyp[:90]}{'…' if len(hyp)>90 else ''}
         </div>
+
         <button onclick="scrollToIntelligence('{sid}')"
           style="width:100%;padding:6px 0;background:{color};border:none;
           border-radius:5px;color:#fff;font-family:'IBM Plex Mono',monospace;
@@ -219,7 +254,7 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
           ▶ VIEW STATION INTELLIGENCE
         </button>
       </div>
-    </div>`,{{maxWidth:280,className:"orchpop"}});
+    </div>`,{{maxWidth:290,className:"orchpop"}});
   m.on("click",function(){{selectStation(sid);}});
   allM[sid]={{m:m,urgency:"{urg}",color:"{color}"}};
 }})();""")

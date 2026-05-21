@@ -855,7 +855,9 @@ if pk == "Station Map":
             "lat":lat,"lon":lon,"city":city,"country":country,
             "rec_cause":rec["cause"],"rec_risks":rec["risks"],
             "rec_solution":rec["solution"],"rec_loss":rec["financial_loss"],
-            "rec_downtime":rec["downtime_hours"]})
+            "rec_downtime":rec["downtime_hours"],
+            "degrade":s.get("degrade",0.1),
+            "rec_loss_per_hour":rec["financial_loss"]/max(rec["downtime_hours"],1)})
 
     nc=sum(1 for s in stations_data if s["urgency"]=="Critical")
     nw=sum(1 for s in stations_data if s["urgency"]=="Warning")
@@ -896,31 +898,28 @@ if pk == "Station Map":
     map_html = build_map_html(stations_data, sel_id)
     st.components.v1.html(map_html, height=580, scrolling=False)
 
-    # Message listener — receives scroll_to_intelligence from the Leaflet iframe
-    # Scrolls the page to the matching station intelligence card and pulses it
-    st.markdown("""
-    <script>
-    window.addEventListener('message', function(event) {
-        if (event.data && event.data.type === 'scroll_to_intelligence' && event.data.id) {
-            var sid = event.data.id;
-            var card = document.getElementById('si_card_' + sid);
-            if (card) {
-                card.scrollIntoView({behavior: 'smooth', block: 'center'});
-                // Pulse highlight: brighten border then fade back
-                var orig = card.style.boxShadow;
-                card.style.transition = 'box-shadow .25s';
-                card.style.boxShadow = '0 0 0 2px #39c5cf, 0 0 24px #39c5cf88';
-                setTimeout(function() {
-                    card.style.boxShadow = '0 0 0 2px #39c5cf55, 0 0 12px #39c5cf33';
-                }, 600);
-                setTimeout(function() {
-                    card.style.boxShadow = orig || '';
-                }, 2200);
-            }
-        }
-    });
-    </script>
-    """, unsafe_allow_html=True)
+    # Listener iframe — st.components.v1.html executes scripts unlike st.markdown.
+    # Attaches the handler onto window.parent (the real Streamlit frame) so it can
+    # receive postMessages from the Leaflet map iframe and scroll the DOM cards.
+    st.components.v1.html("""
+<script>
+(function(){
+  // Guard: register only once per Streamlit session to avoid duplicate listeners
+  if (window.parent.__si_listener) return;
+  window.parent.__si_listener = true;
+  window.parent.addEventListener('message', function(ev) {
+    if (!ev.data || ev.data.type !== 'scroll_to_intelligence' || !ev.data.id) return;
+    var card = window.parent.document.getElementById('si_card_' + ev.data.id);
+    if (!card) return;
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+    card.style.transition = 'box-shadow .3s';
+    card.style.boxShadow = '0 0 0 2px #39c5cf, 0 0 28px #39c5cf99';
+    setTimeout(function(){ card.style.boxShadow = '0 0 0 2px #39c5cf44, 0 0 12px #39c5cf33'; }, 700);
+    setTimeout(function(){ card.style.boxShadow = ''; }, 2600);
+  });
+})();
+</script>
+""", height=0)
 
     # ── STATION INTELLIGENCE CARDS ───────────────────────────────────────────────
     st.markdown("""
