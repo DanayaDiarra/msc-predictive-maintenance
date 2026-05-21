@@ -1792,114 +1792,20 @@ ANTHROPIC_API_KEY = "sk-ant-..."
     # ── TAB: USER GUIDE ───────────────────────────────────────────────
     with s_guide:
         sh("SYSTEM ARCHITECTURE — THE BIG PICTURE")
-        st.markdown("""
-<div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:1.2rem;margin-bottom:1rem;font-family:monospace;font-size:.72rem;line-height:1.8;color:#c9d1d9">
-
-<div style="text-align:center;font-size:.82rem;font-weight:700;color:#58a6ff;margin-bottom:.8rem">
-🏗 OrchestrAI NOC — End-to-End Agentic Predictive Maintenance Pipeline
-</div>
-
-<pre style="color:#8b949e;font-size:.68rem;line-height:1.5;overflow-x:auto">
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                          📡 BTS STATIONS (15 Sites)                              │
-│                    Sensors: Temp, Vibration, Power, RF Metrics                   │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │ Real-time telemetry (10s intervals)
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│               🗄 DATA SOURCES (3 Databases + Live Connector)                     │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  • Station Streams DB  → Sensor history, RUL predictions, anomaly flags         │
-│  • HR Database         → 14 engineers (skill matrix, availability, location)    │
-│  • Supply Chain DB     → 247 parts (stock levels, lead times, costs)            │
-│  • Live Connector      → Real-time MQTT/REST feed (optional)                    │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │ Unified data access layer
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│           🧠 PREDICTIVE ML PIPELINE (Phase 2: Ensemble + BC)                     │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  1. Feature Engineering  → 21 features (rolling stats, degradation, FFT)        │
-│  2. Transformer V2       → Attention-based sequence model (α=0.70)              │
-│  3. XGBoost Regressor    → Gradient boosting trees (α=0.30)                     │
-│  4. Ensemble Fusion      → Weighted average + bias correction                   │
-│  5. Output               → RUL (cycles), Confidence (%), Urgency Tier           │
-│                                                                                  │
-│  📊 Performance: RMSE=15.11 cycles, R²=0.8663, MAE=11.2 (C-MAPSS FD002)         │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │ RUL predictions every cycle
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│              🤖 MULTI-AGENT AGENTIC REASONING (3 Agents)                         │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  Agent 1: INTERPRETER   → Understands queries, extracts intent, routes tasks    │
-│  Agent 2: DIAGNOSTIC    → Analyzes sensor patterns, identifies fault modes      │
-│  Agent 3: PLANNING      → Generates action plans, selects evidence, prioritizes │
-│                                                                                  │
-│  🔗 RAG Knowledge Base  → 67 documents (SOPs, alarms, manuals, decision trees)  │
-│  📐 Embedding Model     → all-MiniLM-L6-v2 (384-dim vectors)                    │
-│  🎯 Evidence Retrieval  → Cosine similarity → Top-5 → Rerank → Bundle           │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │ Grounded decisions
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                   💬 MULTI-ENGINE AI CHATBOT (3 Tiers)                           │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  Priority 1: Groq LLaMA 3.3 70B      → Primary (free, fast, 600 tok/s)         │
-│  Priority 2: Anthropic Claude Haiku  → Fallback (paid, reliable, 2048 tok/s)   │
-│  Priority 3: Rule-based KB           → Always available (local, instant)        │
-│                                                                                  │
-│  📖 Context: RAG evidence + RUL data + engineer roster + parts inventory         │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │ Natural language interface
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                  🚨 DECISION & DISPATCH ENGINE                                   │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  • Urgency Scoring    → RUL < 20 = Critical, < 50 = High, < 100 = Medium       │
-│  • Engineer Matching  → Skill requirements + location + availability            │
-│  • Parts Allocation   → Check inventory → Reserve → Calculate ETA               │
-│  • Ticket Creation    → Auto-generate dispatch with full context                │
-│  • Notification       → SMS (Twilio), Email, In-app alerts                      │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │ Action execution
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                  📊 REAL-TIME DASHBOARD (Streamlit)                              │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  • Live Map           → 15 stations, pulsing urgency indicators                 │
-│  • Fleet Monitor      → Real-time RUL countdown, sensor sparklines              │
-│  • Station Detail     → Gauges, charts, fault diagnosis, action plan            │
-│  • Dispatch Panel     → Create tickets, track engineers, view history           │
-│  • Chatbot Interface  → Ask questions, get recommendations                       │
-└─────────────────────────────────────────────────────────────────────────────────┘
-</pre>
-
-<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #30363d">
-<strong style="color:#58a6ff">🎯 Key Performance Techniques:</strong>
-<ul style="margin:.5rem 0;padding-left:1.5rem;color:#8b949e">
-<li><strong style="color:#3fb950">Ensemble ML</strong> → Transformer + XGBoost weighted fusion (30% accuracy boost)</li>
-<li><strong style="color:#3fb950">RAG Grounding</strong> → LLM responses cite exact SOPs/manuals (zero hallucination)</li>
-<li><strong style="color:#3fb950">Multi-Agent System</strong> → Specialized agents (interpret → diagnose → plan)</li>
-<li><strong style="color:#3fb950">Streaming Updates</strong> → 10-second refresh, WebSocket-ready architecture</li>
-<li><strong style="color:#3fb950">Dual-Mode Operation</strong> → Simulation (demo) ↔ Live (production toggle)</li>
-<li><strong style="color:#3fb950">Graceful Degradation</strong> → 3-tier chatbot (Groq → Anthropic → Rules)</li>
-<li><strong style="color:#3fb950">Database Abstraction</strong> → SQLite (dev) → PostgreSQL (prod) seamless</li>
-<li><strong style="color:#3fb950">Bias Correction</strong> → Post-ensemble calibration (±3 cycles accuracy)</li>
-</ul>
-</div>
-
-<div style="margin-top:1rem;padding:.6rem;background:#1c2128;border-radius:6px;border-left:3px solid #58a6ff">
-<strong style="color:#58a6ff">💡 How It All Works Together:</strong><br>
-<span style="color:#8b949e;font-size:.68rem">
-Sensors stream data → ML predicts RUL → Agentic system analyzes context → RAG retrieves relevant knowledge →
-LLM generates recommendations → Engineer receives dispatch ticket → Parts are allocated → Maintenance executed →
-System learns from outcome → Repeat. All in real-time, fully automated, human-in-the-loop optional.
-</span>
-</div>
-
-</div>
-""", unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center;font-size:1rem;font-weight:700;color:#58a6ff;margin-bottom:1.2rem;font-family:monospace">🏗 OrchestrAI NOC — End-to-End Agentic Predictive Maintenance Pipeline</div>',unsafe_allow_html=True)
+        for _num,_title,_color,_content in [
+            ("1","📡 BTS STATIONS (15 Sites)","#58a6ff","<strong>Sensors:</strong> Temperature, Vibration, Power, RF Metrics<br><strong>Update Interval:</strong> Real-time telemetry every 10 seconds"),
+            ("2","🗄 DATA SOURCES (3 Databases + Live Connector)","#3fb950","<ul style='margin:.3rem 0;padding-left:1.5rem'><li><strong>Station Streams DB</strong> → Sensor history, RUL predictions, anomaly flags</li><li><strong>HR Database</strong> → 14 engineers (skill matrix, availability, location)</li><li><strong>Supply Chain DB</strong> → 247 parts (stock levels, lead times, costs)</li><li><strong>Live Connector</strong> → Real-time MQTT/REST feed (optional)</li></ul>"),
+            ("3","🧠 PREDICTIVE ML PIPELINE (Phase 2: Ensemble + BC)","#f0b429","<ol style='margin:.3rem 0;padding-left:1.5rem'><li><strong>Feature Engineering</strong> → 21 features (rolling stats, degradation, FFT)</li><li><strong>Transformer V2</strong> → Attention-based sequence model (α=0.70)</li><li><strong>XGBoost Regressor</strong> → Gradient boosting trees (α=0.30)</li><li><strong>Ensemble Fusion</strong> → Weighted average + bias correction</li><li><strong>Output</strong> → RUL (cycles), Confidence (%), Urgency Tier</li></ol><div style='margin-top:.5rem;padding:.5rem;background:#1c2128;border-radius:4px;font-size:.72rem'>📊 Performance: <strong>RMSE=15.11</strong> cycles, <strong>R²=0.8663</strong>, MAE=11.2 (C-MAPSS FD002)</div>"),
+            ("4","🤖 MULTI-AGENT AGENTIC REASONING (3 Agents)","#bc8cff","<strong>Agent 1: INTERPRETER</strong> → Understands queries, extracts intent, routes tasks<br><strong>Agent 2: DIAGNOSTIC</strong> → Analyzes sensor patterns, identifies fault modes<br><strong>Agent 3: PLANNING</strong> → Generates action plans, selects evidence, prioritizes<br><div style='margin-top:.5rem;padding:.5rem;background:#1c2128;border-radius:4px;font-size:.72rem'><strong>🔗 RAG Knowledge Base:</strong> 67 documents (SOPs, alarms, manuals, decision trees)<br><strong>📐 Embedding Model:</strong> all-MiniLM-L6-v2 (384-dim vectors)<br><strong>🎯 Retrieval:</strong> Cosine similarity → Top-5 → Rerank → Bundle</div>"),
+            ("5","💬 MULTI-ENGINE AI CHATBOT (3-Tier Fallback)","#39c5cf","<strong style='color:#3fb950'>Priority 1: Groq LLaMA 3.3 70B</strong> → Primary (free, fast, 600 tok/s)<br><strong style='color:#39c5cf'>Priority 2: Anthropic Claude Haiku</strong> → Fallback (paid, reliable, 2048 tok/s)<br><strong style='color:#7d8590'>Priority 3: Rule-based KB</strong> → Always available (local, instant)<br><div style='margin-top:.5rem;padding:.5rem;background:#1c2128;border-radius:4px;font-size:.72rem'>📖 Context: RAG evidence + RUL data + engineer roster + parts inventory</div>"),
+            ("6","🚨 DECISION & DISPATCH ENGINE","#ff6b35","<ul style='margin:.3rem 0;padding-left:1.5rem'><li><strong>Urgency Scoring</strong> → RUL &lt; 20 = Critical, &lt; 50 = High, &lt; 100 = Medium</li><li><strong>Engineer Matching</strong> → Skill requirements + location + availability</li><li><strong>Parts Allocation</strong> → Check inventory → Reserve → Calculate ETA</li><li><strong>Ticket Creation</strong> → Auto-generate dispatch with full context</li><li><strong>Notification</strong> → SMS (Twilio), Email, In-app alerts</li></ul>"),
+            ("7","📊 REAL-TIME DASHBOARD (Streamlit)","#58a6ff","<ul style='margin:.3rem 0;padding-left:1.5rem'><li><strong>Live Map</strong> → 15 stations, pulsing urgency indicators</li><li><strong>Fleet Monitor</strong> → Real-time RUL countdown, sensor sparklines</li><li><strong>Station Detail</strong> → Gauges, charts, fault diagnosis, action plan</li><li><strong>Dispatch Panel</strong> → Create tickets, track engineers, view history</li><li><strong>Chatbot Interface</strong> → Ask questions, get recommendations</li></ul>"),
+        ]:
+            st.markdown(f"<div style='background:#161b22;border:2px solid {_color};border-radius:8px;padding:1rem;margin-bottom:.5rem'><div style='font-weight:700;color:{_color};font-size:.85rem;margin-bottom:.5rem'>LAYER {_num}: {_title}</div><div style='color:#8b949e;font-size:.75rem'>{_content}</div></div>",unsafe_allow_html=True)
+            if _num!="7": st.markdown(f'<div style="text-align:center;color:{_color};font-size:1.5rem;margin:.3rem 0">↓</div>',unsafe_allow_html=True)
+        st.markdown("""<div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:1rem;margin:1rem 0"><div style="font-weight:700;color:#58a6ff;font-size:.85rem;margin-bottom:.5rem">🎯 KEY PERFORMANCE TECHNIQUES</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.72rem;color:#8b949e"><div style="padding:.5rem;background:#161b22;border-radius:4px;border-left:3px solid #3fb950"><strong style="color:#3fb950">Ensemble ML</strong><br>Transformer + XGBoost fusion<br>30% accuracy boost</div><div style="padding:.5rem;background:#161b22;border-radius:4px;border-left:3px solid #3fb950"><strong style="color:#3fb950">RAG Grounding</strong><br>LLM cites exact SOPs/manuals<br>Zero hallucination</div><div style="padding:.5rem;background:#161b22;border-radius:4px;border-left:3px solid #39c5cf"><strong style="color:#39c5cf">Multi-Agent System</strong><br>Specialized task routing<br>Interpret → Diagnose → Plan</div><div style="padding:.5rem;background:#161b22;border-radius:4px;border-left:3px solid #39c5cf"><strong style="color:#39c5cf">Streaming Updates</strong><br>10-second real-time refresh<br>WebSocket-ready</div><div style="padding:.5rem;background:#161b22;border-radius:4px;border-left:3px solid #f0b429"><strong style="color:#f0b429">Dual-Mode Operation</strong><br>Simulation ↔ Live toggle<br>Demo + Production ready</div><div style="padding:.5rem;background:#161b22;border-radius:4px;border-left:3px solid #f0b429"><strong style="color:#f0b429">Graceful Degradation</strong><br>3-tier chatbot fallback<br>Always operational</div><div style="padding:.5rem;background:#161b22;border-radius:4px;border-left:3px solid #bc8cff"><strong style="color:#bc8cff">Database Abstraction</strong><br>SQLite → PostgreSQL<br>Seamless migration</div><div style="padding:.5rem;background:#161b22;border-radius:4px;border-left:3px solid #bc8cff"><strong style="color:#bc8cff">Bias Correction</strong><br>Post-ensemble calibration<br>±3 cycles accuracy</div></div></div>""",unsafe_allow_html=True)
+        st.markdown("""<div style="background:#1c2128;border-left:4px solid #58a6ff;border-radius:6px;padding:1rem;margin-bottom:1rem"><div style="font-weight:700;color:#58a6ff;font-size:.85rem;margin-bottom:.5rem">💡 HOW IT ALL WORKS TOGETHER</div><div style="color:#8b949e;font-size:.75rem;line-height:1.6">Sensors stream data <strong style="color:#58a6ff">→</strong> ML predicts RUL <strong style="color:#58a6ff">→</strong> Agentic system analyzes context <strong style="color:#58a6ff">→</strong> RAG retrieves relevant knowledge <strong style="color:#58a6ff">→</strong> LLM generates recommendations <strong style="color:#58a6ff">→</strong> Engineer receives dispatch ticket <strong style="color:#58a6ff">→</strong> Parts are allocated <strong style="color:#58a6ff">→</strong> Maintenance executed <strong style="color:#58a6ff">→</strong> System learns from outcome <strong style="color:#58a6ff">→</strong> Repeat.<br><br><strong style="color:#3fb950">All in real-time, fully automated, human-in-the-loop optional.</strong></div></div>""",unsafe_allow_html=True)
 
         sh("PAGE NAVIGATION REFERENCE")
         for _pn,_pc,_pdesc in [
