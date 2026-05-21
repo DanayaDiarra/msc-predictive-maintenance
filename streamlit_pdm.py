@@ -3413,7 +3413,7 @@ GROQ_API_KEY       = "gsk_..."
         </div>""", unsafe_allow_html=True)
 
                 with _kpi_tabs[3]:
-                    sh("STATION SENSOR KPIs — ALL 15 STATIONS")
+                    sh("STATION SENSOR KPIs — ALL 25 STATIONS")
                     _sensor_rows = ""
                     _THS = "background:#1c2333;color:#7d8590;padding:.3rem .55rem;border:1px solid #30363d;font-size:.62rem"
                     _TDS = "padding:.27rem .55rem;border:1px solid #30363d;font-size:.70rem;font-family:monospace"

@@ -21,9 +21,9 @@ The project implements a multi-agent pipeline using XGBoost, PyTorch Transformer
    python seed_databases.py
    ```
    This creates three SQLite databases in `data/databases/`:
-   - `hr_database.db` - Engineer roster (14 engineers)
+   - `hr_database.db` - Engineer roster (27 engineers: 13 Mali, 14 Senegal)
    - `supply_chain.db` - Parts and inventory
-   - `station_streams.db` - Telemetry and RUL predictions
+   - `station_streams.db` - Telemetry and RUL predictions for 25 stations
 
 3. **Run the Application:**
    ```bash
@@ -46,7 +46,7 @@ agentic_pdm/
 ├── START_APP.sh               # Startup script
 │
 ├── config/
-│   └── stations.py            # Centralized station configuration (15 BTS stations)
+│   └── stations.py            # Centralized station configuration (25 BTS stations)
 │
 ├── Core Agents (Production):
 │   ├── interpreter_agent.py   # Alert construction
@@ -79,8 +79,11 @@ agentic_pdm/
 
 ## 🗄️ Database Configuration
 
-The HR database is now automatically created and includes 14 engineers:
-- **ENG001-ENG012:** Field engineers (power, thermal, RF, backhaul, baseband specialists)
+The HR database is now automatically created and includes 27 engineers:
+- **ENG001-ENG027:** Field engineers (power, thermal, RF, backhaul, baseband specialists)
+  - 8 Senior, 10 Mid-Level, 9 Junior engineers
+  - 13 based in Mali, 14 based in Senegal
+  - All with phone numbers (+221/+223) and shift assignments (16 Day, 11 Night)
 - **MGR001-MGR002:** Managers
 
 Database connection strings for Settings:
@@ -119,7 +122,9 @@ ANTHROPIC_API_KEY = "sk-ant-your-api-key-here"
 
 ## 📝 Recent Updates (2026-05-21)
 
-- ✅ Fixed HR database - now properly accessible with 14 engineers
+- ✅ Scaled to 25 stations (12 Mali, 11 Senegal, 2 others) and 27 engineers
+- ✅ Added phone notifications and shift management (Day/Night) for engineers
+- ✅ Fixed HR database - now properly accessible with 27 engineers
 - ✅ Removed code duplications (~3,200 lines removed)
 - ✅ Centralized station configuration in `config/stations.py`
 - ✅ Set `orchestrai_noc.py` as the primary dashboard

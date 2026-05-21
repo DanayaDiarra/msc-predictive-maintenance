@@ -1,14 +1,29 @@
 # Changes Summary - 2026-05-21
 
 ## Overview
-Successfully cleaned up code duplications, fixed HR database access, and set `orchestrai_noc.py` as the main application.
+Successfully scaled to 25 stations and 27 engineers, cleaned up code duplications, fixed HR database access, and set `orchestrai_noc.py` as the main application.
+
+## 📈 System Scale-Up (Latest)
+
+### Expanded Coverage ✅
+- **Stations:** Increased from 15 to 25 BTS stations
+  - 12 stations in Mali
+  - 11 stations in Senegal
+  - 2 stations in Guinea and Burkina Faso
+- **Engineers:** Expanded from 14 to 27 engineers
+  - 13 based in Mali
+  - 14 based in Senegal
+  - All equipped with phone numbers (+221/+223) and shift assignments (16 Day, 11 Night)
+  - Distribution: 8 Senior, 10 Mid-Level, 9 Junior
+- **Phone Notifications:** Implemented SMS alerts when engineers are assigned to sites
+- **Shift Management:** Day/Night shifts tracked in database for optimal dispatch
 
 ## 🗄️ Database Fixes
 
 ### HR Database Fixed ✅
 - **Created:** `data/databases/hr_database.db`
-- **Engineers:** 14 engineers now accessible
-  - ENG001-ENG012: Field engineers (power, thermal, RF, backhaul, baseband)
+- **Engineers:** 27 engineers now accessible
+  - ENG001-ENG027: Field engineers (power, thermal, RF, backhaul, baseband)
   - MGR001-MGR002: Managers
 - **Status:** Fully operational and integrated
 
@@ -31,7 +46,7 @@ SQLite · path: data/databases/hr_database.db
 
 ### Files Created
 1. **`config/stations.py`** - Centralized station configuration
-   - Single source of truth for all 15 BTS stations
+   - Single source of truth for all 25 BTS stations
    - Includes STATION_NOMINALS for simulation backend
    - Eliminates triple duplication
 
@@ -81,7 +96,7 @@ SQLite · path: data/databases/hr_database.db
   - `streamlit_pdm.py` (15 stations)
 
 - **After:** Station data defined in 1 place
-  - `config/stations.py` (15 stations)
+  - `config/stations.py` (25 stations - scaled up from 15)
   - All files import from central config
 
 ## 🚀 How to Use
@@ -129,7 +144,12 @@ agentic_pdm/
 
 ## ✅ Verification Checklist
 
-- [x] HR database created and populated (14 engineers)
+- [x] System scaled to 25 stations (12 Mali, 11 Senegal, 2 others)
+- [x] System scaled to 27 engineers (13 Mali, 14 Senegal)
+- [x] Phone numbers added for all engineers (+221/+223)
+- [x] Shift assignments implemented (16 Day, 11 Night)
+- [x] Phone notifications enabled on dispatch
+- [x] HR database created and populated (27 engineers)
 - [x] Engineer data accessible via `fetch_engineers()`
 - [x] Duplicate files removed (agents.py, streamlit_dashboard.py)
 - [x] Station config centralized in `config/stations.py`
