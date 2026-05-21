@@ -586,59 +586,66 @@ with st.sidebar:
     if st.session_state.nav_page not in all_pages:
         st.session_state.nav_page="Station Map"
 
-    # Professional icons - minimal and clean
-    _icons={"Station Map":"◉","Live Fleet Monitor":"▣","Fleet Overview":"▦","Station Detail":"◈",
-            "Dispatch & Roster":"▤","Engineer Chatbot":"◐","Pipeline Intelligence":"◆",
-            "Results & Ablation":"▥","Settings":"⚙"}
-
-    # Custom styling for each navigation button
+    # Navigation styling - no icons, clean boxes with proper left alignment
     st.markdown("""<style>
-    /* Base styling for all navigation buttons */
-    div[data-testid="stSidebar"] button[kind="primary"],
-    div[data-testid="stSidebar"] button[kind="secondary"] {
-        border-radius: 8px !important;
-        padding: 0.6rem 0.8rem !important;
+    /* Force left alignment for ALL sidebar buttons */
+    div[data-testid="stSidebar"] button {
+        border-radius: 6px !important;
+        padding: 0.7rem 1rem !important;
         text-align: left !important;
         justify-content: flex-start !important;
         font-family: 'IBM Plex Sans', sans-serif !important;
         font-size: 0.875rem !important;
         font-weight: 500 !important;
-        border: 1px solid #30363d !important;
-        background: #161b22 !important;
+        letter-spacing: 0.01em !important;
+        border: 1.5px solid #30363d !important;
+        background: #0d1117 !important;
         color: #8b949e !important;
         transition: all 0.2s ease !important;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
     }
-    div[data-testid="stSidebar"] button[kind="primary"]:hover,
-    div[data-testid="stSidebar"] button[kind="secondary"]:hover {
-        background: #1c2333 !important;
-        border-color: #39c5cf50 !important;
+
+    /* Override Streamlit's default centering */
+    div[data-testid="stSidebar"] button > div {
+        width: 100% !important;
+        text-align: left !important;
+        display: flex !important;
+        justify-content: flex-start !important;
+    }
+
+    div[data-testid="stSidebar"] button p {
+        text-align: left !important;
+        margin: 0 !important;
+    }
+
+    /* Hover state - colorful border */
+    div[data-testid="stSidebar"] button:hover {
+        background: #161b22 !important;
+        border-color: #58a6ff !important;
         color: #e6edf3 !important;
-        transform: translateX(2px) !important;
-    }
-    /* Active state */
-    div[data-testid="stSidebar"] button.active-nav {
-        background: linear-gradient(90deg, #1a2744, #1c2333) !important;
-        border: 1px solid #39c5cf !important;
-        color: #39c5cf !important;
-        font-weight: 600 !important;
-        box-shadow: inset 3px 0 0 #39c5cf, 0 0 12px #39c5cf15 !important;
+        box-shadow: 0 2px 8px rgba(88, 166, 255, 0.15) !important;
     }
     </style>""", unsafe_allow_html=True)
 
     for _pg in all_pages:
-        _is_act=st.session_state.nav_page==_pg
-        _pk="nav_"+"".join(c for c in _pg if c.isalnum() or c in "_- ")[:28]
-        _icon = _icons.get(_pg,'')
-        _label = f"{_icon}  {_pg}" if _icon else _pg
+        _is_act = st.session_state.nav_page == _pg
+        _pk = "nav_" + "".join(c for c in _pg if c.isalnum() or c in "_- ")[:28]
 
+        # Active state styling with colored box
         if _is_act:
             st.markdown(f"""<style>div[data-testid="stSidebar"] button[data-testid="{_pk}"]{{
-              background:linear-gradient(90deg, #1a2744, #1c2333)!important;
-              border:1px solid #39c5cf!important;
-              color:#39c5cf!important;font-weight:600!important;
-              box-shadow:inset 3px 0 0 #39c5cf, 0 0 12px #39c5cf15!important;}}</style>""", unsafe_allow_html=True)
-        if st.button(_label,key=_pk,use_container_width=True):
-            st.session_state.nav_page=_pg; st.rerun()
+              background: #1c2333 !important;
+              border: 1.5px solid #39c5cf !important;
+              color: #39c5cf !important;
+              font-weight: 600 !important;
+              box-shadow: 0 0 16px rgba(57, 197, 207, 0.2), inset 3px 0 0 #39c5cf !important;
+            }}</style>""", unsafe_allow_html=True)
+
+        if st.button(_pg, key=_pk, use_container_width=True):
+            st.session_state.nav_page = _pg
+            st.rerun()
 
     st.markdown("---")
     st.markdown(f'<div style="text-align:center;font-family:monospace;font-size:.58rem;color:#5a6475;line-height:1.9">All-4 RMSE <span style="color:#39c5cf">15.11</span><br>R² <span style="color:#58a6ff">0.8663</span><br>Session <span style="color:#f0b429">{elapsed_min():.1f}m</span></div>',unsafe_allow_html=True)
