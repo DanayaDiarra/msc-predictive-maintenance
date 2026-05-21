@@ -834,8 +834,6 @@ with st.sidebar:
         st.session_state.auth=False; st.rerun()
 
 pk = st.session_state.get("nav_page","Station Map")
-if st.session_state.live_mode:
-    time.sleep(st.session_state.refresh_interval); st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2335,4 +2333,11 @@ ANTHROPIC_API_KEY = "sk-ant-..."
         ]:
             st.markdown(f'<div style="display:flex;gap:.8rem;padding:.45rem .8rem;background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:.25rem"><span style="font-size:.76rem;font-weight:700;color:{_pc};font-family:monospace;min-width:200px">{_pn}</span><span style="font-size:.70rem;color:#c9d1d9;line-height:1.6">{_pdesc}</span></div>',unsafe_allow_html=True)
         st.markdown(f'<div style="margin-top:.8rem;font-family:monospace;font-size:.63rem;color:#5a6475;text-align:center">Danaya Diarra · GSOM SPBU · Agentic AI for Predictive Maintenance · {time.strftime("%B %Y")}<br>Phase2 Ensemble+BC · RMSE=15.11 · R²=0.8663 · TransV2(α=0.70)+XGB(α=0.30) · 25 stations · 27 engineers · West Africa</div>',unsafe_allow_html=True)
+
+# ── AUTO-REFRESH ─────────────────────────────────────────────────────────────
+# Must be the very last statement so the full page renders before sleeping.
+# time.sleep() blocks briefly then st.rerun() triggers a clean re-render cycle.
+if st.session_state.get("live_mode", False):
+    time.sleep(st.session_state.get("refresh_interval", 10))
+    st.rerun()
 
