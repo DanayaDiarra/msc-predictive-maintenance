@@ -916,9 +916,9 @@ if pk == "Station Map":
     </script>
     """, unsafe_allow_html=True)
 
-    # ── RECOMMENDATION CARDS — sorted Critical → Warning → Monitor ──────────────
+    # ── STATION INTELLIGENCE CARDS ───────────────────────────────────────────────
     st.markdown("""
-<div style="display:flex;align-items:center;gap:.7rem;margin:.9rem 0 .6rem">
+<div style="display:flex;align-items:center;gap:.7rem;margin:.9rem 0 .55rem">
   <div style="flex:1;height:1px;background:linear-gradient(90deg,#ff6b3566,transparent)"></div>
   <span style="font-family:monospace;font-size:.72rem;font-weight:700;color:#ff6b35;letter-spacing:.08em">
     ⚡ STATION INTELLIGENCE — ROOT CAUSE · RISK · RECOMMENDED ACTION
@@ -926,24 +926,65 @@ if pk == "Station Map":
   <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,#ff6b3566)"></div>
 </div>""", unsafe_allow_html=True)
 
-    sorted_s=sorted(stations_data,key=lambda x:(0 if x["urgency"]=="Critical" else 1 if x["urgency"]=="Warning" else 2,x["rul"]))
-    for row_s in range(0,len(sorted_s),3):
-        row_items=sorted_s[row_s:row_s+3]
-        cols=st.columns(len(row_items))
-        for col,s in zip(cols,row_items):
-            urg=s["urgency"]
-            color="#ff6b35" if urg=="Critical" else "#f0b429" if urg=="Warning" else "#3fb950"
-            ico="🔴" if urg=="Critical" else "🟡" if urg=="Warning" else "🟢"
-            sub_label=s["sub"].replace("_"," ").title()
-            loss=s.get("rec_loss",0); dt=s.get("rec_downtime",1)
-            cause=s.get("rec_cause",""); risks=s.get("rec_risks",""); sol=s.get("rec_solution","")
-            rul_pct=min(100,int(s["rul"]/125*100))
-            with col:
-                st.markdown(f"""
+    # ── Filter bar ───────────────────────────────────────────────────────────────
+    _fc1,_fc2,_fc3,_fc4 = st.columns([2,2,2,1])
+    with _fc1:
+        _urg_opts = ["All Urgencies","🔴 Critical","🟡 Warning","🟢 Monitor"]
+        _f_urg = st.selectbox("Urgency",_urg_opts,index=0,key="si_f_urg",label_visibility="collapsed")
+    with _fc2:
+        _sub_nice = {"All Subsystems":"All Subsystems","power_subsystem":"Power","thermal_management":"Thermal",
+                     "rf_antenna":"RF / Antenna","backhaul_connectivity":"Backhaul","baseband_processing":"Baseband"}
+        _f_sub = st.selectbox("Subsystem",list(_sub_nice.keys()),index=0,key="si_f_sub",
+                              format_func=lambda x:_sub_nice[x],label_visibility="collapsed")
+    with _fc3:
+        _countries_all = sorted({s["country"] for s in stations_data})
+        _f_cty = st.selectbox("Country",["All Countries"]+_countries_all,index=0,key="si_f_cty",label_visibility="collapsed")
+    with _fc4:
+        _top_n = st.selectbox("Show",["Top 6","Top 9","Top 12","All"],index=0,key="si_f_top",label_visibility="collapsed")
+
+    # ── Apply filters ─────────────────────────────────────────────────────────
+    _urg_map = {"🔴 Critical":"Critical","🟡 Warning":"Warning","🟢 Monitor":"Monitor"}
+    sorted_s = sorted(stations_data, key=lambda x:(0 if x["urgency"]=="Critical" else 1 if x["urgency"]=="Warning" else 2, x["rul"]))
+    if _f_urg != "All Urgencies":
+        sorted_s = [s for s in sorted_s if s["urgency"] == _urg_map.get(_f_urg,"")]
+    if _f_sub != "All Subsystems":
+        sorted_s = [s for s in sorted_s if s["sub"] == _f_sub]
+    if _f_cty != "All Countries":
+        sorted_s = [s for s in sorted_s if s["country"] == _f_cty]
+    _limit = {"Top 6":6,"Top 9":9,"Top 12":12}.get(_top_n, len(sorted_s))
+    display_s = sorted_s[:_limit]
+
+    # ── Result count badge ────────────────────────────────────────────────────
+    total_filtered = len(sorted_s)
+    nc_f = sum(1 for s in display_s if s["urgency"]=="Critical")
+    nw_f = sum(1 for s in display_s if s["urgency"]=="Warning")
+    st.markdown(
+        f'<div style="font-family:monospace;font-size:.63rem;color:#7d8590;margin-bottom:.5rem">'
+        f'Showing <span style="color:#e6edf3;font-weight:700">{len(display_s)}</span> of '
+        f'<span style="color:#e6edf3">{total_filtered}</span> filtered stations'
+        f'{"  ·  <span style=\\'color:#ff6b35\\'>"+str(nc_f)+" critical</span>" if nc_f else ""}'
+        f'{"  ·  <span style=\\'color:#f0b429\\'>"+str(nw_f)+" warning</span>" if nw_f else ""}'
+        f'</div>', unsafe_allow_html=True)
+
+    if not display_s:
+        st.markdown('<div style="font-family:monospace;font-size:.7rem;color:#7d8590;padding:.8rem 0">No stations match the selected filters.</div>', unsafe_allow_html=True)
+    else:
+        for row_s in range(0, len(display_s), 3):
+            row_items = display_s[row_s:row_s+3]
+            cols = st.columns(3)
+            for col, s in zip(cols, row_items):
+                urg=s["urgency"]
+                color="#ff6b35" if urg=="Critical" else "#f0b429" if urg=="Warning" else "#3fb950"
+                ico="🔴" if urg=="Critical" else "🟡" if urg=="Warning" else "🟢"
+                sub_label=s["sub"].replace("_"," ").title()
+                loss=s.get("rec_loss",0); dt=s.get("rec_downtime",1)
+                cause=s.get("rec_cause",""); risks=s.get("rec_risks",""); sol=s.get("rec_solution","")
+                rul_pct=min(100,int(s["rul"]/125*100))
+                with col:
+                    st.markdown(f"""
 <div style="background:#161b22;border:1px solid {color}33;border-top:3px solid {color};
      border-radius:8px;padding:.75rem .85rem .55rem;margin-bottom:.35rem">
 
-  <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.45rem">
     <div>
       <div style="font-family:'IBM Plex Mono',monospace;font-size:.9rem;font-weight:700;color:{color}">{ico} {s['id']}</div>
@@ -958,32 +999,28 @@ if pk == "Station Map":
     </div>
   </div>
 
-  <!-- RUL progress bar -->
   <div style="background:#21262d;height:3px;border-radius:2px;margin-bottom:.55rem">
     <div style="width:{rul_pct}%;height:3px;background:{color};border-radius:2px"></div>
   </div>
 
-  <!-- Cause -->
   <div style="background:#ff6b3510;border-left:3px solid #ff6b35;padding:6px 8px;border-radius:3px;margin-bottom:5px">
     <div style="font-size:.57rem;color:#ff6b35;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">⚠ Root Cause</div>
     <div style="font-size:.62rem;color:#c9d1d9;line-height:1.45">{cause[:130]}{'…' if len(cause)>130 else ''}</div>
   </div>
 
-  <!-- Risks -->
   <div style="background:#f0b42910;border-left:3px solid #f0b429;padding:6px 8px;border-radius:3px;margin-bottom:5px">
     <div style="font-size:.57rem;color:#f0b429;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">🔥 Business Risk</div>
     <div style="font-size:.62rem;color:#c9d1d9;line-height:1.45">{risks[:130]}{'…' if len(risks)>130 else ''}</div>
   </div>
 
-  <!-- Solution -->
   <div style="background:#3fb95010;border-left:3px solid #3fb950;padding:6px 8px;border-radius:3px;margin-bottom:.55rem">
     <div style="font-size:.57rem;color:#3fb950;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">✓ Recommended Action</div>
     <div style="font-size:.62rem;color:#c9d1d9;line-height:1.45">{sol[:130]}{'…' if len(sol)>130 else ''}</div>
   </div>
 
 </div>""", unsafe_allow_html=True)
-                if col.button(f"▶ {s['id']} — Open Full Detail",key=f"mapbtn_{s['id']}",use_container_width=True):
-                    st.session_state.nav_page="Station Detail"; st.session_state["_map_sel"]=s["id"]; st.rerun()
+                    if col.button(f"▶ {s['id']} — Open Full Detail",key=f"mapbtn_{s['id']}",use_container_width=True):
+                        st.session_state.nav_page="Station Detail"; st.session_state["_map_sel"]=s["id"]; st.rerun()
 
     # Critical banner
     crit_list=[s for s in stations_data if s["urgency"]=="Critical"]
