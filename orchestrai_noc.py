@@ -1098,11 +1098,11 @@ elif pk == "Results & Ablation":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pk == "Engineer Chatbot":
     if not IS_ENG: st.warning("Engineer / Admin role required."); st.stop()
-    ant_key=_get_ant_key()
-    if ant_key:
-        st.markdown(f'<div style="background:#0d1117;border:1px solid #3fb95055;border-radius:6px;padding:.38rem .85rem;margin-bottom:.6rem;font-family:monospace;font-size:.66rem;color:#3fb950">🔌 Claude Haiku · {ant_key[:8]}...{ant_key[-4:]}</div>',unsafe_allow_html=True)
+    _groq_k=st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
+    if _groq_k and len(_groq_k)>10:
+        st.markdown(f'<div style="background:#0d1117;border:1px solid #3fb95055;border-radius:6px;padding:.38rem .85rem;margin-bottom:.6rem;font-family:monospace;font-size:.66rem;color:#3fb950">🔌 LLaMA 3.3 70B · Groq · {_groq_k[:8]}...{_groq_k[-4:]}</div>',unsafe_allow_html=True)
     else:
-        st.markdown('<div style="background:#1c2333;border:1px solid #f0b42944;border-radius:6px;padding:.6rem .85rem;margin-bottom:.6rem;font-size:.76rem;color:#f0b429;font-family:monospace">⚠ No Anthropic key — rule-based mode. Add key in Settings → ⚙ System & API.</div>',unsafe_allow_html=True)
+        st.markdown('<div style="background:#1c2333;border:1px solid #f0b42944;border-radius:6px;padding:.6rem .85rem;margin-bottom:.6rem;font-size:.76rem;color:#f0b429;font-family:monospace">⚠ No Groq key — rule-based mode. Add key in Settings → ⚙ System & API.</div>',unsafe_allow_html=True)
     QS=["What does alarm PWR-001 mean?","How do I test for PIM?","Station FD002_47 has RUL 14.7 — urgent?","Spare parts for cooling fan replacement?","COOL-001 vs COOL-003 difference?","ITU-T G.826 ESR threshold?","BBU software upgrade duration?","Gradual VSWR increase — cause?"]
     sh("QUICK QUESTIONS")
     for row in [QS[:4],QS[4:]]:
@@ -1115,31 +1115,35 @@ elif pk == "Engineer Chatbot":
         if msg["role"]=="user":
             st.markdown(f'<div style="display:flex;justify-content:flex-end;margin:.35rem 0"><div class="cu">{msg["content"]}</div></div>',unsafe_allow_html=True)
         else:
-            eng=msg.get("engine",""); ec="#39c5cf" if "claude" in eng.lower() or "anthropic" in eng.lower() else "#7d8590"
+            eng=msg.get("engine",""); ec="#3fb950" if "groq" in eng.lower() or "llama" in eng.lower() else ("#39c5cf" if "claude" in eng.lower() or "anthropic" in eng.lower() else "#7d8590")
             st.markdown(f'<div style="display:flex;gap:.5rem;margin:.35rem 0"><div style="font-size:1rem;margin-top:4px">⚡</div><div class="ca">{msg["content"]}<div style="margin-top:.3rem;font-family:monospace;font-size:.60rem;color:{ec}">{eng}</div></div></div>',unsafe_allow_html=True)
     if st.session_state.chat_thinking and st.session_state.chat_history:
         last_q=st.session_state.chat_history[-1]["content"]
         with st.spinner("Thinking…"):
             answer=None; engine_used="Rule-based"
             sys_p="You are an expert telecom BTS maintenance engineer. Answer alarm codes, procedures, RUL interpretation. Cite [DOC-ID]. Be concise and actionable."
-            if ant_key:
-                import anthropic as _ant
+            # Try Groq first (PRIMARY)
+            _groq_k=st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
+            if _groq_k and len(_groq_k)>10:
                 try:
-                    client=_ant.Anthropic(api_key=ant_key)
-                    prev=[{"role":m["role"],"content":re.sub(r"<[^>]+>","",str(m["content"])).strip()} for m in st.session_state.chat_history[:-1][-6:] if m["role"] in ("user","assistant")]
-                    prev.append({"role":"user","content":last_q})
-                    resp=client.messages.create(model="claude-haiku-4-5-20251001",max_tokens=700,system=sys_p,messages=prev)
-                    answer=resp.content[0].text; engine_used="Claude Haiku · Anthropic"
-                except Exception as _e: pass
+                    import urllib.request as _ur, json as _j2
+                    _gp=_j2.dumps({"model":"llama-3.3-70b-versatile","max_tokens":600,"messages":[{"role":"system","content":sys_p},{"role":"user","content":last_q}]}).encode()
+                    with _ur.urlopen(_ur.Request("https://api.groq.com/openai/v1/chat/completions",data=_gp,headers={"Authorization":f"Bearer {_groq_k}","Content-Type":"application/json"}),timeout=15) as _gr:
+                        answer=_j2.loads(_gr.read())["choices"][0]["message"]["content"]; engine_used="LLaMA 3.3 70B · Groq"
+                except Exception: pass
+            # Try Anthropic as fallback
             if not answer:
-                _groq_k=st.session_state.get("_groq_key","") or os.environ.get("GROQ_API_KEY","")
-                if _groq_k and len(_groq_k)>10:
+                ant_key=_get_ant_key()
+                if ant_key:
+                    import anthropic as _ant
                     try:
-                        import urllib.request as _ur, json as _j2
-                        _gp=_j2.dumps({"model":"llama-3.3-70b-versatile","max_tokens":600,"messages":[{"role":"system","content":sys_p},{"role":"user","content":last_q}]}).encode()
-                        with _ur.urlopen(_ur.Request("https://api.groq.com/openai/v1/chat/completions",data=_gp,headers={"Authorization":f"Bearer {_groq_k}","Content-Type":"application/json"}),timeout=15) as _gr:
-                            answer=_j2.loads(_gr.read())["choices"][0]["message"]["content"]; engine_used="LLaMA 3.3 70B · Groq"
-                    except Exception: pass
+                        client=_ant.Anthropic(api_key=ant_key)
+                        prev=[{"role":m["role"],"content":re.sub(r"<[^>]+>","",str(m["content"])).strip()} for m in st.session_state.chat_history[:-1][-6:] if m["role"] in ("user","assistant")]
+                        prev.append({"role":"user","content":last_q})
+                        resp=client.messages.create(model="claude-haiku-4-5-20251001",max_tokens=700,system=sys_p,messages=prev)
+                        answer=resp.content[0].text; engine_used="Claude Haiku · Anthropic"
+                    except Exception as _e: pass
+            # Rule-based final fallback
             if not answer:
                 rb=rule_based_answer(last_q)
                 answer=rb if rb else "No specific rule matched. Ask about alarm codes (PWR, COOL, RF, BKH, BBU), RUL urgency, or maintenance procedures."
@@ -1700,17 +1704,7 @@ password = "your-pw"
         sh("API KEY MANAGEMENT")
         k1,k2=st.columns(2)
         with k1:
-            sh("Anthropic (primary)")
-            _current_ant = st.session_state.get("_rt_ant_key","")
-            if _current_ant:
-                st.info(f"🔑 Current key: {_current_ant[:8]}...{_current_ant[-4:]} ({len(_current_ant)} chars)")
-            _av=st.text_input("Key (sk-ant-...)",type="password",value=_current_ant,placeholder="sk-ant-...",key="sett_ant")
-            if st.button("Save Anthropic key",use_container_width=True,key="save_ant"):
-                st.session_state._rt_ant_key=_av.strip()
-                st.success(f"✓ Anthropic key saved ({len(_av.strip())} chars)")
-                st.rerun()
-        with k2:
-            sh("Groq (free fallback)")
+            sh("Groq (primary)")
             _current_groq = st.session_state.get("_groq_key","")
             if _current_groq:
                 st.info(f"🔑 Current key: {_current_groq[:8]}...{_current_groq[-4:]} ({len(_current_groq)} chars)")
@@ -1719,8 +1713,18 @@ password = "your-pw"
                 st.session_state._groq_key=_gv.strip()
                 st.success(f"✓ Groq key saved ({len(_gv.strip())} chars)")
                 st.rerun()
+        with k2:
+            sh("Anthropic (fallback)")
+            _current_ant = st.session_state.get("_rt_ant_key","")
+            if _current_ant:
+                st.info(f"🔑 Current key: {_current_ant[:8]}...{_current_ant[-4:]} ({len(_current_ant)} chars)")
+            _av=st.text_input("Key (sk-ant-...)",type="password",value=_current_ant,placeholder="sk-ant-...",key="sett_ant")
+            if st.button("Save Anthropic key",use_container_width=True,key="save_ant"):
+                st.session_state._rt_ant_key=_av.strip()
+                st.success(f"✓ Anthropic key saved ({len(_av.strip())} chars)")
+                st.rerun()
         sh("PRIORITY ORDER")
-        st.markdown('<div style="font-family:monospace;font-size:.72rem;color:#c9d1d9;line-height:2">1. <strong style="color:#39c5cf">Anthropic Claude Haiku</strong> (highest quality)<br>2. <strong style="color:#3fb950">Groq LLaMA 3.3 70B</strong> (free, fast)<br>3. <strong style="color:#7d8590">Rule-based KB</strong> (always available)</div>',unsafe_allow_html=True)
+        st.markdown('<div style="font-family:monospace;font-size:.72rem;color:#c9d1d9;line-height:2">1. <strong style="color:#3fb950">Groq LLaMA 3.3 70B</strong> (primary, free, fast)<br>2. <strong style="color:#39c5cf">Anthropic Claude Haiku</strong> (fallback)<br>3. <strong style="color:#7d8590">Rule-based KB</strong> (always available)</div>',unsafe_allow_html=True)
 
     # ── TAB: KNOWLEDGE BASE ───────────────────────────────────────────
     with s_kb:
