@@ -416,6 +416,15 @@ def get_station_recommendation(s: dict, rul: float, urg: str) -> dict:
     est_downtime = 6 if urg == "Critical" else 3 if urg == "Warning" else 1
     financial_loss = downtime_cost * est_downtime
 
+    # Approximate repair time (travel + diagnosis + fix + test)
+    fix_time = {
+        "power":    "2 – 4 h",   # Rectifier swap + battery test
+        "thermal":  "1 – 3 h",   # Fan replacement + HVAC check
+        "rf":       "3 – 6 h",   # Antenna realignment + PA swap
+        "backhaul": "2 – 5 h",   # Link realignment + path test
+        "baseband": "1 – 3 h",   # BBU reboot/replace + SW patch
+    }.get(sub_key, "2 – 4 h")
+
     # Subsystem-specific recommendations
     recommendations = {
         "power": {
@@ -458,7 +467,8 @@ def get_station_recommendation(s: dict, rul: float, urg: str) -> dict:
         "solution": rec["solution"],
         "prevention": rec["prevention"],
         "financial_loss": financial_loss,
-        "downtime_hours": est_downtime
+        "downtime_hours": est_downtime,
+        "fix_time": fix_time,
     }
 
 def check_alerts():
@@ -853,7 +863,7 @@ if pk == "Station Map":
             "lat":lat,"lon":lon,"city":city,"country":country,
             "rec_cause":rec["cause"],"rec_risks":rec["risks"],
             "rec_solution":rec["solution"],"rec_loss":rec["financial_loss"],
-            "rec_downtime":rec["downtime_hours"],
+            "rec_downtime":rec["downtime_hours"],"rec_fix_time":rec["fix_time"],
             "degrade":s.get("degrade",0.1),
             "rec_loss_per_hour":rec["financial_loss"]/max(rec["downtime_hours"],1)})
 

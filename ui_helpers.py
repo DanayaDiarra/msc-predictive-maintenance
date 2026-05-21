@@ -182,7 +182,6 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
         else:
             time_to_fail = f"{int(rem_mins // 60)}h"
         loss_per_hour = s.get("rec_loss_per_hour", s.get("rec_loss", 4200) / 6)
-        loss_per_min  = loss_per_hour / 60
 
         markers_js.append(f"""
 (function(){{
@@ -233,9 +232,12 @@ def build_map_html(stations_data: list, selected_id: str) -> str:
             <span style="font-size:.59rem;color:#7d8590">loss / hour</span>
             <span style="font-size:.63rem;color:#f0b429">€{loss_per_hour:,.0f}</span>
           </div>
+        </div>
+        <div style="background:#39c5cf12;border-radius:4px;padding:5px 8px;margin-bottom:5px">
+          <div style="font-size:.57rem;color:#39c5cf;font-weight:700;margin-bottom:2px">🔧 EST. REPAIR TIME</div>
           <div style="display:flex;justify-content:space-between">
-            <span style="font-size:.59rem;color:#7d8590">loss / min</span>
-            <span style="font-size:.63rem;color:#f0b429">€{loss_per_min:.1f}</span>
+            <span style="font-size:.59rem;color:#7d8590">travel + fix + test</span>
+            <span style="font-size:.68rem;font-weight:700;color:#39c5cf">{s.get('rec_fix_time','2 – 4 h')}</span>
           </div>
         </div>
 
