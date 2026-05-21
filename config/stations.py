@@ -260,6 +260,40 @@ STATIONS = [
          degrade=0.68, sensor_lbl="Cabinet Temp", sensor_nom=73.8, sensor_unit="°C", sensor_dir="high"),
 ]
 
+# Geographic coordinates for all stations (lat, lon, city, country)
+STATION_GEO = {
+    # Original C-MAPSS dataset stations (15 stations)
+    "FD002_47":  (14.6937, -17.4441, "Dakar",          "Senegal"),
+    "FD003_88":  (14.7167, -17.4677, "Pikine",         "Senegal"),
+    "FD001_23":  (12.3647, -15.5568, "Ziguinchor",     "Senegal"),
+    "FD004_55":  (15.5536, -14.2692, "Touba",          "Senegal"),
+    "FD004_112": (12.6392,  -8.0029, "Bamako",         "Mali"),
+    "FD003_71":  (14.7645, -10.9734, "Kayes",          "Mali"),
+    "FD001_08":  (13.4531, -13.3543, "Tambacounda",    "Senegal"),
+    "FD002_91":  (12.3641,  -1.5333, "Ouagadougou",    "Burkina Faso"),
+    "FD004_203": (11.8658, -15.5977, "Bissau",         "Guinea-Bissau"),
+    "FD001_77":  ( 9.5370, -13.6773, "Conakry",        "Guinea"),
+    "FD002_14":  (16.0544, -16.7190, "Saint-Louis",    "Senegal"),
+    "FD001_44":  (14.3421, -16.0540, "Thiès",          "Senegal"),
+    "FD003_55":  (13.5317,  -2.1175, "Bobo-Dioulasso", "Burkina Faso"),
+    "FD004_78":  ( 5.3599,  -4.0083, "Abidjan",        "Côte d'Ivoire"),
+    "FD002_33":  (12.6437,  -8.0024, "Bamako-Nord",    "Mali"),
+
+    # New Mali stations (6 stations)
+    "ML_BKO_15": (12.6392,  -8.0029, "Bamako",         "Mali"),         # Capital city
+    "ML_SKO_22": (11.3500,  -5.6800, "Sikasso",        "Mali"),         # Southern Mali
+    "ML_MOP_17": (14.4900,  -4.1800, "Mopti",          "Mali"),         # Central Mali
+    "ML_KYS_19": (14.4460, -11.4470, "Kayes",          "Mali"),         # Western Mali
+    "ML_SGU_24": (13.4330,  -6.2640, "Ségou",          "Mali"),         # Central Mali
+    "ML_GAO_21": (16.2710,  -0.0440, "Gao",            "Mali"),         # Northern Mali
+
+    # New Senegal stations (4 stations)
+    "SN_DKR_08": (14.6937, -17.4441, "Dakar",          "Senegal"),      # Capital city
+    "SN_THS_11": (14.7989, -16.9260, "Thiès",          "Senegal"),      # West Senegal
+    "SN_STL_05": (16.0260, -16.4890, "Saint-Louis",    "Senegal"),      # Northern Senegal
+    "SN_KLK_13": (12.8830, -14.9500, "Kolda",          "Senegal"),      # Southern Senegal
+}
+
 # Add "rul" alias for backward compatibility
 for _s in STATIONS:
     _s["rul"] = _s["base_rul"]

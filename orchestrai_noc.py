@@ -24,7 +24,7 @@ os.chdir(_HERE)
 import streamlit as st
 
 # Import centralized station configuration
-from config.stations import STATIONS
+from config.stations import STATIONS, STATION_GEO
 
 st.set_page_config(
     page_title="OrchestrAI NOC",
@@ -83,25 +83,7 @@ except ImportError:
 import sqlite3 as _sqlite3
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  STATION GEO-COORDINATES
-# ══════════════════════════════════════════════════════════════════════════════
-STATION_GEO = {
-    "FD002_47":  (14.6937,-17.4441,"Dakar",         "Senegal"),
-    "FD003_88":  (14.7167,-17.4677,"Pikine",         "Senegal"),
-    "FD001_23":  (12.3647,-15.5568,"Ziguinchor",     "Senegal"),
-    "FD004_55":  (15.5536,-14.2692,"Touba",          "Senegal"),
-    "FD004_112": (12.6392,-8.0029, "Bamako",         "Mali"),
-    "FD003_71":  (14.7645,-10.9734,"Kayes",          "Mali"),
-    "FD001_08":  (13.4531,-13.3543,"Tambacounda",    "Senegal"),
-    "FD002_91":  (12.3641,-1.5333, "Ouagadougou",   "Burkina Faso"),
-    "FD004_203": (11.8658,-15.5977,"Bissau",         "Guinea-Bissau"),
-    "FD001_77":  ( 9.5370,-13.6773,"Conakry",        "Guinea"),
-    "FD002_14":  (16.0544,-16.7190,"Saint-Louis",    "Senegal"),
-    "FD001_44":  (14.3421,-16.0540,"Thiès",          "Senegal"),
-    "FD003_55":  (13.5317,-2.1175, "Bobo-Dioulasso","Burkina Faso"),
-    "FD004_78":  ( 5.3599,-4.0083, "Abidjan",        "Côte d'Ivoire"),
-    "FD002_33":  (12.6437,-8.0024, "Bamako-Nord",   "Mali"),
-}
+# Station geo-coordinates now imported from config.stations
 
 _LOGO = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjI0LDMgNDMsMTMuNSA0MywzNC41IDI0LDQ1IDUsMzQuNSA1LDEzLjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzM5YzVjZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIG9wYWNpdHk9IjAuNSIvPjxwb2x5Z29uIHBvaW50cz0iMjQsMTAgMzcsMTcuNSAzNywzMC41IDI0LDM4IDExLDMwLjUgMTEsMTcuNSIgZmlsbD0iIzFjMjMzMyIgc3Ryb2tlPSIjMzljNWNmIiBzdHJva2Utd2lkdGg9IjEuMiIvPjxwb2x5bGluZSBwb2ludHM9IjE1LDI0IDE3LjUsMTkgMjAsMjQgMjIuNSwyOSAyNSwyNCAyNy41LDE5IDMwLDI0IDMyLjUsMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzU4YTZmZiIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIuMiIgZmlsbD0iIzM5YzVjZiIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iNiIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+PGNpcmNsZSBjeD0iNDEiIGN5PSIxNSIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+PGNpcmNsZSBjeD0iNDEiIGN5PSIzMyIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+PGNpcmNsZSBjeD0iMjQiIGN5PSI0MiIgcj0iMS44IiBmaWxsPSIjNThhNmZmIi8+PGNpcmNsZSBjeD0iNyIgY3k9IjMzIiByPSIxLjgiIGZpbGw9IiM1OGE2ZmYiLz48Y2lyY2xlIGN4PSI3IiBjeT0iMTUiIHI9IjEuOCIgZmlsbD0iIzU4YTZmZiIvPjwvc3ZnPg=="
 
